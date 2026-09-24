@@ -14,7 +14,7 @@ VERSION="$(cat VERSION)"
 IDENTITY="${SMART_TERMINAL_SIGN_IDENTITY:-$(security find-identity -v -p codesigning | awk -F'"' '/Developer ID Application/ {print $2; exit}')}"
 PROFILE="${NOTARY_PROFILE:-fujifilm-notary}"
 DIST="dist"
-APP="SmartTerminal.app"
+APP="$DIST/SmartTerminal.app"   # not the repo-root bundle a dev instance may be running from
 DMG="$DIST/SmartTerminal-$VERSION.dmg"
 
 [[ -n "$IDENTITY" ]] || { echo "No Developer ID Application identity found" >&2; exit 1; }
@@ -30,7 +30,8 @@ lipo -create .build/rel-arm64/release/SmartTerminal .build/rel-x86_64/release/Sm
 lipo -info .build/SmartTerminal-universal
 
 echo "==> bundle + sign ($IDENTITY)"
-SMART_TERMINAL_BINARY=.build/SmartTerminal-universal SMART_TERMINAL_SIGN_IDENTITY="$IDENTITY" SMART_TERMINAL_HARDENED=1 \
+mkdir -p "$DIST"
+SMART_TERMINAL_APP="$APP" SMART_TERMINAL_BINARY=.build/SmartTerminal-universal SMART_TERMINAL_SIGN_IDENTITY="$IDENTITY" SMART_TERMINAL_HARDENED=1 \
     scripts/bundle.sh --release
 codesign --verify --strict --deep --verbose=1 "$APP"
 
