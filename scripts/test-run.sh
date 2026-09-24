@@ -9,9 +9,10 @@ cd "$(dirname "$0")/.."
 APP="$PWD/.build/SmartTerminal-test.app"
 SUPPORT="$PWD/.build/test-support"
 pkill -f "^$APP/Contents/MacOS/SmartTerminal" 2>/dev/null || true
-scripts/bundle.sh >/dev/null
-if [[ "${1:-}" == "--keep" ]]; then rm -rf "$APP"; else rm -rf "$APP" "$SUPPORT"; fi
+# Build straight into the test bundle: never rebuild SmartTerminal.app, which a dev
+# instance may be running from.
+[[ "${1:-}" == "--keep" ]] || rm -rf "$SUPPORT"
 mkdir -p "$SUPPORT"
-cp -R SmartTerminal.app "$APP"
+SMART_TERMINAL_APP="$APP" scripts/bundle.sh >/dev/null
 open -n --env SMART_TERMINAL_SUPPORT_DIR="$SUPPORT" --env SMART_TERMINAL_DEBUG=1 --env SMART_TERMINAL_DEBUG_ID=test --env SMART_TERMINAL_LOG_OUTPUT="${SMART_TERMINAL_LOG_OUTPUT:-0}" "$APP"
 echo "launched test instance (support dir: $SUPPORT)"

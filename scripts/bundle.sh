@@ -26,7 +26,7 @@ else
 fi
 VERSION="$(cat VERSION)"
 BUILD="$(date -u +%Y%m%d%H%M)"   # monotonic build number (CFBundleVersion)
-APP="SmartTerminal.app"
+APP="${SMART_TERMINAL_APP:-SmartTerminal.app}"   # test-run.sh builds elsewhere so it never rewrites a running dev bundle
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
