@@ -56,5 +56,5 @@ echo "==> Gatekeeper"
 spctl --assess --type execute --verbose=2 "$APP"
 spctl --assess --type open --context context:primary-signature --verbose=2 "$DMG"
 rm -f "$ZIP"
-shasum -a 256 "$DMG" | tee "$DMG.sha256"
+(cd "$DIST" && shasum -a 256 "$(basename "$DMG")") | tee "$DMG.sha256"   # bare filename so `shasum -c` works after download
 echo "==> $DMG ready"
