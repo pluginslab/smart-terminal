@@ -4,6 +4,8 @@ A native macOS terminal: Terminal.app, plus Chrome-style **tab groups**. Rename 
 gather them into named, colored, collapsible groups, and drag tabs and groups
 around, between windows, or out into new ones.
 
+![Smart Terminal: tab groups, Claude Code status in tabs and the title bar, and a “Claude needs you” notification](assets/screenshot.png)
+
 ## Install
 Download **SmartTerminal-0.5.0.dmg** from [Releases](https://github.com/pluginslab/smart-terminal/releases), open it, and drag Smart Terminal to Applications. It is a signed and notarized universal build (Apple silicon + Intel). It needs **macOS 26 (Tahoe)** or later.
 
