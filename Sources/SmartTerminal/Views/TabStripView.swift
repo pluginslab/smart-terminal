@@ -48,6 +48,9 @@ struct TabStripView: View {
                                             group: tab.groupID.flatMap { window?.group($0) },
                                             isActive: window?.activeTabID == tab.id,
                                             width: tabWidth, model: model)
+                                    // A visible gap where a group ends, so the ungrouped tabs
+                                    // after it don't read as members of that group.
+                                    .padding(.leading, endsGroupBefore(tab, in: items) ? 10 : 0)
                                     .id(tab.id)
                             }
                         }
@@ -66,6 +69,15 @@ struct TabStripView: View {
         }
         .frame(height: StripMetrics.height)
         .background(.bar)
+    }
+}
+
+/// True when `tab` is ungrouped and directly follows a group (its last tab or collapsed chip).
+private func endsGroupBefore(_ tab: TerminalTab, in items: [StripItem]) -> Bool {
+    guard tab.groupID == nil, let i = items.firstIndex(where: { $0.id == tab.id }), i > 0 else { return false }
+    switch items[i - 1] {
+    case .chip: return true
+    case .tab(let prev): return prev.groupID != nil
     }
 }
 

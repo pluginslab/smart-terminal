@@ -13,5 +13,5 @@ scripts/bundle.sh >/dev/null
 if [[ "${1:-}" == "--keep" ]]; then rm -rf "$APP"; else rm -rf "$APP" "$SUPPORT"; fi
 mkdir -p "$SUPPORT"
 cp -R SmartTerminal.app "$APP"
-open -n --env SMART_TERMINAL_SUPPORT_DIR="$SUPPORT" --env SMART_TERMINAL_DEBUG=1 --env SMART_TERMINAL_DEBUG_ID=test "$APP"
+open -n --env SMART_TERMINAL_SUPPORT_DIR="$SUPPORT" --env SMART_TERMINAL_DEBUG=1 --env SMART_TERMINAL_DEBUG_ID=test --env SMART_TERMINAL_LOG_OUTPUT="${SMART_TERMINAL_LOG_OUTPUT:-0}" "$APP"
 echo "launched test instance (support dir: $SUPPORT)"

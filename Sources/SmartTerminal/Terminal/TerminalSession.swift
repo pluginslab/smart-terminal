@@ -21,9 +21,21 @@ final class SmartTerminalView: LocalProcessTerminalView {
 
     private var lastOutputSignal = Date.distantPast
 
-    /// Every chunk from the pty; throttled because it can fire thousands of times a second.
+    /// Every chunk from the pty. Only output that contains a line break counts as
+    /// activity: full-screen redraws (tmux's status-line clock, a TUI repainting a
+    /// cell) are cursor-addressed and carry none, so they no longer re-mark a tab
+    /// moments after you left it. Measured: idle tmux redraw 133 B / 0 LF, a
+    /// printed line inside tmux 31 B / 1 LF. Throttled, since chunks can arrive
+    /// thousands of times a second.
     override func dataReceived(slice: ArraySlice<UInt8>) {
         super.dataReceived(slice: slice)
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["SMART_TERMINAL_LOG_OUTPUT"] == "1" {
+            let lf = slice.reduce(0) { $1 == 10 ? $0 + 1 : $0 }
+            DebugLog.write("output \(slice.count)B lf=\(lf)")
+        }
+        #endif
+        guard slice.contains(10) else { return }
         let now = Date()
         if now.timeIntervalSince(lastOutputSignal) > 0.5 {
             lastOutputSignal = now

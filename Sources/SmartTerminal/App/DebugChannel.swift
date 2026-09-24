@@ -135,6 +135,8 @@ final class DebugChannel {
         case "state":
             // agents, attention and badge, as JSON lines
             var out = ["badge=\(NSApp.dockTile.badgeLabel ?? "-") attention=\(model.attention.count)"]
+            let titles = Dictionary(model.layout.windows.flatMap(\.tabs).map { ($0.id, $0.displayTitle) }, uniquingKeysWith: { a, _ in a })
+            out.append("activity dots: " + model.activity.compactMap { titles[$0] }.sorted().joined(separator: ", "))
             for (id, a) in model.agents {
                 let title = model.layout.windows.lazy.compactMap { $0.tab(id) }.first?.displayTitle ?? "?"
                 out.append("\(title): \(a.status.rawValue) waitingFor=\(a.waitingFor ?? "-") attention=\(model.attention.contains(id))")
