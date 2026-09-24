@@ -29,7 +29,7 @@ waiting, and **notify you** when one you can't see needs an answer.
 
 ## Install
 
-Download **SmartTerminal-0.5.0.dmg** from
+Download the latest **SmartTerminal DMG** from
 [Releases](https://github.com/pluginslab/smart-terminal/releases/latest), open it, and
 drag Smart Terminal to Applications. It is a signed and notarized universal build
 (Apple silicon + Intel) that needs **macOS 26 (Tahoe)** or later.

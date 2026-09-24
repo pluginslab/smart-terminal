@@ -1,6 +1,7 @@
 # Changelog
 
-## [Unreleased]
+## [0.5.1] - 2026-09-24
+- CI: actions/checkout v5 (Node 20 deprecation).
 - Fix: the activity dot never cleared on tmux tabs. tmux redraws its status-line clock every few seconds, which counted as output and re-marked the tab right after you left it. Activity now requires a line break in the output (idle tmux redraw: 133 B, no line break; a printed line: 31 B, one line break).
 - A visible gap where a group ends, so ungrouped tabs right after a group no longer look like members of it.
 - README modelled on wims: story, full usage, how it works, privacy, configuration, limitations; mocked screenshot.

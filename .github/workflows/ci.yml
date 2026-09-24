@@ -19,7 +19,7 @@ jobs:
     # The package targets macOS 26 and needs the macOS 26 SDK / Swift 6.2.
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Select the newest Xcode
         run: |
