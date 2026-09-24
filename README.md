@@ -1,59 +1,200 @@
+<div align="center">
+
+<img src="Resources/AppIcon.png" width="128" height="128" alt="Smart Terminal icon">
+
 # Smart Terminal
 
-A native macOS terminal: Terminal.app, plus Chrome-style **tab groups**. Rename tabs,
-gather them into named, colored, collapsible groups, and drag tabs and groups
-around, between windows, or out into new ones.
+**Terminal.app, plus Chrome-style tab groups, for people who run a lot of Claude Code.**
+
+[![Release](https://img.shields.io/github/v/release/pluginslab/smart-terminal)](https://github.com/pluginslab/smart-terminal/releases/latest)
+[![CI](https://github.com/pluginslab/smart-terminal/actions/workflows/ci.yml/badge.svg)](https://github.com/pluginslab/smart-terminal/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![macOS](https://img.shields.io/badge/macOS-26%2B-black.svg)](#install)
+[![Swift](https://img.shields.io/badge/Swift-6.2-orange.svg)](https://swift.org)
+
+</div>
+
+You have fifteen terminal tabs open across four projects. One is tailing the API
+logs, two are SSH'd into servers, and five are running Claude Code. Every tab says
+`zsh`. Somewhere a Claude session finished twenty minutes ago and has been waiting
+for you ever since.
+
+Smart Terminal keeps the Terminal.app you know (same fonts, colors and title bar) and
+adds what that setup needs. Tabs can be **renamed** and gathered into **named,
+colored, collapsible groups** that you drag around like Chrome's. Tabs running
+Claude Code **name themselves after the session**, show whether Claude is working or
+waiting, and **notify you** when one you can't see needs an answer.
 
 ![Smart Terminal: tab groups, Claude Code status in tabs and the title bar, and a “Claude needs you” notification](assets/screenshot.png)
 
 ## Install
-Download **SmartTerminal-0.5.0.dmg** from [Releases](https://github.com/pluginslab/smart-terminal/releases), open it, and drag Smart Terminal to Applications. It is a signed and notarized universal build (Apple silicon + Intel). It needs **macOS 26 (Tahoe)** or later.
 
-On first use macOS may ask for permission to:
-- **show notifications**, used when a Claude session in another tab finishes or needs you;
-- **control Terminal**, only when you use *Import Tabs from Terminal.app*.
+Download **SmartTerminal-0.5.0.dmg** from
+[Releases](https://github.com/pluginslab/smart-terminal/releases/latest), open it, and
+drag Smart Terminal to Applications. It is a signed and notarized universal build
+(Apple silicon + Intel) that needs **macOS 26 (Tahoe)** or later.
 
-## Highlights
-- **Tab groups:** rename tabs, and gather them into named, colored, collapsible groups (Chrome's nine colors). Drag tabs and whole groups to reorder, between windows, or out into a new window.
-- **Feels like Terminal.app:** it imports your Terminal.app default profile (font, colors, translucency), and the title bar shows the same live format: `folder — ◐ program title — process ◂ command — cols×rows`.
-- **Claude Code aware:** tabs take the session's name (`/rename` or Claude's AI title) and show its live ◐/✳ status. A notification and Dock badge tell you when a Claude you can't see finishes or waits on a permission prompt. Sessions can be resumed after a restart.
-- **Import from Terminal.app:** brings your open Terminal.app tabs over, grouped by project. Claude sessions are handed over, and tmux sessions are re-attached.
-- **Layout persistence:** windows, groups, names and folders survive a restart.
+macOS may ask for two permissions, each the first time it is needed:
 
-## Build from source
-```bash
-scripts/bundle.sh --open     # debug build of SmartTerminal.app, then launch it
-scripts/dev-run.sh           # isolated dev instance (own layout file, debug channel on)
-scripts/test-run.sh          # throwaway test instance for automated checks
-swift test                   # core model tests
-scripts/release.sh           # universal build, Developer ID signing, notarization, DMG in dist/
-```
-Swift 6.2 / Xcode 26. Terminal emulation is by [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm). Project docs: `scope.md`, `plan.md`, `progress.md`.
+- **Notifications**, so you can hear when a Claude session in another tab finishes or needs you.
+- **Control Terminal**, only when you use *Import Tabs from Terminal.app*.
 
-## Using it
+Coming from Terminal.app? Use **Shell → Import Tabs from Terminal.app…** to bring your
+open tabs over (see [below](#import-from-terminalapp)).
+
+## Usage
+
+### Tabs and groups
+
 | Action | How |
-|---|---|
-| New tab (next to the current one, same group, same folder) | ⌘T, "+" |
-| New tab at the end, ungrouped | double-click empty strip space |
-| Rename tab | double-click the tab, ⌘⇧I (Enter commits, Esc cancels, empty = automatic name) |
-| Group the current tab / edit its group | ⌥⌘G, or right-click the tab → Add Tab to New Group |
-| Collapse / expand a group | click its chip, ⌥⌘C |
-| Edit group name, color, actions | double-click the chip, or right-click the chip |
-| Move tabs | drag: dropping between a group's tabs joins it; the left edge of a chip = before the group; onto a chip = into the group |
-| Move a group | drag its chip |
-| Tab or group to a new window | drag it out onto the desktop, or use the context menu |
-| Move tab left/right within its group | ⌃← / ⌃→ (needs System Settings → Keyboard → Shortcuts → Mission Control → "Move left/right a space" off), or ⌃⌥← / ⌃⌥→ |
-| Switch tabs | ⌘1…⌘8, ⌘9 (last), ⌃Tab / ⌃⇧Tab, ⌘⇧] / ⌘⇧[ |
-| Font size | ⌘+ / ⌘- / ⌘0 |
-| Clear, Find | ⌘K, ⌘F |
+| --- | --- |
+| New tab (next to the current one, same group, same folder) | `⌘T` or `+` |
+| New tab at the end, ungrouped | double-click empty space in the strip |
+| Rename a tab | double-click it, or `⌘⇧I`. Enter saves, Esc cancels, empty restores the automatic name |
+| Put the tab in a new group, or edit its group | `⌥⌘G`, or right-click → *Add Tab to New Group* |
+| Collapse or expand a group | click its chip, or `⌥⌘C` |
+| Name, color, ungroup, close or move a group | double-click or right-click its chip |
+| Move a tab left or right **within its group** | `⌃←` `⌃→` (or `⌃⌥←` `⌃⌥→`, see [Limitations](#limitations)) |
+| Switch tabs | `⌘1`…`⌘8`, `⌘9` for the last, `⌃Tab` / `⌃⇧Tab`, `⌘⇧]` / `⌘⇧[` |
+| Move a tab or group to a new window | drag it onto the desktop, or right-click → *Move to New Window* |
+| New window, close tab, close window | `⌘N`, `⌘W`, `⌘⇧W` |
+| Font size, clear, find | `⌘+` `⌘-` `⌘0`, `⌘K`, `⌘F` |
 
-### Coming from Terminal.app
-**Shell → Import Tabs from Terminal.app…** lists your Terminal.app tabs grouped by project folder. Claude sessions are handed over (`/exit` there, `--resume` here with the same flags), tmux sessions are re-attached here and detached there, and shells reopen in the same folder. Claude sessions that are working right now start unchecked.
+**Dragging.** Where you drop a tab decides its group, the same way Chrome does:
+
+- between two tabs of a group, it joins that group;
+- onto a group's chip, it goes to the end of that group;
+- onto the left edge of a chip, or next to an ungrouped tab, it is ungrouped;
+- drag a chip to move the whole group, including into another window.
+
+Every drop is backed by a model with invariant checks (groups stay contiguous, no
+empty groups, no lost tabs). The tests include a randomized run of 8,000 operations
+across two windows.
 
 ### Claude Code tabs
-When Claude Code runs in a tab (and you haven't renamed the tab), the tab takes the session's name: your `/rename`, else Claude's AI title, else "Claude · folder". The glyph shows its state: a spinning ✱ while working, and a filled orange ✱ when it finished while you were in another tab. An orange speech bubble means it is waiting on a permission prompt or question. You get a macOS notification (click to jump to the tab) and a Dock badge when a Claude you can't see finishes or needs you. After a restart, tabs that ran Claude offer **Resume**.
 
-Layout is saved to `~/Library/Application Support/SmartTerminal/layout.json`. Shells restart in each tab's last folder.
+When a tab runs Claude Code and you haven't renamed it, the tab takes the session's
+name: your `/rename`, otherwise Claude's own AI title, otherwise "Claude · folder".
+Rename it yourself and your name wins, but Claude's live status prefix stays.
+
+| In the tab | Meaning |
+| --- | --- |
+| `◐ Add Stripe webhook retries` | Claude is working (the half moon animates, exactly as Claude draws it) |
+| `✳ Add Stripe webhook retries` | Claude is idle |
+| orange speech bubble with `!` | Claude is waiting on a permission prompt or a question |
+| filled orange `✱` | Claude finished while you were in another tab |
+
+When a Claude you can't see finishes or needs you, you get a macOS notification.
+Click it to jump to the tab. The Dock badge counts the tabs waiting for you. Hover a
+tab for its last prompt and PR link.
+
+**Resume after a restart.** Quit the app, or let it crash, and every tab that was
+running Claude comes back with a bar: *Claude session "…" was running here.*
+**Resume** (`⌘⇧R`) runs `claude --resume <id>` with the flags the session was started
+with. If you exit Claude yourself, the tab forgets the session.
+
+### The title bar
+
+The title bar follows Terminal.app's format and updates live, spinner included:
+
+```
+API — acme-storefront — ◐ Add Stripe webhook retries — caffeinate ◂ claude — 132×38
+group  folder            what the program set as title   newest process ◂ command   size
+```
+
+### Import from Terminal.app
+
+**Shell → Import Tabs from Terminal.app…** lists your open Terminal.app tabs, grouped
+by project folder, with a checkbox each:
+
+- **Claude sessions are handed over.** Smart Terminal types `/exit` into the session
+  in Terminal.app, waits for it to stop, and resumes it here with the same flags. A
+  session is never running in two places at once.
+- **tmux sessions are re-attached here**, and Terminal.app's client is detached.
+  Nothing inside tmux restarts.
+- **Plain shells** reopen in the same folder.
+
+Claude sessions that are **working right now start unchecked**, because handing one
+over stops it mid-turn.
+
+### Look and feel
+
+Smart Terminal reads your **Terminal.app default profile**: font, colors, the 16-color
+ANSI palette, background opacity and blur, and "Use Option as Meta key". If that
+profile can't be read, it falls back to a built-in dark or light theme.
+
+Your windows, groups (name, color, collapsed state), tab order, custom names and each
+tab's working folder are saved and restored at launch. Shells restart in the folder
+they were in.
+
+## How it works
+
+Claude Code writes two things Smart Terminal reads, and it never asks Claude for
+anything:
+
+- **`~/.claude/sessions/<pid>.json`**, one small file per running Claude process, with
+  the session id, folder and a status of `busy`, `idle` or `waiting` (plus
+  `waitingFor`, such as a permission prompt). The process group in the foreground of a
+  tab's terminal *is* that pid, so detection is exact. The file is read about once a
+  second, and only while a program other than the shell is in front.
+- **The session transcript** (`~/.claude/projects/…/<session-id>.jsonl`), for the
+  `custom-title`, `ai-title`, `last-prompt` and `pr-link` entries. Transcripts reach
+  tens of megabytes, so they are never read whole. The app scans backwards from the end
+  in growing windows until it finds a title, then reads only newly appended bytes.
+
+The working/idle animation comes straight from the title Claude sets (`◐`/`◑` while
+busy, `✳` when idle). The working folder, command line and newest child process come
+from the kernel (`libproc`, `sysctl`), so no shell integration or rc-file changes are
+needed.
+
+Import uses AppleScript to list Terminal.app's windows and tabs and their ttys, `ps`
+to find each tab's shell and foreground job, the Claude session file to recognise
+Claude, and `tmux list-clients` to map a tty to a tmux session.
+
+### Privacy
+
+Everything stays on your Mac. **Smart Terminal makes no network requests.**
+Notifications are local, and links open only when you click them. What it reads,
+writes and runs is listed in [SECURITY.md](SECURITY.md).
+
+## Configuration
+
+| Variable | Meaning |
+| --- | --- |
+| `CLAUDE_CONFIG_DIR` | Where Claude Code keeps its data. Defaults to `~/.claude`. |
+| `SMART_TERMINAL_SUPPORT_DIR` | Where the layout is saved. Defaults to `~/Library/Application Support/SmartTerminal`. |
+
+## Development
+
+```bash
+swift test                   # core model tests (tabs, groups, drops, Claude parsing, import planning)
+scripts/bundle.sh --open     # debug build of SmartTerminal.app, then launch it
+scripts/dev-run.sh           # dev instance with its own layout file and a debug control channel
+scripts/test-run.sh          # throwaway test instance for automated checks
+python3 scripts/mock-screenshot.py   # regenerate assets/screenshot.{svg,png} from demo data
+scripts/release.sh           # universal build, Developer ID signing, notarization, DMG in dist/
+```
+
+Swift 6.2 and Xcode 26. `SmartTerminalCore` is the UI-free model (tabs, groups, drop
+targets, persistence, Claude parsing) and holds almost all of the logic, all of it
+unit-tested. `SmartTerminal` is the AppKit/SwiftUI app. Terminal emulation is by
+[SwiftTerm](https://github.com/migueldeicaza/SwiftTerm).
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). The design notes and the build log are in
+[`docs/`](docs).
+
+## Limitations
+
+- **Claude inside tmux is not detected yet.** The tab's foreground process is the
+  tmux client, so Claude's status and title don't reach it.
+- **`⌃←` `⌃→` are taken by macOS** for switching Spaces by default. Turn off *Move
+  left/right a space* in System Settings → Keyboard → Keyboard Shortcuts → Mission
+  Control, or use `⌃⌥←` `⌃⌥→`.
+- **No automatic updates yet.** Watch the repository's releases.
+- **No split panes**, and processes don't survive quitting the app. Only the layout
+  and Claude sessions (via resume) come back.
+- **macOS 26 or later only.**
 
 ## License
-MIT. See [LICENSE](LICENSE).
+
+[MIT](LICENSE). Terminal emulation by [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) (MIT).

@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+- README modelled on wims: story, full usage, how it works, privacy, configuration, limitations; mocked screenshot.
+- SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, .editorconfig, CI (build + tests on macOS 26).
+- Planning docs moved to docs/.
+
 ## [0.5.0] - 2026-09-24
 First public release: signed, notarized, universal (Apple silicon + Intel), macOS 26+.
 - App icon, About panel (version, build, credits), MIT licence.
