@@ -8,8 +8,11 @@ struct WindowContentView: View {
     var body: some View {
         let window = model.window(windowID)
         VStack(spacing: 0) {
+            // The divider is drawn on the strip's own background: as a row of its own it
+            // was a 1 pt gap that nothing painted, and in a translucent window the
+            // desktop showed through it.
             TabStripView(windowID: windowID, model: model)
-            Divider()
+                .overlay(alignment: .bottom) { Divider() }
             if let tab = window?.activeTab, let ref = model.resumableSession(tab.id) {
                 ResumeBar(ref: ref, resume: { model.resumeAgent(tab.id) }, dismiss: { model.dismissResume(tab.id) })
             }
