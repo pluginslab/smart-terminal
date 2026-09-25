@@ -103,8 +103,9 @@ final class ClaudeWatcher {
     /// the background; tailing picks up from `offset`.
     private func scanUsage(_ url: URL, upTo offset: UInt64) {
         let generation = scanGeneration
+        let processStart = record?.startDate
         Task {
-            let scanned = await TranscriptScanner.shared.usage(of: url, upTo: offset)
+            let scanned = await TranscriptScanner.shared.usage(of: url, upTo: offset, processStart: processStart)
             guard generation == scanGeneration else { return } // session changed meanwhile
             var u = scanned
             pendingUsageLines.forEach { u.ingest(line: $0) } // the message-id set drops repeats
@@ -193,8 +194,8 @@ final class ClaudeWatcher {
 actor TranscriptScanner {
     static let shared = TranscriptScanner()
 
-    func usage(of url: URL, upTo offset: UInt64) -> ClaudeUsage {
-        var usage = ClaudeUsage()
+    func usage(of url: URL, upTo offset: UInt64, processStart: Date? = nil) -> ClaudeUsage {
+        var usage = ClaudeUsage(processStart: processStart)
         guard let h = try? FileHandle(forReadingFrom: url) else { return usage }
         defer { try? h.close() }
         var remaining = offset

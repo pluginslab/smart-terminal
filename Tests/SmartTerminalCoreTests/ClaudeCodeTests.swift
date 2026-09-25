@@ -107,6 +107,44 @@ import Testing
         #expect(u.prompts == 0) // neither results nor notifications are prompts
     }
 
+    @Test func newPromptClearsFinishedSubagents() {
+        func launch(_ id: String, _ t: String) -> String {
+            #"{"type":"assistant","timestamp":"2026-09-25T10:0"# + t + #":00.000Z","message":{"id":"m"# + id + #"","content":[{"type":"tool_use","id":""# + id + #"","name":"Agent","input":{"description":""# + id + #""}}],"usage":{}}}"#
+        }
+        func done(_ id: String, error: Bool = false) -> String {
+            #"{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":""# + id + #"","is_error":"# + (error ? "true" : "false") + #"}]},"toolUseResult":{"status":""# + (error ? "failed" : "completed") + #""}}"#
+        }
+        let prompt = #"{"type":"user","message":{"role":"user","content":"next task"}}"#
+        var u = ClaudeUsage()
+        [prompt, launch("a", "1"), launch("b", "1"), done("a"), done("b")].forEach { u.ingest(line: $0) }
+        #expect(u.subagents.map(\.id) == ["a", "b"])
+        // All green, new prompt, new subagent: the list starts over.
+        [prompt, launch("c", "2")].forEach { u.ingest(line: $0) }
+        #expect(u.subagents.map(\.id) == ["c"])
+        // A second launch for the same prompt adds to the list.
+        u.ingest(line: launch("d", "2"))
+        #expect(u.subagents.map(\.id) == ["c", "d"])
+        // One failed: the next prompt's subagents are added, not a fresh list.
+        [done("c"), done("d", error: true), prompt, launch("e", "3")].forEach { u.ingest(line: $0) }
+        #expect(u.subagents.map(\.id) == ["c", "d", "e"])
+        // Still running (e): kept too.
+        [prompt, launch("f", "4")].forEach { u.ingest(line: $0) }
+        #expect(u.subagents.map(\.id) == ["c", "d", "e", "f"])
+    }
+
+    @Test func staleSubagentsDontBlockClearing() {
+        let start = Date(timeIntervalSince1970: 1_790_330_000) // 2026-09-25T09:53:20Z
+        var u = ClaudeUsage(processStart: start)
+        let lines = [
+            // Launched before this process (the session was resumed) and never finished.
+            #"{"type":"assistant","timestamp":"2026-09-25T09:00:00.000Z","message":{"id":"m1","content":[{"type":"tool_use","id":"old","name":"Agent","input":{"description":"old","run_in_background":true}}],"usage":{}}}"#,
+            #"{"type":"user","message":{"role":"user","content":"after resume"}}"#,
+            #"{"type":"assistant","timestamp":"2026-09-25T10:00:00.000Z","message":{"id":"m2","content":[{"type":"tool_use","id":"new","name":"Agent","input":{"description":"new"}}],"usage":{}}}"#,
+        ]
+        lines.forEach { u.ingest(line: $0) }
+        #expect(u.subagents.map(\.id) == ["new"])
+    }
+
     @Test func lastUsedWindowFromClaudeJSON() {
         let json = Data(#"{"projects":{"/srv":{"lastModelUsage":{"claude-haiku-4-5":{},"claude-opus-5-5[1m]":{}}},"/old":{"lastModelUsage":{"claude-opus-5-5":{}}}}}"#.utf8)
         #expect(ClaudeUsage.lastUsedWindow(claudeJSON: json, folder: "/srv", model: "claude-opus-5-5") == 1_000_000)

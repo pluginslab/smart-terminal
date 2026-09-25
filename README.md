@@ -106,7 +106,8 @@ the current tab, and follows you as you switch tabs:
   you've run one, from a context already past 200k, or from the model the folder last
   used. Failing all of those it shows "~200k". Run `/context` once to make it exact.
 - **Subagents** Claude started: running ones with a live timer, finished ones with how
-  long they took, their tokens and tool calls.
+  long they took, their tokens and tool calls. A new prompt that starts subagents clears
+  the list, unless one is still running or failed.
 - **Tokens this session:** output, input, cache reads and cache writes.
 - **Prompts** typed, how long the last turn took, when the session started, and the model.
 

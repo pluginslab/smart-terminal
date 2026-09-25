@@ -68,7 +68,7 @@ final class DebugChannel {
             // snapshotClaude <transcript.jsonl> <out-prefix>
             let url = URL(fileURLWithPath: a1), out = a2
             Task {
-                let usage = await TranscriptScanner.shared.usage(of: url, upTo: .max)
+                let usage = await TranscriptScanner.shared.usage(of: url, upTo: .max, processStart: Date().addingTimeInterval(-7_900))
                 for status in [AgentStatus.busy, .waiting, .idle] {
                     var agent = AgentSnapshot(status: status, title: "Claude panel for the sidebar")
                     agent.usage = usage

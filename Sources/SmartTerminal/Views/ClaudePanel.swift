@@ -55,7 +55,7 @@ struct ClaudeSessionCards: View {
                     .padding(.top, 16).padding(.horizontal, 8)
             } else if let usage = agent.usage {
                 if !usage.subagents.isEmpty {
-                    SubagentsCard(subagents: usage.subagents, processStart: agent.startedAt)
+                    SubagentsCard(usage: usage)
                 }
                 ContextCard(usage: usage)
                 TokensCard(usage: usage)
@@ -170,17 +170,12 @@ private struct StatusGlyph: View {
 /// Subagents Claude started, newest first: running ones with a live timer,
 /// finished ones with duration, tokens and tool calls.
 private struct SubagentsCard: View {
-    let subagents: [ClaudeSubagent]
-    /// When this Claude process started. A subagent launched before it (the session was
-    /// resumed) and never finished won't report back, so it isn't shown as running.
-    let processStart: Date?
+    let usage: ClaudeUsage
 
     static let visible = 8
 
-    private func isStale(_ a: ClaudeSubagent) -> Bool {
-        guard a.status == .running, let start = a.startedAt, let processStart else { return false }
-        return start < processStart
-    }
+    private var subagents: [ClaudeSubagent] { usage.subagents }
+    private func isStale(_ a: ClaudeSubagent) -> Bool { usage.isStale(a) }
 
     var body: some View {
         let newestFirst = Array(subagents.reversed())

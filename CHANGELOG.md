@@ -7,7 +7,7 @@
   - Context meter: tokens in context and a ring against the context window. Replies log the model without its `[1m]` suffix, so the window comes from, in order: `/context` or `/model` output in the transcript; a context already past 200k; the folder's last-used model in `~/.claude.json`; else an assumed 200k, shown as "~200k". The tooltip names the source.
   - "Resumed" instead of "Started" for a session opened with `--resume` or `--continue`.
   - Session tokens: output, input, cache read, cache write.
-  - Subagents, newest first: a spinning asterisk and live timer while running (with a "2 running" badge), then a check with duration, tokens and tool calls, or a red cross if it failed. Background subagents finish through their task notification. One launched before a `--resume` that never reported back shows as "didn't finish" instead of running forever.
+  - Subagents, newest first: a spinning asterisk and live timer while running (with a "2 running" badge), then a check with duration, tokens and tool calls, or a red cross if it failed. Background subagents finish through their task notification. One launched before a `--resume` that never reported back shows as "didn't finish" instead of running forever. The list starts over when a new prompt launches subagents and all previous ones completed; a running or failed one keeps the list, so it isn't missed.
   - Prompts typed, last turn duration, session start, model.
 - Token totals count each API message once. A response is logged as one line per content block, each repeating the same usage, so counting lines would inflate totals about 2.3×.
 - Each transcript is read once in full, off the main thread and one at a time (11 MB in 0.23 s), then followed as it grows.

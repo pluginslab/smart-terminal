@@ -153,9 +153,20 @@ public struct ClaudeUsage: Sendable {
     public var lastUsedWindow: Int?
     /// In launch order. Only the main conversation's; nested ones live in subagent transcripts.
     public var subagents: [ClaudeSubagent] = []
+    /// `prompts` when the last subagent was launched: a higher count means a new prompt.
+    private var promptsAtLastLaunch = 0
+    /// When this Claude process started. A subagent launched before it (the session
+    /// was resumed) that never finished won't report back, so it counts as done.
+    public var processStart: Date?
     private var seen: Set<String> = []
 
-    public init() {}
+    public init(processStart: Date? = nil) { self.processStart = processStart }
+
+    /// Launched before this process and never finished: it will never report back.
+    public func isStale(_ a: ClaudeSubagent) -> Bool {
+        guard a.status == .running, let start = a.startedAt, let processStart else { return false }
+        return start < processStart
+    }
 
     public var totalTokens: Int { inputTokens + outputTokens + cacheReadTokens + cacheCreationTokens }
 
@@ -197,6 +208,12 @@ public struct ClaudeUsage: Sendable {
             for block in message["content"] as? [[String: Any]] ?? [] where block["type"] as? String == "tool_use"
                 && ["Agent", "Task"].contains(block["name"] as? String ?? "") {
                 guard let id = block["id"] as? String, !subagents.contains(where: { $0.id == id }) else { continue }
+                // A new prompt's first subagent starts a fresh list, if the previous
+                // ones all completed. Running or failed ones keep it, so they aren't missed.
+                if prompts > promptsAtLastLaunch, subagents.allSatisfy({ $0.status == .completed || isStale($0) }) {
+                    subagents.removeAll()
+                }
+                promptsAtLastLaunch = prompts
                 let input = block["input"] as? [String: Any] ?? [:]
                 subagents.append(ClaudeSubagent(
                     id: id, description: input["description"] as? String ?? "Subagent",
