@@ -21,6 +21,11 @@ final class ClaudeWatcher {
     private var transcriptOffset: UInt64 = 0
     private var partialLine = Data()
     private var transcript = ClaudeTranscriptState()
+    /// Token totals. Nil until the one-time background scan of the transcript so far
+    /// finishes; lines tailed meanwhile wait in `pendingUsageLines`.
+    private var usage: ClaudeUsage?
+    private var pendingUsageLines: [String] = []
+    private var scanGeneration = 0
     private var lastLookup = Date.distantPast
 
     /// Returns the snapshot for the foreground process group, or nil when it is not Claude.
@@ -44,12 +49,15 @@ final class ClaudeWatcher {
             }
         }
         return AgentSnapshot.make(record: record, transcript: transcriptURL == nil ? nil : transcript,
-                                  terminalTitle: osc)
+                                  terminalTitle: osc,
+                                  // No transcript yet (before the first prompt): nothing to count, not "loading".
+                                  usage: transcriptURL == nil ? ClaudeUsage() : usage)
     }
 
     private func reset() {
         pid = 0; arguments = []; record = nil; transcriptURL = nil; transcriptOffset = 0
         partialLine = Data(); transcript = ClaudeTranscriptState()
+        usage = nil; pendingUsageLines = []; scanGeneration += 1
     }
 
     private func readRecord(pid: pid_t) -> ClaudeSessionRecord? { Self.sessionRecord(pid: pid) }
@@ -67,6 +75,7 @@ final class ClaudeWatcher {
 
     private func attachTranscript(sessionID: String, cwd: String?) {
         transcriptURL = nil; transcriptOffset = 0; partialLine = Data(); transcript = ClaudeTranscriptState()
+        usage = nil; pendingUsageLines = []; scanGeneration += 1
         let projects = Self.claudeDir.appendingPathComponent("projects", isDirectory: true)
         let file = "\(sessionID).jsonl"
         // Fast path: Claude's directory naming replaces every non-alphanumeric char with "-".
@@ -84,6 +93,26 @@ final class ClaudeWatcher {
         guard let url else { return }
         transcriptURL = url
         scanBackwardsForTitles(url)
+        scanUsage(url, upTo: transcriptOffset)
+    }
+
+    /// Totals need the whole transcript (it can be tens of MB), so it's read once in
+    /// the background; tailing picks up from `offset`.
+    private func scanUsage(_ url: URL, upTo offset: UInt64) {
+        let generation = scanGeneration
+        Task {
+            let scanned = await TranscriptScanner.shared.usage(of: url, upTo: offset)
+            guard generation == scanGeneration else { return } // session changed meanwhile
+            var u = scanned
+            pendingUsageLines.forEach { u.ingest(line: $0) } // the message-id set drops repeats
+            pendingUsageLines = []
+            usage = u
+        }
+    }
+
+    private func ingest(_ line: String) {
+        transcript.ingest(line: line)
+        if usage != nil { usage!.ingest(line: line) } else { pendingUsageLines.append(line) }
     }
 
     /// Titles repeat through the file, but can be megabytes apart: read growing
@@ -130,8 +159,38 @@ final class ClaudeWatcher {
             return
         }
         for line in buffer.split(separator: UInt8(ascii: "\n")) {
-            if let s = String(data: line, encoding: .utf8) { transcript.ingest(line: s) }
+            if let s = String(data: line, encoding: .utf8) { ingest(s) }
         }
         if partialLine.count > 16 * 1024 * 1024 { partialLine = Data() } // runaway line; not a title entry
+    }
+}
+
+/// Reads transcripts for token totals one at a time, off the main thread, so a
+/// launch with many Claude tabs doesn't parse them all at once.
+actor TranscriptScanner {
+    static let shared = TranscriptScanner()
+
+    func usage(of url: URL, upTo offset: UInt64) -> ClaudeUsage {
+        var usage = ClaudeUsage()
+        guard let h = try? FileHandle(forReadingFrom: url) else { return usage }
+        defer { try? h.close() }
+        var remaining = offset
+        var carry = Data()
+        while remaining > 0 {
+            // 4 MB chunks keep memory flat for large transcripts.
+            guard let chunk = try? h.read(upToCount: Int(min(remaining, 4 * 1024 * 1024))), !chunk.isEmpty else { break }
+            remaining -= UInt64(chunk.count)
+            var buffer = carry + chunk
+            if remaining > 0, let last = buffer.lastIndex(of: UInt8(ascii: "\n")) {
+                carry = buffer[(last + 1)...]
+                buffer = buffer[..<last]
+            } else {
+                carry = Data()
+            }
+            for line in buffer.split(separator: UInt8(ascii: "\n")) {
+                if let s = String(data: line, encoding: .utf8) { usage.ingest(line: s) }
+            }
+        }
+        return usage
     }
 }

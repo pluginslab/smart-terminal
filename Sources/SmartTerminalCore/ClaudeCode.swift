@@ -44,12 +44,17 @@ public struct ClaudeSessionRecord: Decodable, Equatable, Sendable {
     public let nameSource: String?
     /// Why it is waiting when status == "waiting", e.g. "input needed", "dialog open".
     public let waitingFor: String?
+    /// Epoch milliseconds.
+    public let startedAt: Double?
 
     public init(pid: Int32, sessionId: String, cwd: String?, status: String?, name: String?,
-                nameSource: String?, waitingFor: String? = nil) {
+                nameSource: String?, waitingFor: String? = nil, startedAt: Double? = nil) {
         self.pid = pid; self.sessionId = sessionId; self.cwd = cwd
         self.status = status; self.name = name; self.nameSource = nameSource; self.waitingFor = waitingFor
+        self.startedAt = startedAt
     }
+
+    public var startDate: Date? { startedAt.map { Date(timeIntervalSince1970: $0 / 1000) } }
 
     /// "shell" means Claude is running a `!` command: still working.
     public var agentStatus: AgentStatus? {
@@ -107,6 +112,102 @@ public struct ClaudeTranscriptState: Equatable, Sendable {
     }
 }
 
+/// Token use and turn timing, accumulated from a session transcript.
+///
+/// One API response is logged as several lines (one per content block), each
+/// repeating the same usage, so totals count each message id once.
+public struct ClaudeUsage: Sendable {
+    public var inputTokens = 0
+    public var outputTokens = 0
+    public var cacheReadTokens = 0
+    public var cacheCreationTokens = 0
+    /// Size of the context at the latest reply: its input plus cache tokens.
+    public var contextTokens = 0
+    public var peakContextTokens = 0
+    public var model: String?
+    /// Prompts you typed (not tool results, slash-command output or subagent turns).
+    public var prompts = 0
+    public var lastPromptAt: Date?
+    public var lastReplyAt: Date?
+    public var lastTurnDuration: TimeInterval?
+    private var seen: Set<String> = []
+
+    public init() {}
+
+    public var totalTokens: Int { inputTokens + outputTokens + cacheReadTokens + cacheCreationTokens }
+
+    /// The transcript doesn't record the window, so this is inferred: a session past
+    /// 200k must have the 1M window; below that, assume 200k.
+    public var contextWindow: Int {
+        peakContextTokens > 200_000 || model?.contains("[1m]") == true ? 1_000_000 : 200_000
+    }
+
+    /// Cheap prefilter; only these lines are decoded.
+    static let markers = ["\"assistant\"", "\"user\"", "\"turn_duration\""]
+
+    public mutating func ingest(line: some StringProtocol) {
+        guard Self.markers.contains(where: { line.contains($0) }),
+              let data = String(line).data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let type = obj["type"] as? String else { return }
+        let sidechain = obj["isSidechain"] as? Bool == true
+        let time = (obj["timestamp"] as? String).flatMap { try? Date.ISO8601FormatStyle(includingFractionalSeconds: true).parse($0) }
+        switch type {
+        case "assistant":
+            guard let message = obj["message"] as? [String: Any],
+                  let usage = message["usage"] as? [String: Any] else { return }
+            func n(_ k: String) -> Int { usage[k] as? Int ?? 0 }
+            let id = message["id"] as? String ?? UUID().uuidString
+            if seen.insert(id).inserted {
+                inputTokens += n("input_tokens")
+                outputTokens += n("output_tokens")
+                cacheReadTokens += n("cache_read_input_tokens")
+                cacheCreationTokens += n("cache_creation_input_tokens")
+            }
+            guard !sidechain else { return }
+            if let m = message["model"] as? String, m != "<synthetic>" { model = m }
+            let context = n("input_tokens") + n("cache_read_input_tokens") + n("cache_creation_input_tokens")
+            if context > 0 { contextTokens = context; peakContextTokens = max(peakContextTokens, context) }
+            if let time { lastReplyAt = time }
+        case "user":
+            guard !sidechain, obj["toolUseResult"] == nil, obj["isMeta"] as? Bool != true,
+                  let message = obj["message"] as? [String: Any], Self.isTypedPrompt(message["content"]) else { return }
+            prompts += 1
+            if let time { lastPromptAt = time }
+        case "system":
+            if obj["subtype"] as? String == "turn_duration", !sidechain, let ms = obj["durationMs"] as? Double {
+                lastTurnDuration = ms / 1000
+            }
+        default:
+            break
+        }
+    }
+
+    /// Text you typed: not a tool result, and not the `<command-…>` / `<local-command-…>`
+    /// wrappers Claude Code logs for slash commands.
+    private static func isTypedPrompt(_ content: Any?) -> Bool {
+        if let s = content as? String {
+            let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+            return !t.isEmpty && !t.hasPrefix("<")
+        }
+        guard let blocks = content as? [[String: Any]] else { return false }
+        let types = blocks.compactMap { $0["type"] as? String }
+        guard !types.contains("tool_result") else { return false }
+        return blocks.contains { ($0["type"] as? String) == "text"
+            && !(($0["text"] as? String)?.hasPrefix("<") ?? true) }
+    }
+}
+
+extension ClaudeUsage: Equatable {
+    public static func == (a: Self, b: Self) -> Bool {
+        a.inputTokens == b.inputTokens && a.outputTokens == b.outputTokens
+            && a.cacheReadTokens == b.cacheReadTokens && a.cacheCreationTokens == b.cacheCreationTokens
+            && a.contextTokens == b.contextTokens && a.peakContextTokens == b.peakContextTokens
+            && a.model == b.model && a.prompts == b.prompts && a.lastPromptAt == b.lastPromptAt
+            && a.lastReplyAt == b.lastReplyAt && a.lastTurnDuration == b.lastTurnDuration
+    }
+}
+
 /// Everything the UI needs about the Claude session in a tab.
 public struct AgentSnapshot: Equatable, Sendable {
     public var status: AgentStatus
@@ -116,6 +217,8 @@ public struct AgentSnapshot: Equatable, Sendable {
     public var prNumber: String?
     public var prURL: String?
     public var sessionID: String?
+    public var startedAt: Date?
+    public var usage: ClaudeUsage?
 
     public init(status: AgentStatus, title: String? = nil, lastPrompt: String? = nil,
                 prNumber: String? = nil, prURL: String? = nil, sessionID: String? = nil) {
@@ -125,7 +228,8 @@ public struct AgentSnapshot: Equatable, Sendable {
 
     /// Priority: /rename > AI title > agent name > non-derived session name > terminal title.
     public static func make(record: ClaudeSessionRecord?, transcript: ClaudeTranscriptState?,
-                            terminalTitle: (status: AgentStatus, title: String)?) -> AgentSnapshot? {
+                            terminalTitle: (status: AgentStatus, title: String)?,
+                            usage: ClaudeUsage? = nil) -> AgentSnapshot? {
         guard let status = record?.agentStatus ?? terminalTitle?.status else { return nil }
         let candidates: [String?] = [transcript?.customTitle, transcript?.aiTitle, transcript?.agentName,
                                      record?.meaningfulName, terminalTitle?.title]
@@ -134,6 +238,8 @@ public struct AgentSnapshot: Equatable, Sendable {
                              prNumber: transcript?.prNumber, prURL: transcript?.prURL,
                              sessionID: record?.sessionId)
         if status == .waiting { snap.waitingFor = record?.waitingFor }
+        snap.startedAt = record?.startDate
+        snap.usage = usage
         return snap
     }
 }

@@ -94,6 +94,22 @@ running Claude comes back with a bar: *Claude session "…" was running here.*
 **Resume** (`⌘⇧R`) runs `claude --resume <id>` with the flags the session was started
 with. If you exit Claude yourself, the tab forgets the session.
 
+### Sidebar: Claude Code
+
+The sidebar's second pane (the asterisk at its top) shows the Claude Code session in
+the current tab, and follows you as you switch tabs:
+
+- **Status:** the asterisk spins while Claude works, with a timer for the current turn.
+  It turns orange when Claude needs you, and says why (e.g. a permission prompt).
+- **Context:** how full the context is, as a ring and a token count. The transcript
+  doesn't record the window, so it's inferred: a session past 200k has the 1M window,
+  below that 200k is assumed.
+- **Tokens this session:** output, input, cache reads and cache writes.
+- **Prompts** typed, how long the last turn took, when the session started, and the model.
+
+It's all read from Claude Code's own session file and transcript. Each transcript is
+read once in full, in the background, and then followed as it grows.
+
 ### Sidebar: clipboard history
 
 `⌃⌘S`, or the sidebar button at the right end of the tab strip, opens a panel on the

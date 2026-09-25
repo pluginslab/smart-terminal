@@ -22,7 +22,8 @@ Useful context if you are assessing risk.
 - Claude Code's per-process session files (`<claude-config>/sessions/<pid>.json`) and
   the transcripts of sessions running in its own tabs
   (`<claude-config>/projects/…/<session-id>.jsonl`). That data is personal: it holds
-  your folder paths and your prompts. It is only read, never modified.
+  your folder paths and your prompts. It is only read, never modified. For the sidebar's
+  Claude pane, each transcript is read once in full to total its token usage.
 - Terminal.app's preferences (`com.apple.Terminal`), to copy your default profile's
   font and colors.
 - Process information for processes in its own tabs, and, during an import, in

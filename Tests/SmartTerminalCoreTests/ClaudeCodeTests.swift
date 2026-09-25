@@ -41,6 +41,42 @@ import Testing
         #expect(s.customTitle == "Release notes")
     }
 
+    @Test func usageCountsEachMessageOnceAndTracksContext() {
+        var u = ClaudeUsage()
+        // One response logged as two blocks with the same id and usage: counted once.
+        let usage = #""usage":{"input_tokens":2,"cache_creation_input_tokens":500,"cache_read_input_tokens":240000,"output_tokens":458}"#
+        u.ingest(line: #"{"type":"assistant","timestamp":"2026-09-25T10:00:00.000Z","message":{"id":"m1","model":"claude-opus-5-5","content":[{"type":"thinking"}],"# + usage + "}}")
+        u.ingest(line: #"{"type":"assistant","timestamp":"2026-09-25T10:00:01.000Z","message":{"id":"m1","model":"claude-opus-5-5","content":[{"type":"text"}],"# + usage + "}}")
+        #expect(u.outputTokens == 458)
+        #expect(u.cacheReadTokens == 240_000)
+        #expect(u.contextTokens == 240_502)
+        #expect(u.contextWindow == 1_000_000) // past 200k, so it must be the 1M window
+        #expect(u.model == "claude-opus-5-5")
+        // Subagent replies add to the totals but don't change the main context.
+        u.ingest(line: #"{"type":"assistant","isSidechain":true,"message":{"id":"s1","model":"claude-haiku","usage":{"input_tokens":10,"output_tokens":5}}}"#)
+        #expect(u.outputTokens == 463)
+        #expect(u.contextTokens == 240_502)
+        #expect(u.model == "claude-opus-5-5")
+    }
+
+    @Test func usageCountsOnlyTypedPrompts() {
+        var u = ClaudeUsage()
+        let lines = [
+            #"{"type":"user","timestamp":"2026-09-25T10:00:00.000Z","message":{"role":"user","content":"fix the bug"}}"#,
+            #"{"type":"user","message":{"role":"user","content":[{"type":"tool_result","content":"ok"}]},"toolUseResult":{}}"#,
+            #"{"type":"user","message":{"role":"user","content":"<command-name>/clear</command-name>"}}"#,
+            #"{"type":"user","isMeta":true,"message":{"role":"user","content":"Caveat"}}"#,
+            #"{"type":"user","isSidechain":true,"message":{"role":"user","content":"subagent task"}}"#,
+            #"{"type":"user","timestamp":"2026-09-25T10:05:00.000Z","message":{"role":"user","content":[{"type":"text","text":"and ship it"},{"type":"image"}]}}"#,
+            #"{"type":"system","subtype":"turn_duration","durationMs":192000}"#,
+        ]
+        lines.forEach { u.ingest(line: $0) }
+        #expect(u.prompts == 2)
+        #expect(u.lastPromptAt == Date(timeIntervalSince1970: 1_790_330_700))
+        #expect(u.lastTurnDuration == 192)
+        #expect(u.contextWindow == 200_000)
+    }
+
     @Test func snapshotPriority() {
         var t = ClaudeTranscriptState()
         t.aiTitle = "AI title"

@@ -63,6 +63,26 @@ final class DebugChannel {
                let text = model.clipboard.pasteText(for: model.clipboard.entries[i]) {
                 model.paste(text, inWindow: w)
             }
+        case "snapshotClaude":
+            // Renders the Claude cards for a transcript (read only), in each status:
+            // snapshotClaude <transcript.jsonl> <out-prefix>
+            let url = URL(fileURLWithPath: a1), out = a2
+            Task {
+                let usage = await TranscriptScanner.shared.usage(of: url, upTo: .max)
+                for status in [AgentStatus.busy, .waiting, .idle] {
+                    var agent = AgentSnapshot(status: status, title: "Claude panel for the sidebar")
+                    agent.usage = usage
+                    agent.startedAt = Date().addingTimeInterval(-7_900)
+                    if status == .waiting { agent.waitingFor = "permission prompt" }
+                    let r = ImageRenderer(content: ClaudeSessionCards(agent: agent, title: "Claude panel for the sidebar", needsYou: false)
+                        .padding(10).frame(width: 300).background(.background).environment(\.colorScheme, .dark))
+                    r.scale = 2
+                    if let img = r.nsImage, let tiff = img.tiffRepresentation,
+                       let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
+                        try? png.write(to: URL(fileURLWithPath: "\(out)-\(status.rawValue).png"))
+                    }
+                }
+            }
         case "snapshotSidebar":
             // Renders the panel on its own, e.g. to check rows at a fixed size.
             guard let w = keyWindowID else { return }
