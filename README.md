@@ -107,7 +107,8 @@ the current tab, and follows you as you switch tabs:
   used. Failing all of those it shows "~200k". Run `/context` once to make it exact.
 - **Subagents** Claude started: running ones with a live timer, finished ones with how
   long they took, their tokens and tool calls. A new prompt that starts subagents clears
-  the list, unless one is still running or failed.
+  the list, unless one is still running or failed. Hover one to see what it's doing: its latest
+  command and its activity as a mini terminal.
 - **Tokens this session:** output, input, cache reads and cache writes.
 - **Prompts** typed, how long the last turn took, when the session started, and the model.
 

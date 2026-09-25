@@ -8,10 +8,11 @@
   - "Resumed" instead of "Started" for a session opened with `--resume` or `--continue`.
   - Session tokens: output, input, cache read, cache write.
   - Subagents, newest first: a spinning asterisk and live timer while running (with a "2 running" badge), then a check with duration, tokens and tool calls, or a red cross if it failed. Background subagents finish through their task notification. One launched before a `--resume` that never reported back shows as "didn't finish" instead of running forever. The list starts over when a new prompt launches subagents and all previous ones completed; a running or failed one keeps the list, so it isn't missed.
+  - Hover a subagent for a 600×400 popover: its latest tool call ("Now · Bash(git status)"), then its activity as a mini terminal in Claude Code's style (its task, what it says, each tool call with the first lines of its result), following the newest line. Its transcript is found through the `.meta.json` Claude writes next to it, so running subagents work too, and only new lines are read, once a second, while the popover is open.
   - Prompts typed, last turn duration, session start, model.
 - Token totals count each API message once. A response is logged as one line per content block, each repeating the same usage, so counting lines would inflate totals about 2.3×.
 - Each transcript is read once in full, off the main thread and one at a time (11 MB in 0.23 s), then followed as it grows.
-- Debug command `snapshotClaude`.
+- Debug commands `snapshotClaude` and `showSubagent`.
 
 ## [0.6.0] - 2026-09-25
 - Sidebar (⌃⌘S, or the button at the right end of the tab strip): a resizable panel on the right, flush with the tab strip (drag its left edge; the width is remembered).

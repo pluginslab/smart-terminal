@@ -50,11 +50,13 @@ final class ClaudeWatcher {
                 tailTranscript()
             }
         }
-        return AgentSnapshot.make(record: record, transcript: transcriptURL == nil ? nil : transcript,
+        var snap = AgentSnapshot.make(record: record, transcript: transcriptURL == nil ? nil : transcript,
                                   terminalTitle: osc,
                                   // No transcript yet (before the first prompt): nothing to count, not "loading".
                                   usage: transcriptURL == nil ? ClaudeUsage() : usageWithHints(),
                                   arguments: arguments)
+        snap?.transcriptPath = transcriptURL?.path
+        return snap
     }
 
     private func reset() {

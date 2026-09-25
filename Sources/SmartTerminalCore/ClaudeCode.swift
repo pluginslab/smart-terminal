@@ -127,6 +127,12 @@ public struct ClaudeSubagent: Identifiable, Equatable, Sendable {
     public var duration: TimeInterval?
     public var totalTokens: Int?
     public var toolUses: Int?
+
+    public init(id: String, description: String, type: String? = nil, background: Bool = false,
+                status: Status = .running, startedAt: Date? = nil) {
+        self.id = id; self.description = description; self.type = type
+        self.background = background; self.status = status; self.startedAt = startedAt
+    }
 }
 
 /// Token use and turn timing, accumulated from a session transcript.
@@ -340,6 +346,8 @@ public struct AgentSnapshot: Equatable, Sendable {
     /// Started with --resume / --continue: the transcript predates this process.
     public var resumed = false
     public var usage: ClaudeUsage?
+    /// The session transcript; its subagents' transcripts are in `<name>/subagents/`.
+    public var transcriptPath: String?
 
     public init(status: AgentStatus, title: String? = nil, lastPrompt: String? = nil,
                 prNumber: String? = nil, prURL: String? = nil, sessionID: String? = nil) {
@@ -413,5 +421,94 @@ public struct AgentSessionRef: Codable, Hashable, Sendable {
         let safe = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_./=:@,+%"))
         if !s.isEmpty, s.unicodeScalars.allSatisfy({ safe.contains($0) }) { return s }
         return "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+}
+
+/// A subagent's transcript as lines for a mini terminal, in Claude Code's own style:
+/// its instructions, what it says, and each tool call with the start of its result.
+public struct SubagentActivity: Equatable, Sendable {
+    public enum Entry: Equatable, Sendable {
+        case task(String)
+        case text(String)
+        case tool(id: String, name: String, summary: String, result: String?, isError: Bool)
+    }
+
+    public private(set) var entries: [Entry] = []
+    public private(set) var model: String?
+
+    public init() {}
+
+    static let resultLines = 6
+
+    public mutating func ingest(line: some StringProtocol) {
+        guard line.contains("\"assistant\"") || line.contains("\"user\""),
+              let data = String(line).data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let type = obj["type"] as? String,
+              let message = obj["message"] as? [String: Any] else { return }
+        let content = message["content"]
+        switch type {
+        case "assistant":
+            if let m = message["model"] as? String, m != "<synthetic>" { model = m }
+            for block in content as? [[String: Any]] ?? [] {
+                switch block["type"] as? String {
+                case "text":
+                    if let t = (block["text"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !t.isEmpty {
+                        entries.append(.text(t))
+                    }
+                case "tool_use":
+                    guard let id = block["id"] as? String, let name = block["name"] as? String else { continue }
+                    entries.append(.tool(id: id, name: name, summary: Self.summary(name, block["input"] as? [String: Any] ?? [:]),
+                                         result: nil, isError: false))
+                default:
+                    break
+                }
+            }
+        case "user":
+            if let s = content as? String {
+                // The first user line is the task Claude gave the subagent.
+                if entries.isEmpty { entries.append(.task(s.trimmingCharacters(in: .whitespacesAndNewlines))) }
+                return
+            }
+            for block in content as? [[String: Any]] ?? [] where block["type"] as? String == "tool_result" {
+                guard let id = block["tool_use_id"] as? String,
+                      let i = entries.lastIndex(where: { if case .tool(id, _, _, _, _) = $0 { true } else { false } }),
+                      case .tool(_, let name, let summary, _, _) = entries[i] else { continue }
+                entries[i] = .tool(id: id, name: name, summary: summary,
+                                   result: Self.firstLines(Self.text(of: block["content"])),
+                                   isError: block["is_error"] as? Bool == true)
+            }
+        default:
+            break
+        }
+    }
+
+    /// What goes in the parentheses: `Bash(git status)`, `Read(Sources/App.swift)`.
+    static func summary(_ tool: String, _ input: [String: Any]) -> String {
+        func s(_ k: String) -> String? { (input[k] as? String).flatMap { $0.isEmpty ? nil : $0 } }
+        let raw: String? = switch tool {
+        case "Bash": s("command")
+        case "Read", "Edit", "Write", "NotebookEdit": s("file_path").map { ($0 as NSString).abbreviatingWithTildeInPath }
+        case "Grep", "Glob": s("pattern")
+        case "WebFetch": s("url")
+        case "WebSearch": s("query")
+        case "Agent", "Task": s("description")
+        default: input.values.lazy.compactMap { $0 as? String }.first
+        }
+        let one = (raw ?? "").replacingOccurrences(of: "\n", with: " ⏎ ")
+        return one.count > 160 ? String(one.prefix(160)) + "…" : one
+    }
+
+    static func text(of content: Any?) -> String {
+        if let s = content as? String { return s }
+        return (content as? [[String: Any]] ?? []).compactMap { $0["text"] as? String }.joined(separator: "\n")
+    }
+
+    static func firstLines(_ s: String) -> String {
+        let trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "(no output)" }
+        let lines = trimmed.split(separator: "\n", omittingEmptySubsequences: false)
+        let head = lines.prefix(resultLines).map { $0.count > 200 ? $0.prefix(200) + "…" : $0 }.joined(separator: "\n")
+        return lines.count > resultLines ? head + "\n… +\(lines.count - resultLines) lines" : head
     }
 }

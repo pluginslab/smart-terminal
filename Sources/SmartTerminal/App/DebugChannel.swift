@@ -18,6 +18,7 @@ final class DebugChannel {
         return Notification.Name("com.pluginslab.smartterminal.debug.\(id)")
     }
     private let model: AppModel
+    private var debugWindows: [NSWindow] = []
     private weak var app: AppDelegate?
 
     init?(model: AppModel, app: AppDelegate) {
@@ -83,6 +84,16 @@ final class DebugChannel {
                     }
                 }
             }
+        case "showSubagent":
+            // Opens a subagent's popover content in a window, to capture it:
+            // showSubagent <session transcript.jsonl> <Agent tool_use id>
+            let agent = ClaudeSubagent(id: a2, description: "Subagent activity", type: "general-purpose",
+                                       background: true, status: .completed, startedAt: nil)
+            let w = NSWindow(contentViewController: NSHostingController(rootView:
+                SubagentPopover(agent: agent, stale: false, transcriptPath: a1)))
+            w.title = "Subagent"
+            w.makeKeyAndOrderFront(nil)
+            debugWindows.append(w)
         case "snapshotSidebar":
             // Renders the panel on its own, e.g. to check rows at a fixed size.
             guard let w = keyWindowID else { return }

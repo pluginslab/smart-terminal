@@ -145,6 +145,27 @@ import Testing
         #expect(u.subagents.map(\.id) == ["new"])
     }
 
+    @Test func subagentActivityReadsLikeATerminal() {
+        var a = SubagentActivity()
+        let lines = [
+            #"{"type":"user","message":{"role":"user","content":"Run `sleep 4`, then reply: done"}}"#,
+            #"{"type":"assistant","message":{"model":"claude-haiku-4-5","content":[{"type":"thinking","thinking":"hmm"}]}}"#,
+            #"{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"sleep 4","description":"Sleep"}}]}}"#,
+            #"{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"a\nb\nc\nd\ne\nf\ng\nh"}]}}"#,
+            #"{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t2","name":"Read","input":{"file_path":"/etc/hosts"}}]}}"#,
+            #"{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t2","is_error":true,"content":[{"type":"text","text":"denied"}]}]}}"#,
+            #"{"type":"assistant","message":{"content":[{"type":"text","text":"done"}]}}"#,
+        ]
+        lines.forEach { a.ingest(line: $0) }
+        #expect(a.model == "claude-haiku-4-5")
+        #expect(a.entries == [
+            .task("Run `sleep 4`, then reply: done"),
+            .tool(id: "t1", name: "Bash", summary: "sleep 4", result: "a\nb\nc\nd\ne\nf\n… +2 lines", isError: false),
+            .tool(id: "t2", name: "Read", summary: "/etc/hosts", result: "denied", isError: true),
+            .text("done"),
+        ])
+    }
+
     @Test func lastUsedWindowFromClaudeJSON() {
         let json = Data(#"{"projects":{"/srv":{"lastModelUsage":{"claude-haiku-4-5":{},"claude-opus-5-5[1m]":{}}},"/old":{"lastModelUsage":{"claude-opus-5-5":{}}}}}"#.utf8)
         #expect(ClaudeUsage.lastUsedWindow(claudeJSON: json, folder: "/srv", model: "claude-opus-5-5") == 1_000_000)

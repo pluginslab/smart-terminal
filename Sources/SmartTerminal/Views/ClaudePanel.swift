@@ -55,7 +55,7 @@ struct ClaudeSessionCards: View {
                     .padding(.top, 16).padding(.horizontal, 8)
             } else if let usage = agent.usage {
                 if !usage.subagents.isEmpty {
-                    SubagentsCard(usage: usage)
+                    SubagentsCard(usage: usage, transcriptPath: agent.transcriptPath)
                 }
                 ContextCard(usage: usage)
                 TokensCard(usage: usage)
@@ -171,6 +171,7 @@ private struct StatusGlyph: View {
 /// finished ones with duration, tokens and tool calls.
 private struct SubagentsCard: View {
     let usage: ClaudeUsage
+    let transcriptPath: String?
 
     static let visible = 8
 
@@ -194,7 +195,7 @@ private struct SubagentsCard: View {
                     }
                 }
                 ForEach(newestFirst.prefix(Self.visible)) { a in
-                    SubagentRow(agent: a, stale: isStale(a))
+                    SubagentRow(agent: a, stale: isStale(a), transcriptPath: transcriptPath)
                 }
                 if newestFirst.count > Self.visible {
                     Text("and \(newestFirst.count - Self.visible) earlier")
@@ -208,8 +209,46 @@ private struct SubagentsCard: View {
 private struct SubagentRow: View {
     let agent: ClaudeSubagent
     let stale: Bool
+    let transcriptPath: String?
+
+    @State private var showActivity = false
+    @State private var overRow = false
+    @State private var overPopover = false
+    @State private var hovering = false
 
     var body: some View {
+        row
+            .padding(.horizontal, 4).padding(.vertical, 2)
+            .background(RoundedRectangle(cornerRadius: 5).fill(Color.primary.opacity(hovering ? 0.06 : 0)))
+            .contentShape(Rectangle())
+            .onHover { inside in
+                hovering = inside
+                overRow = inside
+                inside ? openSoon() : closeSoon()
+            }
+            .popover(isPresented: $showActivity, arrowEdge: .leading) {
+                if let transcriptPath {
+                    SubagentPopover(agent: agent, stale: stale, transcriptPath: transcriptPath)
+                        .onHover { inside in overPopover = inside; if !inside { closeSoon() } }
+                }
+            }
+    }
+
+    /// Hover intent: open after a short pause, so sweeping past rows doesn't pop things up.
+    private func openSoon() {
+        guard transcriptPath != nil else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { if overRow { showActivity = true } }
+    }
+
+    /// Close once the pointer has left both the row and the popover (moving between
+    /// them crosses a gap, hence the grace period).
+    private func closeSoon() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            if !overRow && !overPopover { showActivity = false }
+        }
+    }
+
+    private var row: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             icon.frame(width: 14)
             VStack(alignment: .leading, spacing: 2) {

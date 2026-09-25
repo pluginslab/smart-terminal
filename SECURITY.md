@@ -23,7 +23,8 @@ Useful context if you are assessing risk.
   the transcripts of sessions running in its own tabs
   (`<claude-config>/projects/…/<session-id>.jsonl`). That data is personal: it holds
   your folder paths and your prompts. It is only read, never modified. For the sidebar's
-  Claude pane, each transcript is read once in full to total its token usage.
+  Claude pane, each transcript is read once in full to total its token usage. Hovering a subagent
+  reads its transcript (`<session>/subagents/agent-<id>.jsonl`) while the popover is open.
 - Claude Code's `~/.claude.json`, only each project's `lastModelUsage`, to tell whether a
   folder last used the 1M-context model. At most once a minute per Claude tab.
 - Terminal.app's preferences (`com.apple.Terminal`), to copy your default profile's
