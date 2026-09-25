@@ -87,10 +87,14 @@ final class AppModel {
 
     func toggleSidebar(_ windowID: UUID) { setSidebar(windowID, open: !isSidebarOpen(windowID)) }
 
-    /// Pastes the clipboard into the window's active tab, as ⌘V would.
-    func pasteClipboard(inWindow windowID: UUID) {
+    /// Types `text` into the window's active tab as a paste (bracketed when the
+    /// program asked for it, so shells and Claude Code don't run it line by line).
+    func paste(_ text: String, inWindow windowID: UUID) {
         guard let t = window(windowID)?.activeTabID, let s = sessions.existing(t) else { return }
-        s.view.paste(self)
+        let bracketed = s.view.getTerminal().bracketedPasteMode
+        if bracketed { s.view.send(txt: "\u{1b}[200~") }
+        s.view.send(txt: text)
+        if bracketed { s.view.send(txt: "\u{1b}[201~") }
         s.view.window?.makeFirstResponder(s.view)
     }
 

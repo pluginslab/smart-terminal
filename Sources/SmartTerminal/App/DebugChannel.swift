@@ -8,7 +8,7 @@ import SmartTerminalCore
 /// drive the app and snapshot windows without Screen Recording permission:
 ///
 ///   scripts/debug.sh snapshot /tmp/out.png
-///   scripts/debug.sh newTab [end] | newTabInGroup | sidebar | group Name color | rename Title | collapse | select N
+///   scripts/debug.sh newTab [end] | newTabInGroup | sidebar | pasteClip N | group Name color | rename Title | collapse | select N
 ///   scripts/debug.sh type 'ls -la\n' | dump /tmp/layout.json | moveTabToNewWindow
 @MainActor
 final class DebugChannel {
@@ -52,6 +52,12 @@ final class DebugChannel {
             if let g = activeTab?.groupID { model.newTab(inGroup: g) }
         case "sidebar":
             if let w = keyWindowID { model.toggleSidebar(w) }
+        case "pasteClip":
+            // Pastes history entry N (0 = newest) into the active tab, as the row's context menu does.
+            if let w = keyWindowID, let i = Int(a1), model.clipboard.entries.indices.contains(i),
+               let text = model.clipboard.pasteText(for: model.clipboard.entries[i]) {
+                model.paste(text, inWindow: w)
+            }
         case "snapshotSidebar":
             // Renders the panel on its own, e.g. to check rows at a fixed size.
             guard let w = keyWindowID else { return }

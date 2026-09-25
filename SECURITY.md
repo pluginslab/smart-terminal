@@ -28,9 +28,9 @@ Useful context if you are assessing risk.
 - Process information for processes in its own tabs, and, during an import, in
   Terminal.app's tabs: working folder, command line and foreground process group,
   via `libproc`, `sysctl` and `ps`.
-- The general clipboard's text, polled every 0.4 s for the clipboard history, and the
+- The general clipboard (text, images and Finder file references), polled every 0.4 s for the clipboard history, and the
   name of the frontmost app at the time of a copy. It's kept in memory (last 50
-  entries) and never written to disk. Copies with the nspasteboard.org concealed or
+  entries). Files copied in Finder are read only to draw a Quick Look thumbnail. Copies with the nspasteboard.org concealed or
   transient markers are skipped.
 
 **It writes:**
@@ -39,6 +39,8 @@ Useful context if you are assessing risk.
   command-line flags of Claude sessions so they can be resumed.
 - The font-size preference and whether the sidebar is open, in its own user defaults.
 - The clipboard, only when you click a clipboard history entry.
+- A PNG in `$TMPDIR/SmartTerminal Clips/`, only when you paste an image entry into a tab.
+  The folder is deleted at launch.
 
 **It runs:**
 - Your login shell (`$SHELL`) in each tab.

@@ -97,18 +97,23 @@ with. If you exit Claude yourself, the tab forgets the session.
 ### Sidebar: clipboard history
 
 `⌃⌘S`, or the sidebar button at the right end of the tab strip, opens a panel on the
-right. Its first tool is a clipboard history. Every text copy lands there, including
-`pbcopy` from a shell, a script or Claude Code, and flashes as it arrives. If the
+right. Its first tool is a clipboard history. Every copy lands there and flashes as it
+arrives: text (including `pbcopy` from a shell, a script or Claude Code), images
+(screenshots, *Copy Image*) and files copied in Finder, shown with a Quick Look preview. If the
 sidebar is closed, its button bounces and shows a dot instead.
 
 - **Click** an entry to put it back on the clipboard.
-- **Right-click** an entry to paste it into the current tab or delete it.
+- **Right-click** an entry to paste it into the current tab or delete it. Files paste
+  as quoted paths. An image is saved as a PNG in a temporary folder and its path is
+  pasted, which Claude Code attaches as an image.
+- To paste an image straight into Claude Code, click the entry, then press `⌃V` in Claude.
 - Copying something that's already in the list moves it back to the top.
 
 Each entry shows where it came from. That's the tab you were in if the copy happened
 in Smart Terminal, otherwise the app you were using.
 
-The history holds the last 50 copies, in memory only, and is gone when you quit.
+The history holds the last 50 copies (images up to 200 MB in total), in memory only,
+and is gone when you quit. The temporary PNGs are removed at the next launch.
 Copies that password managers mark as concealed or transient (the
 [nspasteboard.org](http://nspasteboard.org) markers, which 1Password uses) are never recorded.
 
@@ -174,7 +179,8 @@ Claude, and `tmux list-clients` to map a tty to a tmux session.
 
 Everything stays on your Mac. **Smart Terminal makes no network requests.**
 Notifications are local, and links open only when you click them. The clipboard
-history is kept in memory and never written to disk. What it reads,
+history is kept in memory. An image is written to a temporary file only when you paste
+it into a tab. What it reads,
 writes and runs is listed in [SECURITY.md](SECURITY.md).
 
 ## Configuration

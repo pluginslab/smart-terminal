@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import QuickLookThumbnailing
 
 /// The trailing panel's content. The clipboard is its first tool; later tools
 /// get a picker in the header.
@@ -60,6 +61,7 @@ struct ClipboardPanel: View {
     /// The row showing the "Copied" confirmation, and the one flashing as new.
     @State private var confirmedID: UUID?
     @State private var flashingID: UUID?
+    private static let top = "top"
 
     var body: some View {
         VStack(spacing: 0) {
@@ -69,7 +71,7 @@ struct ClipboardPanel: View {
                 ContentUnavailableView {
                     Label("No Copies Yet", systemImage: "doc.on.clipboard")
                 } description: {
-                    Text("Text you copy, including with pbcopy, shows up here. Click an entry to copy it again.")
+                    Text("Text, images and files you copy, including with pbcopy, show up here. Click an entry to copy it again.")
                 }
                 .frame(maxHeight: .infinity)
             } else {
@@ -103,6 +105,7 @@ struct ClipboardPanel: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 6) {
+                    Color.clear.frame(height: 0).id(Self.top)
                     ForEach(history.entries) { entry in
                         ClipRow(entry: entry,
                                 isConfirmed: confirmedID == entry.id,
@@ -118,7 +121,7 @@ struct ClipboardPanel: View {
                 .padding(10)
             }
             .onChange(of: history.flashCount) { _, _ in
-                if let id = history.lastAddedID { withAnimation { proxy.scrollTo(id, anchor: .top) } }
+                withAnimation { proxy.scrollTo(Self.top, anchor: .top) }
             }
         }
     }
@@ -141,8 +144,7 @@ struct ClipboardPanel: View {
     }
 
     private func paste(_ entry: ClipEntry) {
-        history.restore(entry)
-        model.pasteClipboard(inWindow: windowID)
+        if let text = history.pasteText(for: entry) { model.paste(text, inWindow: windowID) }
     }
 }
 
@@ -156,16 +158,22 @@ struct ClipRow: View {
 
     @State private var hovering = false
 
-    private var lineCount: Int { entry.text.split(separator: "\n", omittingEmptySubsequences: false).count }
+    private var lineCount: Int {
+        guard case .text(let s) = entry.content else { return 0 }
+        return s.split(separator: "\n", omittingEmptySubsequences: false).count
+    }
+
+    private var pasteLabel: String {
+        switch entry.content {
+        case .text: "Paste in Current Tab"
+        case .files(let urls): urls.count == 1 ? "Paste Path in Current Tab" : "Paste Paths in Current Tab"
+        case .image: "Paste as File in Current Tab"
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(entry.text.trimmingCharacters(in: .whitespacesAndNewlines))
-                .font(.system(size: 11, design: .monospaced))
-                .lineLimit(4)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .foregroundStyle(.primary)
+            preview
             HStack(spacing: 5) {
                 if isConfirmed {
                     // Confirm in place, like the Passwords app, instead of covering the text.
@@ -177,9 +185,7 @@ struct ClipRow: View {
                     metadata
                 }
                 Spacer(minLength: 4)
-                if lineCount > 4 {
-                    Text("\(lineCount) lines").monospacedDigit()
-                }
+                if let detail { Text(detail).monospacedDigit().lineLimit(1) }
             }
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -201,14 +207,53 @@ struct ClipRow: View {
         .help("Click to copy")
         .contextMenu {
             Button("Copy", action: copy)
-            Button("Paste in Current Tab", action: paste)
+            Button(pasteLabel, action: paste)
+            if case .files(let urls) = entry.content {
+                Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting(urls) }
+            }
             Divider()
             Button("Delete", role: .destructive, action: delete)
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityAction(named: "Copy", copy)
-        .accessibilityAction(named: "Paste in Current Tab", paste)
+        .accessibilityAction(named: pasteLabel, paste)
+    }
+
+    @ViewBuilder private var preview: some View {
+        switch entry.content {
+        case .text(let s):
+            Text(s.trimmingCharacters(in: .whitespacesAndNewlines))
+                .font(.system(size: 11, design: .monospaced))
+                .lineLimit(4)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .foregroundStyle(.primary)
+        case .image:
+            if let img = entry.thumbnail {
+                Image(nsImage: img)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: .infinity, maxHeight: 140)
+                    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous).strokeBorder(.separator))
+                    .frame(maxWidth: .infinity)
+            }
+        case .files(let urls):
+            FilesPreview(urls: urls)
+        }
+    }
+
+    /// Right side of the metadata line.
+    private var detail: String? {
+        switch entry.content {
+        case .text: return lineCount > 4 ? "\(lineCount) lines" : nil
+        case .image(let d, let type, let px):
+            let kind = type == .png ? "PNG" : type == .tiff ? "TIFF" : (type.rawValue.split(separator: ".").last?.uppercased() ?? "")
+            return "\(kind) · \(Int(px.width))×\(Int(px.height)) · \(d.count.formatted(.byteCount(style: .file)))"
+        case .files(let urls):
+            return urls.count > 1 ? "\(urls.count) items" : nil
+        }
     }
 
     @ViewBuilder private var metadata: some View {
@@ -228,6 +273,70 @@ struct ClipRow: View {
                 .resizable().frame(width: 14, height: 14)
         } else {
             Image(systemName: "terminal").font(.system(size: 10))
+        }
+    }
+}
+
+/// Finder copies: a QuickLook thumbnail for one file, a stack of names for several.
+private struct FilesPreview: View {
+    let urls: [URL]
+
+    var body: some View {
+        if urls.count == 1, let url = urls.first {
+            VStack(alignment: .leading, spacing: 6) {
+                FileThumbnail(url: url, maxSize: CGSize(width: 240, height: 140))
+                    .frame(maxWidth: .infinity)
+                FileName(url: url)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(urls.prefix(4), id: \.self) { url in
+                    HStack(spacing: 6) {
+                        FileThumbnail(url: url, maxSize: CGSize(width: 18, height: 18)).frame(width: 18, height: 18)
+                        FileName(url: url)
+                    }
+                }
+                if urls.count > 4 {
+                    Text("and \(urls.count - 4) more").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+private struct FileName: View {
+    let url: URL
+    var body: some View {
+        Text(url.lastPathComponent)
+            .font(.system(size: 12, weight: .medium))
+            .lineLimit(1).truncationMode(.middle)
+            .help(url.path)
+    }
+}
+
+/// QuickLook thumbnail (image, PDF, video frame…), falling back to the Finder icon.
+private struct FileThumbnail: View {
+    let url: URL
+    let maxSize: CGSize
+    @State private var image: NSImage?
+    @Environment(\.displayScale) private var scale
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(nsImage: image).resizable().aspectRatio(contentMode: .fit)
+            } else {
+                Image(nsImage: NSWorkspace.shared.icon(forFile: url.path)).resizable().aspectRatio(contentMode: .fit)
+            }
+        }
+        .frame(maxWidth: maxSize.width, maxHeight: maxSize.height)
+        .task(id: url) {
+            let request = QLThumbnailGenerator.Request(fileAt: url, size: maxSize, scale: scale,
+                                                       representationTypes: .thumbnail)
+            if let rep = try? await QLThumbnailGenerator.shared.generateBestRepresentation(for: request) {
+                image = rep.nsImage
+            }
         }
     }
 }
