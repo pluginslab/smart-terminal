@@ -53,7 +53,7 @@ final class DebugChannel {
         case "sidebar":
             if let w = keyWindowID { model.toggleSidebar(w) }
         case "snapshotSidebar":
-            // Layer snapshots can't draw the inspector column; render the panel on its own.
+            // Renders the panel on its own, e.g. to check rows at a fixed size.
             guard let w = keyWindowID else { return }
             // ImageRenderer draws ScrollViews as placeholders, so rows go in a plain stack.
             let entries = model.clipboard.entries

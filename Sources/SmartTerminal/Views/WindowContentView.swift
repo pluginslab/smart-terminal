@@ -15,15 +15,15 @@ struct WindowContentView: View {
             }
             // Always present (never inside an if/else) so SwiftUI keeps the
             // container alive and only swaps the terminal view inside it.
-            TerminalContainer(tab: window?.activeTab, model: model)
-                .background(terminalBackground)
-                .inspector(isPresented: Binding(
-                    get: { model.isSidebarOpen(windowID) },
-                    set: { model.setSidebar(windowID, open: $0) }
-                )) {
-                    SidebarView(windowID: windowID, model: model)
-                        .inspectorColumnWidth(min: 220, ideal: 280, max: 440)
+            HStack(spacing: 0) {
+                TerminalContainer(tab: window?.activeTab, model: model)
+                    .background(terminalBackground)
+                if model.isSidebarOpen(windowID) {
+                    SidebarPanel(windowID: windowID, model: model)
+                        .transition(.move(edge: .trailing))
                 }
+            }
+            .animation(.snappy(duration: 0.25), value: model.isSidebarOpen(windowID))
         }
         .frame(minWidth: 480, minHeight: 240)
     }

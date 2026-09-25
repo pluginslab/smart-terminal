@@ -1,8 +1,8 @@
 import AppKit
 import SwiftUI
 
-/// The trailing panel (an inspector, as in Xcode, Pages and Freeform). The
-/// clipboard is its first tool; later tools get a picker in the header.
+/// The trailing panel's content. The clipboard is its first tool; later tools
+/// get a picker in the header.
 struct SidebarView: View {
     let windowID: UUID
     let model: AppModel
@@ -10,6 +10,43 @@ struct SidebarView: View {
     var body: some View {
         ClipboardPanel(windowID: windowID, model: model, history: model.clipboard)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/// The sidebar as a flush column: square corners, a hairline on its leading edge
+/// that meets the tab strip's divider, and a drag handle to resize. (SwiftUI's
+/// `.inspector` draws a floating rounded panel meant to sit under a toolbar; with
+/// our tab strip above it, its corner ran into the strip's divider.)
+struct SidebarPanel: View {
+    let windowID: UUID
+    let model: AppModel
+
+    static let minWidth: CGFloat = 220
+    static let maxWidth: CGFloat = 440
+    @AppStorage("sidebarWidth") private var width: Double = 280
+    @State private var dragStart: Double?
+
+    var body: some View {
+        SidebarView(windowID: windowID, model: model)
+            .frame(width: width)
+            .background(.background.secondary)
+            .overlay(alignment: .leading) {
+                Divider()
+                    .overlay {
+                        // Wider invisible grab area over the hairline.
+                        Color.clear.frame(width: 8).contentShape(Rectangle())
+                            .onHover { inside in
+                                if inside { NSCursor.columnResize.push() } else { NSCursor.pop() }
+                            }
+                            .gesture(DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                                .onChanged { g in
+                                    let start = dragStart ?? width
+                                    dragStart = start
+                                    width = min(Self.maxWidth, max(Self.minWidth, start - g.translation.width))
+                                }
+                                .onEnded { _ in dragStart = nil })
+                    }
+            }
     }
 }
 

@@ -1,7 +1,7 @@
 # Changelog
 
 ## [0.6.0] - 2026-09-25
-- Sidebar (⌃⌘S, or the button at the right end of the tab strip): a panel on the right, built as a SwiftUI inspector like Xcode's and Pages'.
+- Sidebar (⌃⌘S, or the button at the right end of the tab strip): a resizable panel on the right, flush with the tab strip (drag its left edge; the width is remembered).
 - Its first tool is a clipboard history. Every text copy, including `pbcopy`, lands at the top and flashes. With the sidebar closed, its button bounces and shows a dot instead. Click an entry to copy it again (it confirms "Copied" in place); right-click to paste it into the current tab or delete it. Holds the last 50 copies, in memory only. Copies marked concealed or transient (password managers) are skipped.
 - Debug commands `sidebar` and `snapshotSidebar`.
 
