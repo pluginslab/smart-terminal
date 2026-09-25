@@ -14,7 +14,6 @@ enum StripMetrics {
     static let maxTabWidth: CGFloat = 220
     static let newTabButtonWidth: CGFloat = 32
     static let groupNewTabButtonWidth: CGFloat = 22
-    static let sidebarToggleWidth: CGFloat = 40
 }
 
 /// Chrome-style tab strip for one window: group chips, tabs, a "+" per expanded
@@ -28,54 +27,56 @@ struct TabStripView: View {
         let items = window?.stripItems ?? []
         let tabCount = items.filter { if case .tab = $0 { true } else { false } }.count
 
-        GeometryReader { geo in
-            let chipsWidth = items.reduce(CGFloat(0)) { sum, item in
-                guard case .chip(let g, _) = item else { return sum }
-                return sum + 30 + CGFloat(min(g.name.count, 20)) * 7
-                    + (g.isCollapsed ? 22 : StripMetrics.groupNewTabButtonWidth)
-            }
-            let available = geo.size.width - StripMetrics.newTabButtonWidth - StripMetrics.sidebarToggleWidth - chipsWidth - 24
-            let tabWidth = min(StripMetrics.maxTabWidth,
-                               max(StripMetrics.minTabWidth, available / CGFloat(max(tabCount, 1))))
+        HStack(spacing: 0) {
+            GeometryReader { geo in
+                let chipsWidth = items.reduce(CGFloat(0)) { sum, item in
+                    guard case .chip(let g, _) = item else { return sum }
+                    return sum + 30 + CGFloat(min(g.name.count, 20)) * 7
+                        + (g.isCollapsed ? 22 : StripMetrics.groupNewTabButtonWidth)
+                }
+                let available = geo.size.width - StripMetrics.newTabButtonWidth - chipsWidth - 24
+                let tabWidth = min(StripMetrics.maxTabWidth,
+                                   max(StripMetrics.minTabWidth, available / CGFloat(max(tabCount, 1))))
 
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 1) {
-                        ForEach(items) { item in
-                            switch item {
-                            case .chip(let group, let count):
-                                GroupChipView(windowID: windowID, group: group, tabCount: count, model: model)
-                                    .id(group.id)
-                            case .tab(let tab):
-                                TabItemView(windowID: windowID, tab: tab,
-                                            group: tab.groupID.flatMap { window?.group($0) },
-                                            isActive: window?.activeTabID == tab.id,
-                                            width: tabWidth, model: model)
-                                    // A visible gap where a group ends, so the ungrouped tabs
-                                    // after it don't read as members of that group.
-                                    .padding(.leading, endsGroupBefore(tab, in: items) ? 10 : 0)
-                                    .id(tab.id)
-                                if let g = tab.groupID, let group = window?.group(g), isLastOfGroup(tab, in: items) {
-                                    GroupNewTabButton(group: group) { model.newTab(inGroup: g) }
+                ScrollViewReader { proxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 1) {
+                            ForEach(items) { item in
+                                switch item {
+                                case .chip(let group, let count):
+                                    GroupChipView(windowID: windowID, group: group, tabCount: count, model: model)
+                                        .id(group.id)
+                                case .tab(let tab):
+                                    TabItemView(windowID: windowID, tab: tab,
+                                                group: tab.groupID.flatMap { window?.group($0) },
+                                                isActive: window?.activeTabID == tab.id,
+                                                width: tabWidth, model: model)
+                                        // A visible gap where a group ends, so the ungrouped tabs
+                                        // after it don't read as members of that group.
+                                        .padding(.leading, endsGroupBefore(tab, in: items) ? 10 : 0)
+                                        .id(tab.id)
+                                    if let g = tab.groupID, let group = window?.group(g), isLastOfGroup(tab, in: items) {
+                                        GroupNewTabButton(group: group) { model.newTab(inGroup: g) }
+                                    }
                                 }
                             }
+                            // Follows the last tab; always opens an ungrouped tab at the end.
+                            // Groups have their own "+" after their last tab.
+                            NewTabButton { model.newTab(in: windowID, nextToActive: false) }
                         }
-                        // Follows the last tab; always opens an ungrouped tab at the end.
-                        // Groups have their own "+" after their last tab.
-                        NewTabButton { model.newTab(in: windowID, nextToActive: false) }
+                        .padding(.leading, 6)
+                        .frame(minWidth: geo.size.width, minHeight: geo.size.height, alignment: .leading)
+                        .background(TrailingDropArea(windowID: windowID, model: model))
+                        .animation(.snappy(duration: 0.18), value: items)
                     }
-                    .padding(.leading, 6)
-                    .padding(.trailing, StripMetrics.sidebarToggleWidth)
-                    .frame(minWidth: geo.size.width, minHeight: geo.size.height, alignment: .leading)
-                    .background(TrailingDropArea(windowID: windowID, model: model))
-                    .animation(.snappy(duration: 0.18), value: items)
-                }
-                .onChange(of: window?.activeTabID) { _, id in
-                    if let id { withAnimation { proxy.scrollTo(id) } }
+                    .onChange(of: window?.activeTabID) { _, id in
+                        if let id { withAnimation { proxy.scrollTo(id) } }
+                    }
                 }
             }
+            // Beside the scroll area, not over it, so it needs no background of its own.
+            SidebarToggle(windowID: windowID, model: model)
         }
-        .overlay(alignment: .trailing) { SidebarToggle(windowID: windowID, model: model) }
         .frame(height: StripMetrics.height)
         .background(.bar)
     }
@@ -111,8 +112,6 @@ private struct SidebarToggle: View {
         .onHover { hovering = $0 }
         .help(open ? "Hide Sidebar (⌃⌘S)" : "Show Sidebar (⌃⌘S)")
         .padding(.horizontal, 6)
-        .frame(maxHeight: .infinity)
-        .background(.bar) // covers tabs scrolled beneath it
         .onChange(of: model.clipboard.flashCount) { _, _ in
             guard !model.isSidebarOpen(windowID) else { return }
             bounces += 1
