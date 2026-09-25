@@ -8,10 +8,10 @@
 #
 # Everything shown is invented: a demo copy of the app runs with HOME=demo/home (a
 # plain zsh prompt, no personal config) and CLAUDE_CONFIG_DIR in a temp folder, and
-# `claude` is demo/fake-claude.swift (built to .build/demo-bin/claude), which writes Claude Code's files without calling
-# anything. Your clipboard is saved first and restored afterwards.
-#
-# While it records (about 45 s), leave the demo window in front and don't copy anything.
+# `claude` is demo/fake-claude.swift (built to .build/demo-bin/claude), which writes
+# Claude Code's files without calling anything. Your clipboard is saved first and
+# restored afterwards. The shot is of the window alone: no pointer, and other windows
+# don't matter; the demo window is brought to the front so it's drawn as active.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 REPO="$PWD"
