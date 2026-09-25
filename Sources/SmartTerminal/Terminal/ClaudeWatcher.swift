@@ -26,6 +26,8 @@ final class ClaudeWatcher {
     private var usage: ClaudeUsage?
     private var pendingUsageLines: [String] = []
     private var scanGeneration = 0
+    /// `~/.claude.json`'s hint about the window, per model; read at most once a minute.
+    private var lastUsedWindow: (model: String, window: Int?, read: Date)?
     private var lastLookup = Date.distantPast
 
     /// Returns the snapshot for the foreground process group, or nil when it is not Claude.
@@ -51,13 +53,14 @@ final class ClaudeWatcher {
         return AgentSnapshot.make(record: record, transcript: transcriptURL == nil ? nil : transcript,
                                   terminalTitle: osc,
                                   // No transcript yet (before the first prompt): nothing to count, not "loading".
-                                  usage: transcriptURL == nil ? ClaudeUsage() : usage)
+                                  usage: transcriptURL == nil ? ClaudeUsage() : usageWithHints(),
+                                  arguments: arguments)
     }
 
     private func reset() {
         pid = 0; arguments = []; record = nil; transcriptURL = nil; transcriptOffset = 0
         partialLine = Data(); transcript = ClaudeTranscriptState()
-        usage = nil; pendingUsageLines = []; scanGeneration += 1
+        usage = nil; pendingUsageLines = []; scanGeneration += 1; lastUsedWindow = nil
     }
 
     private func readRecord(pid: pid_t) -> ClaudeSessionRecord? { Self.sessionRecord(pid: pid) }
@@ -108,6 +111,26 @@ final class ClaudeWatcher {
             pendingUsageLines = []
             usage = u
         }
+    }
+
+    private func usageWithHints() -> ClaudeUsage? {
+        guard var u = usage else { return nil }
+        if u.declaredWindow == nil, let model = u.model, let folder = record?.cwd {
+            if lastUsedWindow?.model != model || Date().timeIntervalSince(lastUsedWindow!.read) > 60 {
+                let json = try? Data(contentsOf: Self.claudeJSON)
+                lastUsedWindow = (model, json.flatMap { ClaudeUsage.lastUsedWindow(claudeJSON: $0, folder: folder, model: model) }, Date())
+            }
+            u.lastUsedWindow = lastUsedWindow?.window
+        }
+        return u
+    }
+
+    /// Claude Code's state file: `$CLAUDE_CONFIG_DIR/.claude.json`, else `~/.claude.json`.
+    private static var claudeJSON: URL {
+        if let dir = ProcessInfo.processInfo.environment["CLAUDE_CONFIG_DIR"], !dir.isEmpty {
+            return URL(fileURLWithPath: dir).appendingPathComponent(".claude.json")
+        }
+        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude.json")
     }
 
     private func ingest(_ line: String) {

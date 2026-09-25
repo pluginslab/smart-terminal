@@ -130,20 +130,30 @@ public struct ClaudeUsage: Sendable {
     public var lastPromptAt: Date?
     public var lastReplyAt: Date?
     public var lastTurnDuration: TimeInterval?
+    /// Window stated by `/context` or `/model` output in the transcript (latest wins).
+    public var declaredWindow: Int?
+    /// From outside the transcript: `~/.claude.json` shows this folder last used the 1M model.
+    public var lastUsedWindow: Int?
     private var seen: Set<String> = []
 
     public init() {}
 
     public var totalTokens: Int { inputTokens + outputTokens + cacheReadTokens + cacheCreationTokens }
 
-    /// The transcript doesn't record the window, so this is inferred: a session past
-    /// 200k must have the 1M window; below that, assume 200k.
-    public var contextWindow: Int {
-        peakContextTokens > 200_000 || model?.contains("[1m]") == true ? 1_000_000 : 200_000
+    public enum WindowSource: Sendable { case declared, observed, lastUsed, assumed }
+
+    /// Replies log the model without its "[1m]" suffix, so the window comes from,
+    /// in order: `/context` or `/model` output, a context already past 200k, the
+    /// folder's last-used model, else an assumed 200k.
+    public var contextWindow: (tokens: Int, source: WindowSource) {
+        if let declaredWindow { return (declaredWindow, .declared) }
+        if peakContextTokens > 200_000 { return (1_000_000, .observed) }
+        if let lastUsedWindow { return (lastUsedWindow, .lastUsed) }
+        return (200_000, .assumed)
     }
 
     /// Cheap prefilter; only these lines are decoded.
-    static let markers = ["\"assistant\"", "\"user\"", "\"turn_duration\""]
+    static let markers = ["\"assistant\"", "\"user\"", "\"turn_duration\"", "\"local_command\""]
 
     public mutating func ingest(line: some StringProtocol) {
         guard Self.markers.contains(where: { line.contains($0) }),
@@ -175,12 +185,38 @@ public struct ClaudeUsage: Sendable {
             prompts += 1
             if let time { lastPromptAt = time }
         case "system":
-            if obj["subtype"] as? String == "turn_duration", !sidechain, let ms = obj["durationMs"] as? Double {
-                lastTurnDuration = ms / 1000
+            guard !sidechain else { return }
+            switch obj["subtype"] as? String {
+            case "turn_duration":
+                if let ms = obj["durationMs"] as? Double { lastTurnDuration = ms / 1000 }
+            case "local_command":
+                if let text = obj["content"] as? String, let w = Self.window(inCommandOutput: text) { declaredWindow = w }
+            default:
+                break
             }
         default:
             break
         }
+    }
+
+    /// `/context` prints "Opus 5.5 (1M context)" and "claude-opus-5-5[1m]"; `/model`
+    /// prints "Set model to …". Nil for output that says nothing about the model.
+    static func window(inCommandOutput text: String) -> Int? {
+        if text.contains("(1M context)") || text.contains("[1m]") { return 1_000_000 }
+        if text.contains("Set model to") || text.contains("Context Usage") { return 200_000 }
+        return nil
+    }
+
+    /// Whether `~/.claude.json` shows `folder` last used the 1M variant of `model`.
+    /// It's written when a session ends, so it describes the folder's previous session.
+    public static func lastUsedWindow(claudeJSON: Data, folder: String, model: String) -> Int? {
+        guard let root = try? JSONSerialization.jsonObject(with: claudeJSON) as? [String: Any],
+              let projects = root["projects"] as? [String: Any],
+              let project = projects[folder] as? [String: Any],
+              let usage = project["lastModelUsage"] as? [String: Any] else { return nil }
+        if usage["\(model)[1m]"] != nil { return 1_000_000 }
+        if usage[model] != nil { return 200_000 }
+        return nil
     }
 
     /// Text you typed: not a tool result, and not the `<command-…>` / `<local-command-…>`
@@ -205,6 +241,7 @@ extension ClaudeUsage: Equatable {
             && a.contextTokens == b.contextTokens && a.peakContextTokens == b.peakContextTokens
             && a.model == b.model && a.prompts == b.prompts && a.lastPromptAt == b.lastPromptAt
             && a.lastReplyAt == b.lastReplyAt && a.lastTurnDuration == b.lastTurnDuration
+            && a.declaredWindow == b.declaredWindow && a.lastUsedWindow == b.lastUsedWindow
     }
 }
 
@@ -218,6 +255,8 @@ public struct AgentSnapshot: Equatable, Sendable {
     public var prURL: String?
     public var sessionID: String?
     public var startedAt: Date?
+    /// Started with --resume / --continue: the transcript predates this process.
+    public var resumed = false
     public var usage: ClaudeUsage?
 
     public init(status: AgentStatus, title: String? = nil, lastPrompt: String? = nil,
@@ -229,7 +268,7 @@ public struct AgentSnapshot: Equatable, Sendable {
     /// Priority: /rename > AI title > agent name > non-derived session name > terminal title.
     public static func make(record: ClaudeSessionRecord?, transcript: ClaudeTranscriptState?,
                             terminalTitle: (status: AgentStatus, title: String)?,
-                            usage: ClaudeUsage? = nil) -> AgentSnapshot? {
+                            usage: ClaudeUsage? = nil, arguments: [String] = []) -> AgentSnapshot? {
         guard let status = record?.agentStatus ?? terminalTitle?.status else { return nil }
         let candidates: [String?] = [transcript?.customTitle, transcript?.aiTitle, transcript?.agentName,
                                      record?.meaningfulName, terminalTitle?.title]
@@ -240,6 +279,7 @@ public struct AgentSnapshot: Equatable, Sendable {
         if status == .waiting { snap.waitingFor = record?.waitingFor }
         snap.startedAt = record?.startDate
         snap.usage = usage
+        snap.resumed = arguments.contains { ["--resume", "-r", "--continue", "-c"].contains($0) }
         return snap
     }
 }

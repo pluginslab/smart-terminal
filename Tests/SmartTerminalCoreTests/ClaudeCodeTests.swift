@@ -50,7 +50,7 @@ import Testing
         #expect(u.outputTokens == 458)
         #expect(u.cacheReadTokens == 240_000)
         #expect(u.contextTokens == 240_502)
-        #expect(u.contextWindow == 1_000_000) // past 200k, so it must be the 1M window
+        #expect(u.contextWindow == (1_000_000, .observed)) // past 200k, so it must be the 1M window
         #expect(u.model == "claude-opus-5-5")
         // Subagent replies add to the totals but don't change the main context.
         u.ingest(line: #"{"type":"assistant","isSidechain":true,"message":{"id":"s1","model":"claude-haiku","usage":{"input_tokens":10,"output_tokens":5}}}"#)
@@ -74,7 +74,21 @@ import Testing
         #expect(u.prompts == 2)
         #expect(u.lastPromptAt == Date(timeIntervalSince1970: 1_790_330_700))
         #expect(u.lastTurnDuration == 192)
-        #expect(u.contextWindow == 200_000)
+        #expect(u.contextWindow == (200_000, .assumed))
+        // /context output names the model; it beats every guess.
+        u.lastUsedWindow = 200_000
+        #expect(u.contextWindow == (200_000, .lastUsed))
+        u.ingest(line: #"{"type":"system","subtype":"local_command","content":"<local-command-stdout> \u001b[1mContext Usage\u001b[22m  Opus 5.5 (1M context)\n claude-opus-5-5[1m]"}"#)
+        #expect(u.contextWindow == (1_000_000, .declared))
+        u.ingest(line: #"{"type":"system","subtype":"local_command","content":"<local-command-stdout>Set model to Sonnet 5</local-command-stdout>"}"#)
+        #expect(u.contextWindow == (200_000, .declared))
+    }
+
+    @Test func lastUsedWindowFromClaudeJSON() {
+        let json = Data(#"{"projects":{"/srv":{"lastModelUsage":{"claude-haiku-4-5":{},"claude-opus-5-5[1m]":{}}},"/old":{"lastModelUsage":{"claude-opus-5-5":{}}}}}"#.utf8)
+        #expect(ClaudeUsage.lastUsedWindow(claudeJSON: json, folder: "/srv", model: "claude-opus-5-5") == 1_000_000)
+        #expect(ClaudeUsage.lastUsedWindow(claudeJSON: json, folder: "/old", model: "claude-opus-5-5") == 200_000)
+        #expect(ClaudeUsage.lastUsedWindow(claudeJSON: json, folder: "/none", model: "claude-opus-5-5") == nil)
     }
 
     @Test func snapshotPriority() {

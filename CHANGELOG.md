@@ -4,7 +4,8 @@
 - Sidebar panes: an icon bar at the top of the sidebar switches between Clipboard and Claude Code, like Xcode's inspector tabs. A copy arriving while another pane is showing puts a dot on the clipboard icon.
 - Claude Code pane, following the current tab:
   - Live status: an animated asterisk and a turn timer while Claude works, "Needs you" with the reason when it waits, time since the last reply when idle.
-  - Context meter: tokens in context and a ring against the context window (inferred: 1M once a session passes 200k, else 200k).
+  - Context meter: tokens in context and a ring against the context window. Replies log the model without its `[1m]` suffix, so the window comes from, in order: `/context` or `/model` output in the transcript; a context already past 200k; the folder's last-used model in `~/.claude.json`; else an assumed 200k, shown as "~200k". The tooltip names the source.
+  - "Resumed" instead of "Started" for a session opened with `--resume` or `--continue`.
   - Session tokens: output, input, cache read, cache write.
   - Prompts typed, last turn duration, session start, model.
 - Token totals count each API message once. A response is logged as one line per content block, each repeating the same usage, so counting lines would inflate totals about 2.3×.

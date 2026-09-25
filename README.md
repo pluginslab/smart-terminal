@@ -101,9 +101,10 @@ the current tab, and follows you as you switch tabs:
 
 - **Status:** the asterisk spins while Claude works, with a timer for the current turn.
   It turns orange when Claude needs you, and says why (e.g. a permission prompt).
-- **Context:** how full the context is, as a ring and a token count. The transcript
-  doesn't record the window, so it's inferred: a session past 200k has the 1M window,
-  below that 200k is assumed.
+- **Context:** how full the context is, as a ring and a token count. Claude's replies
+  don't record the context window, so it's taken from `/context` or `/model` output if
+  you've run one, from a context already past 200k, or from the model the folder last
+  used. Failing all of those it shows "~200k". Run `/context` once to make it exact.
 - **Tokens this session:** output, input, cache reads and cache writes.
 - **Prompts** typed, how long the last turn took, when the session started, and the model.
 

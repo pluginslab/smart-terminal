@@ -56,7 +56,7 @@ struct ClaudeSessionCards: View {
             } else if let usage = agent.usage {
                 ContextCard(usage: usage)
                 TokensCard(usage: usage)
-                FactsCard(usage: usage, startedAt: agent.startedAt)
+                FactsCard(usage: usage, startedAt: agent.startedAt, resumed: agent.resumed)
             } else {
                 ProgressView("Reading transcript…")
                     .controlSize(.small)
@@ -168,7 +168,18 @@ private struct StatusGlyph: View {
 private struct ContextCard: View {
     let usage: ClaudeUsage
 
-    private var fraction: Double { min(1, Double(usage.contextTokens) / Double(usage.contextWindow)) }
+    private var window: (tokens: Int, source: ClaudeUsage.WindowSource) { usage.contextWindow }
+    private var fraction: Double { min(1, Double(usage.contextTokens) / Double(window.tokens)) }
+
+    /// Where the window size came from; replies don't record it.
+    private var windowHelp: String {
+        switch window.source {
+        case .declared: "From this session's /context or /model output."
+        case .observed: "This session has gone past 200k, so it has the 1M window."
+        case .lastUsed: "From the model this folder's last Claude session used. Run /context in Claude to confirm."
+        case .assumed: "Claude doesn't log the context window. 200k is assumed; run /context in Claude to set it."
+        }
+    }
     private var tint: Color { fraction >= 0.9 ? .red : fraction >= 0.7 ? .orange : .accentColor }
 
     var body: some View {
@@ -190,9 +201,10 @@ private struct ContextCard: View {
                     Text(TokenCount.short(usage.contextTokens))
                         .font(.system(size: 20, weight: .semibold).monospacedDigit())
                         .contentTransition(.numericText())
-                    Text("of \(TokenCount.short(usage.contextWindow)) tokens")
+                    // An assumed window is marked, so a guess never reads as fact.
+                    Text("of \(window.source == .assumed ? "~" : "")\(TokenCount.short(window.tokens)) tokens")
                         .font(.caption).foregroundStyle(.secondary)
-                        .help("The transcript doesn't record the context window. A session past 200k has the 1M window; below that, 200k is assumed.")
+                        .help(windowHelp)
                 }
             }
         }
@@ -237,6 +249,8 @@ private struct TokensCard: View {
 private struct FactsCard: View {
     let usage: ClaudeUsage
     let startedAt: Date?
+    /// This process resumed an older transcript, so its start isn't the conversation's.
+    let resumed: Bool
 
     var body: some View {
         Card {
@@ -248,7 +262,7 @@ private struct FactsCard: View {
                 if let startedAt {
                     // The timeline wraps only the value: a Grid only lays out direct GridRows.
                     GridRow {
-                        Text("Started").foregroundStyle(.secondary)
+                        Text(resumed ? "Resumed" : "Started").foregroundStyle(.secondary)
                         TimelineView(.periodic(from: .now, by: 10)) { ctx in
                             Text(ClipRow.age(of: startedAt, now: ctx.date))
                         }
