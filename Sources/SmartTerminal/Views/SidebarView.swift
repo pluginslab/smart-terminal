@@ -262,8 +262,22 @@ struct ClipRow: View {
             Text(source).lineLimit(1).truncationMode(.middle)
             Text("·")
         }
-        TimelineView(.periodic(from: .now, by: 30)) { _ in
-            Text(entry.date, format: .relative(presentation: .named, unitsStyle: .abbreviated))
+        // A 10 s tick keeps every label within 10 s of true, focused or not. Cheap:
+        // one short Text per row, and SwiftUI only redraws when the string changes.
+        TimelineView(.periodic(from: .now, by: 10)) { context in
+            Text(Self.age(of: entry.date, now: context.date))
+        }
+    }
+
+    /// "now" under a minute, then "5 min ago", "3 hr ago", then the date.
+    /// No seconds: a seconds count is stale one second after it's drawn.
+    static func age(of date: Date, now: Date) -> String {
+        let minutes = Int(now.timeIntervalSince(date) / 60)
+        switch minutes {
+        case ..<1: return "now"
+        case ..<60: return "\(minutes) min ago"
+        case ..<(24 * 60): return "\(minutes / 60) hr ago"
+        default: return date.formatted(date: .abbreviated, time: .shortened)
         }
     }
 
