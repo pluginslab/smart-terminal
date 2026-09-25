@@ -13,10 +13,11 @@ enum StripMetrics {
     static let minTabWidth: CGFloat = 64
     static let maxTabWidth: CGFloat = 220
     static let newTabButtonWidth: CGFloat = 32
+    static let groupNewTabButtonWidth: CGFloat = 22
 }
 
-/// Chrome-style tab strip for one window: group chips, tabs, "+" button and a
-/// trailing area that accepts drops at the end.
+/// Chrome-style tab strip for one window: group chips, tabs, a "+" per expanded
+/// group, a "+" for ungrouped tabs and a trailing area that accepts drops at the end.
 struct TabStripView: View {
     let windowID: UUID
     @Bindable var model: AppModel
@@ -29,7 +30,8 @@ struct TabStripView: View {
         GeometryReader { geo in
             let chipsWidth = items.reduce(CGFloat(0)) { sum, item in
                 guard case .chip(let g, _) = item else { return sum }
-                return sum + 30 + CGFloat(min(g.name.count, 20)) * 7 + (g.isCollapsed ? 22 : 0)
+                return sum + 30 + CGFloat(min(g.name.count, 20)) * 7
+                    + (g.isCollapsed ? 22 : StripMetrics.groupNewTabButtonWidth)
             }
             let available = geo.size.width - StripMetrics.newTabButtonWidth - chipsWidth - 24
             let tabWidth = min(StripMetrics.maxTabWidth,
@@ -52,10 +54,14 @@ struct TabStripView: View {
                                     // after it don't read as members of that group.
                                     .padding(.leading, endsGroupBefore(tab, in: items) ? 10 : 0)
                                     .id(tab.id)
+                                if let g = tab.groupID, let group = window?.group(g), isLastOfGroup(tab, in: items) {
+                                    GroupNewTabButton(group: group) { model.newTab(inGroup: g) }
+                                }
                             }
                         }
-                        // Like Chrome, "+" follows the last tab.
-                        NewTabButton { model.newTab(in: windowID) }
+                        // Follows the last tab; always opens an ungrouped tab at the end.
+                        // Groups have their own "+" after their last tab.
+                        NewTabButton { model.newTab(in: windowID, nextToActive: false) }
                     }
                     .padding(.leading, 6)
                     .frame(minWidth: geo.size.width, minHeight: geo.size.height, alignment: .leading)
@@ -81,6 +87,34 @@ private func endsGroupBefore(_ tab: TerminalTab, in items: [StripItem]) -> Bool 
     }
 }
 
+/// True when `tab` is grouped and the next strip item is not a tab of the same group.
+private func isLastOfGroup(_ tab: TerminalTab, in items: [StripItem]) -> Bool {
+    guard tab.groupID != nil, let i = items.firstIndex(where: { $0.id == tab.id }) else { return false }
+    guard i + 1 < items.count, case .tab(let next) = items[i + 1] else { return true }
+    return next.groupID != tab.groupID
+}
+
+/// Small "+" in the group's color after its last tab: adds a tab to that group.
+private struct GroupNewTabButton: View {
+    let group: TabGroup
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "plus")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(group.color.color)
+                .frame(width: 18, height: 18)
+                .background(RoundedRectangle(cornerRadius: 5).fill(group.color.color.opacity(hovering ? 0.2 : 0)))
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help(group.name.isEmpty ? "New Tab in Group" : "New Tab in \(group.name)")
+        .frame(width: StripMetrics.groupNewTabButtonWidth)
+    }
+}
+
 private struct NewTabButton: View {
     let action: () -> Void
     @State private var hovering = false
@@ -94,7 +128,7 @@ private struct NewTabButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
-        .help("New Tab (⌘T)")
+        .help("New Tab")
         .frame(width: StripMetrics.newTabButtonWidth)
     }
 }

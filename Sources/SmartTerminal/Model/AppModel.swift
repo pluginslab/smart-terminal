@@ -138,6 +138,13 @@ final class AppModel {
         update(windowID) { $0.addTab(TerminalTab(cwd: cwd ?? NSHomeDirectory()), nextToActive: nextToActive) }
     }
 
+    /// New tab at the end of a group, starting in the folder of the group's last tab.
+    func newTab(inGroup groupID: UUID) {
+        guard let wid = layout.windowID(containingGroup: groupID) else { return }
+        let cwd = window(wid)?.tabs(in: groupID).last.flatMap { sessions.currentDirectory(of: $0.id) ?? $0.cwd }
+        update(wid) { $0.insert(TerminalTab(cwd: cwd ?? NSHomeDirectory()), at: .intoGroup(groupID)) }
+    }
+
     func select(_ tabID: UUID) {
         guard let wid = windowID(containingTab: tabID) else { return }
         update(wid) { $0.select(tabID) }

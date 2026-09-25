@@ -7,7 +7,7 @@ import SmartTerminalCore
 /// drive the app and snapshot windows without Screen Recording permission:
 ///
 ///   scripts/debug.sh snapshot /tmp/out.png
-///   scripts/debug.sh newTab | group Name color | rename Title | collapse | select N
+///   scripts/debug.sh newTab [end] | newTabInGroup | group Name color | rename Title | collapse | select N
 ///   scripts/debug.sh type 'ls -la\n' | dump /tmp/layout.json | moveTabToNewWindow
 @MainActor
 final class DebugChannel {
@@ -47,6 +47,8 @@ final class DebugChannel {
             snapshot(to: a1)
         case "newTab":
             if let w = keyWindowID { model.newTab(in: w, nextToActive: a1 != "end") }
+        case "newTabInGroup":
+            if let g = activeTab?.groupID { model.newTab(inGroup: g) }
         case "newWindow":
             model.newWindow()
         case "select":

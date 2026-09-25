@@ -48,8 +48,9 @@ open tabs over (see [below](#import-from-terminalapp)).
 
 | Action | How |
 | --- | --- |
-| New tab (next to the current one, same group, same folder) | `⌘T` or `+` |
-| New tab at the end, ungrouped | double-click empty space in the strip |
+| New tab (next to the current one, same group, same folder) | `⌘T` |
+| New tab in a group (at its end, in its last tab's folder) | the colored `+` after the group |
+| New tab at the end, ungrouped | `+` at the end of the strip, or double-click empty space |
 | Rename a tab | double-click it, or `⌘⇧I`. Enter saves, Esc cancels, empty restores the automatic name |
 | Put the tab in a new group, or edit its group | `⌥⌘G`, or right-click → *Add Tab to New Group* |
 | Collapse or expand a group | click its chip, or `⌥⌘C` |

@@ -135,11 +135,7 @@ struct GroupEditor: View {
             Divider()
             VStack(alignment: .leading, spacing: 2) {
                 EditorAction("New Tab in Group", "plus") {
-                    if let last = model.window(windowID)?.tabs(in: group.id).last {
-                        model.select(last.id)
-                        model.newTab(in: windowID)
-                    }
-                    model.editingGroupID = nil
+                    model.editingGroupID = nil; model.newTab(inGroup: group.id)
                 }
                 EditorAction("Ungroup", "rectangle.dashed") { model.editingGroupID = nil; model.ungroup(group.id) }
                 EditorAction("Move Group to New Window", "macwindow.badge.plus") {
