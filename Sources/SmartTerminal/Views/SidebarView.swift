@@ -20,16 +20,32 @@ struct SidebarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 2) {
-                ForEach(SidebarPane.allCases, id: \.self) { p in
-                    PaneButton(pane: p, selected: pane == p, dot: p == .clipboard && unseenClip) {
-                        pane = p
-                        if p == .clipboard { unseenClip = false }
+            // One row: the pane's title (and its own controls) left, the pane icons right.
+            HStack(alignment: .center, spacing: 6) {
+                Text(pane.title).font(.headline).lineLimit(1)
+                if pane == .clipboard, !model.clipboard.entries.isEmpty {
+                    Text("\(model.clipboard.entries.count)")
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 4)
+                if pane == .clipboard, !model.clipboard.entries.isEmpty {
+                    Button("Clear") { withAnimation(.snappy) { model.clipboard.clear() } }
+                        .buttonStyle(.borderless)
+                        .controlSize(.small)
+                        .help("Remove all entries")
+                }
+                HStack(spacing: 0) {
+                    ForEach(SidebarPane.allCases, id: \.self) { p in
+                        PaneButton(pane: p, selected: pane == p, dot: p == .clipboard && unseenClip) {
+                            pane = p
+                            if p == .clipboard { unseenClip = false }
+                        }
                     }
                 }
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 30)
+            .padding(.leading, 14).padding(.trailing, 8)
+            .frame(height: 36)
             Divider()
             switch pane {
             case .clipboard: ClipboardPanel(windowID: windowID, model: model, history: model.clipboard)
@@ -121,8 +137,6 @@ struct ClipboardPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-            Divider()
             if history.entries.isEmpty {
                 ContentUnavailableView {
                     Label("No Copies Yet", systemImage: "doc.on.clipboard")
@@ -135,26 +149,6 @@ struct ClipboardPanel: View {
             }
         }
         .onChange(of: history.flashCount) { _, _ in flash(history.lastAddedID) }
-    }
-
-    private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text("Clipboard").font(.headline)
-            if !history.entries.isEmpty {
-                Text("\(history.entries.count)")
-                    .font(.subheadline.monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            if !history.entries.isEmpty {
-                Button("Clear") { withAnimation(.snappy) { history.clear() } }
-                    .buttonStyle(.borderless)
-                    .controlSize(.small)
-                    .help("Remove all entries")
-            }
-        }
-        .padding(.horizontal, 14)
-        .frame(height: 36)
     }
 
     private var list: some View {

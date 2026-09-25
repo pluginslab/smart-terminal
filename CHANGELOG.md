@@ -1,7 +1,7 @@
 # Changelog
 
 ## [0.7.0] - 2026-09-25
-- Sidebar panes: an icon bar at the top of the sidebar switches between Clipboard and Claude Code, like Xcode's inspector tabs. A copy arriving while another pane is showing puts a dot on the clipboard icon.
+- Sidebar panes: icons in the sidebar's header row switch between Clipboard and Claude Code, like Xcode's inspector tabs. The pane's title (and the clipboard's count and Clear) share that row. A copy arriving while another pane is showing puts a dot on the clipboard icon.
 - Claude Code pane, following the current tab:
   - Live status: an animated asterisk and a turn timer while Claude works, "Needs you" with the reason when it waits, time since the last reply when idle.
   - Context meter: tokens in context and a ring against the context window. Replies log the model without its `[1m]` suffix, so the window comes from, in order: `/context` or `/model` output in the transcript; a context already past 200k; the folder's last-used model in `~/.claude.json`; else an assumed 200k, shown as "~200k". The tooltip names the source.
@@ -9,7 +9,8 @@
   - Session tokens: output, input, cache read, cache write.
   - Subagents, newest first: a spinning asterisk and live timer while running (with a "2 running" badge), then a check with duration, tokens and tool calls, or a red cross if it failed. Background subagents finish through their task notification, wherever it lands: a normal message, several in one message, or queued while Claude was mid-turn (a `queue-operation` enqueue, delivered later as a `queued_command` attachment). Duration, tokens and tool calls come from the notification's own stats. The default `general-purpose` type isn't shown. One launched before a `--resume` that never reported back shows as "didn't finish" instead of running forever. The list starts over when a new prompt launches subagents and all previous ones completed; a running or failed one keeps the list, so it isn't missed.
   - Hover a subagent for a 600×400 popover: its latest tool call ("Now · Bash(git status)"), then its activity as a mini terminal in Claude Code's style (its task, what it says, each tool call with the first lines of its result), following the newest line. Its transcript is found through the `.meta.json` Claude writes next to it, so running subagents work too, and only new lines are read, once a second, while the popover is open.
-  - Prompts typed, last turn duration, session start, model.
+  - The model's name ("Opus 5.5") heads the context card.
+  - Prompts typed, last turn duration, session start.
 - Token totals count each API message once. A response is logged as one line per content block, each repeating the same usage, so counting lines would inflate totals about 2.3×.
 - Each transcript is read once in full, off the main thread and one at a time (11 MB in 0.23 s), then followed as it grows.
 - Debug commands `snapshotClaude` and `showSubagent`.

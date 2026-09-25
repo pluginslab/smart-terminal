@@ -12,13 +12,6 @@ struct ClaudePanel: View {
         let tab = model.window(windowID)?.activeTab
         let agent = tab.flatMap { model.agents[$0.id] }
         VStack(spacing: 0) {
-            HStack {
-                Text("Claude Code").font(.headline)
-                Spacer()
-            }
-            .padding(.horizontal, 14)
-            .frame(height: 36)
-            Divider()
             if let tab, let agent {
                 ScrollView {
                     ClaudeSessionCards(agent: agent, title: tab.displayTitle, needsYou: model.attention.contains(tab.id))
@@ -350,12 +343,14 @@ private struct ContextCard: View {
                 }
                 .frame(width: 54, height: 54)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Context").font(.caption).foregroundStyle(.secondary)
+                    Text(usage.model.map(ModelName.pretty) ?? "Context")
+                        .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                        .help(usage.model ?? "")
                     Text(TokenCount.short(usage.contextTokens))
                         .font(.system(size: 20, weight: .semibold).monospacedDigit())
                         .contentTransition(.numericText())
                     // An assumed window is marked, so a guess never reads as fact.
-                    Text("of \(window.source == .assumed ? "~" : "")\(TokenCount.short(window.tokens)) tokens")
+                    Text("of \(window.source == .assumed ? "~" : "")\(TokenCount.short(window.tokens)) context")
                         .font(.caption).foregroundStyle(.secondary)
                         .help(windowHelp)
                 }
@@ -422,7 +417,6 @@ private struct FactsCard: View {
                         .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                 }
-                if let m = usage.model { fact("Model", m) }
             }
             .font(.system(size: 12))
         }
@@ -448,5 +442,19 @@ enum TokenCount {
             let m = Double(n) / 1_000_000
             return m == m.rounded() ? "\(Int(m))M" : String(format: "%.1fM", m)
         }
+    }
+}
+
+enum ModelName {
+    /// "claude-opus-5-5" → "Opus 5.5", "claude-haiku-4-5-20251001" → "Haiku 4.5",
+    /// "claude-sonnet-5" → "Sonnet 5". Anything else is shown as is.
+    static func pretty(_ id: String) -> String {
+        var parts = id.split(separator: "-").map(String.init)
+        guard parts.first == "claude", parts.count >= 3 else { return id }
+        parts.removeFirst()
+        if let last = parts.last, last.count == 8, Int(last) != nil { parts.removeLast() } // date suffix
+        let family = parts.removeFirst().capitalized
+        guard !parts.isEmpty, parts.allSatisfy({ Int($0) != nil }) else { return id }
+        return family + " " + parts.joined(separator: ".")
     }
 }
