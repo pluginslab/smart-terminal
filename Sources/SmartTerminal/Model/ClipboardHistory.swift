@@ -1,5 +1,6 @@
 import AppKit
 import Observation
+import UniformTypeIdentifiers
 
 /// What a copy held. Finder copies are `.files`; screenshots and "Copy Image" are `.image`.
 enum ClipContent {
@@ -133,7 +134,14 @@ final class ClipboardHistory {
         switch entry.content {
         case .text(let s): pb.setString(s, forType: .string)
         case .image(let d, let type, _): pb.setData(d, forType: type)
-        case .files(let urls): pb.writeObjects(urls as [NSURL])
+        case .files(let urls):
+            pb.writeObjects(urls as [NSURL])
+            // A Finder copy holds only file references, so Claude Code's ⌃V (which asks
+            // for PNG data) found "no image". Add the first image file's pixels as PNG;
+            // Finder still pastes the files.
+            if let png = urls.lazy.compactMap(Self.pngData).first {
+                pb.pasteboardItems?.first?.setData(png, forType: .png)
+            }
         }
         changeCount = pb.changeCount
     }
@@ -158,6 +166,14 @@ final class ClipboardHistory {
             guard (try? png.write(to: url)) != nil else { return nil }
             return Self.shellQuoted(url.path) + " "
         }
+    }
+
+    /// PNG bytes of an image file: as-is for a PNG, converted otherwise. Nil for non-images.
+    private static func pngData(of url: URL) -> Data? {
+        guard let type = UTType(filenameExtension: url.pathExtension), type.conforms(to: .image),
+              let data = try? Data(contentsOf: url) else { return nil }
+        if type.conforms(to: .png) { return data }
+        return NSBitmapImageRep(data: data)?.representation(using: .png, properties: [:])
     }
 
     static func shellQuoted(_ s: String) -> String {
