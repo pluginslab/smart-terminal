@@ -189,7 +189,8 @@ public struct ClaudeUsage: Sendable {
     }
 
     /// Cheap prefilter; only these lines are decoded.
-    static let markers = ["\"assistant\"", "\"user\"", "\"turn_duration\"", "\"local_command\""]
+    static let markers = ["\"assistant\"", "\"user\"", "\"turn_duration\"", "\"local_command\"",
+                          "\"queue-operation\"", "\"queued_command\""]
 
     public mutating func ingest(line: some StringProtocol) {
         guard Self.markers.contains(where: { line.contains($0) }),
@@ -237,6 +238,18 @@ public struct ClaudeUsage: Sendable {
                   let message = obj["message"] as? [String: Any], Self.isTypedPrompt(message["content"]) else { return }
             prompts += 1
             if let time { lastPromptAt = time }
+        case "queue-operation":
+            // A background subagent that finishes while Claude is mid-turn has its
+            // notification queued; the enqueue is the moment it finished.
+            if obj["operation"] as? String == "enqueue", let text = obj["content"] as? String {
+                finishSubagents(notifications: text, time: time)
+            }
+        case "attachment":
+            // ...and the queued notification is later delivered as an attachment.
+            if let a = obj["attachment"] as? [String: Any], a["type"] as? String == "queued_command",
+               a["commandMode"] as? String == "task-notification", let text = a["prompt"] as? String {
+                finishSubagents(notifications: text, time: time)
+            }
         case "system":
             guard !sidechain else { return }
             switch obj["subtype"] as? String {
@@ -255,14 +268,10 @@ public struct ClaudeUsage: Sendable {
     /// Finishes subagents: a regular one by its tool result (status and stats in
     /// `toolUseResult`), a background one by a `<task-notification>` naming its tool call.
     private mutating func trackSubagents(_ content: Any?, result: Any?, time: Date?) {
-        if let text = (content as? String) ?? (content as? [[String: Any]])?.first?["text"] as? String,
-           text.hasPrefix("<task-notification>"),
-           let toolID = Self.tag("tool-use-id", in: text),
-           let i = subagents.firstIndex(where: { $0.id == toolID }) {
-            let status = Self.tag("status", in: text)
-            subagents[i].status = status == "completed" ? .completed : .failed
-            subagents[i].finishedAt = time
-            if let start = subagents[i].startedAt, let time { subagents[i].duration = time.timeIntervalSince(start) }
+        let text = (content as? String)
+            ?? (content as? [[String: Any]])?.compactMap { $0["text"] as? String }.joined(separator: "\n")
+        if let text, text.contains("<task-notification>") {
+            finishSubagents(notifications: text, time: time)
             return
         }
         for block in content as? [[String: Any]] ?? [] where block["type"] as? String == "tool_result" {
@@ -277,6 +286,23 @@ public struct ClaudeUsage: Sendable {
             else if let start = subagents[i].startedAt, let time { subagents[i].duration = time.timeIntervalSince(start) }
             subagents[i].totalTokens = r["totalTokens"] as? Int
             subagents[i].toolUses = r["totalToolUseCount"] as? Int
+        }
+    }
+
+    /// Every `<task-notification>` in `text` (several can arrive together). The first
+    /// one for a subagent wins, so a queued notification delivered later isn't counted twice.
+    private mutating func finishSubagents(notifications text: String, time: Date?) {
+        for chunk in text.components(separatedBy: "<task-notification>").dropFirst() {
+            guard let toolID = Self.tag("tool-use-id", in: chunk),
+                  let i = subagents.firstIndex(where: { $0.id == toolID }),
+                  subagents[i].status == .running else { continue }
+            subagents[i].status = Self.tag("status", in: chunk) == "completed" ? .completed : .failed
+            subagents[i].finishedAt = time
+            // The notification's own stats; the timestamps would include the queueing delay.
+            if let ms = Self.tag("duration_ms", in: chunk).flatMap(Double.init) { subagents[i].duration = ms / 1000 }
+            else if let start = subagents[i].startedAt, let time { subagents[i].duration = time.timeIntervalSince(start) }
+            subagents[i].totalTokens = Self.tag("subagent_tokens", in: chunk).flatMap { Int($0) }
+            subagents[i].toolUses = Self.tag("tool_uses", in: chunk).flatMap { Int($0) }
         }
     }
 

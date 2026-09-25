@@ -107,6 +107,28 @@ import Testing
         #expect(u.prompts == 0) // neither results nor notifications are prompts
     }
 
+    @Test func queuedNotificationsFinishSubagents() {
+        var u = ClaudeUsage()
+        func launch(_ id: String) -> String {
+            #"{"type":"assistant","timestamp":"2026-09-25T10:45:00.000Z","message":{"id":"m"# + id + #"","content":[{"type":"tool_use","id":""# + id + #"","name":"Agent","input":{"description":""# + id + #"","run_in_background":true}}],"usage":{}}}"#
+        }
+        func note(_ id: String) -> String {
+            #"<task-notification>\n<tool-use-id>"# + id + #"</tool-use-id>\n<status>completed</status>\n<usage><subagent_tokens>41475</subagent_tokens><tool_uses>1</tool_uses><duration_ms>6121</duration_ms></usage>\n</task-notification>"#
+        }
+        [launch("q"), launch("a"), launch("b")].forEach { u.ingest(line: $0) }
+        // Finished while Claude was busy: queued, then delivered as an attachment.
+        u.ingest(line: #"{"type":"queue-operation","operation":"enqueue","timestamp":"2026-09-25T10:45:47.000Z","content":""# + note("q") + #""}"#)
+        u.ingest(line: #"{"type":"attachment","timestamp":"2026-09-25T10:46:30.000Z","attachment":{"type":"queued_command","commandMode":"task-notification","prompt":""# + note("q") + #""}}"#)
+        #expect(u.subagents[0].status == .completed)
+        #expect(u.subagents[0].duration == 6.121) // its own duration, not the queueing delay
+        #expect(u.subagents[0].totalTokens == 41_475)
+        #expect(u.subagents[0].toolUses == 1)
+        #expect(u.subagents[0].finishedAt == Date(timeIntervalSince1970: 1_790_333_147)) // the enqueue, not the delivery
+        // Two notifications in one message.
+        u.ingest(line: #"{"type":"user","message":{"content":""# + note("a") + note("b") + #""}}"#)
+        #expect(u.subagents.map(\.status) == [.completed, .completed, .completed])
+    }
+
     @Test func newPromptClearsFinishedSubagents() {
         func launch(_ id: String, _ t: String) -> String {
             #"{"type":"assistant","timestamp":"2026-09-25T10:0"# + t + #":00.000Z","message":{"id":"m"# + id + #"","content":[{"type":"tool_use","id":""# + id + #"","name":"Agent","input":{"description":""# + id + #""}}],"usage":{}}}"#

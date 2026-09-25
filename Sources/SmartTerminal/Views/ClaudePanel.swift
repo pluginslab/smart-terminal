@@ -256,9 +256,10 @@ private struct SubagentRow: View {
                     .font(.system(size: 12, weight: agent.status == .running && !stale ? .semibold : .regular))
                     .lineLimit(2)
                 HStack(spacing: 4) {
-                    if let type = agent.type { Text(type) }
-                    if agent.background { Text("·"); Text("background") }
-                    Text("·")
+                    // "general-purpose" is the default and says nothing; other types (Explore…) do.
+                    let type = agent.type.flatMap { $0 == "general-purpose" ? nil : $0 }
+                    if let type { Text(type); Text("·") }
+                    if agent.background { Text("background"); Text("·") }
                     detail
                 }
                 .font(.caption)
