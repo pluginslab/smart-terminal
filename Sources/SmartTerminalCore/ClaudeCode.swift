@@ -112,6 +112,23 @@ public struct ClaudeTranscriptState: Equatable, Sendable {
     }
 }
 
+/// A subagent Claude started with its Agent tool.
+public struct ClaudeSubagent: Identifiable, Equatable, Sendable {
+    public enum Status: String, Sendable { case running, completed, failed }
+
+    /// The Agent tool call's id; results and notifications refer back to it.
+    public let id: String
+    public var description: String
+    public var type: String?
+    public var background: Bool
+    public var status: Status = .running
+    public var startedAt: Date?
+    public var finishedAt: Date?
+    public var duration: TimeInterval?
+    public var totalTokens: Int?
+    public var toolUses: Int?
+}
+
 /// Token use and turn timing, accumulated from a session transcript.
 ///
 /// One API response is logged as several lines (one per content block), each
@@ -134,6 +151,8 @@ public struct ClaudeUsage: Sendable {
     public var declaredWindow: Int?
     /// From outside the transcript: `~/.claude.json` shows this folder last used the 1M model.
     public var lastUsedWindow: Int?
+    /// In launch order. Only the main conversation's; nested ones live in subagent transcripts.
+    public var subagents: [ClaudeSubagent] = []
     private var seen: Set<String> = []
 
     public init() {}
@@ -175,12 +194,23 @@ public struct ClaudeUsage: Sendable {
                 cacheCreationTokens += n("cache_creation_input_tokens")
             }
             guard !sidechain else { return }
+            for block in message["content"] as? [[String: Any]] ?? [] where block["type"] as? String == "tool_use"
+                && ["Agent", "Task"].contains(block["name"] as? String ?? "") {
+                guard let id = block["id"] as? String, !subagents.contains(where: { $0.id == id }) else { continue }
+                let input = block["input"] as? [String: Any] ?? [:]
+                subagents.append(ClaudeSubagent(
+                    id: id, description: input["description"] as? String ?? "Subagent",
+                    type: input["subagent_type"] as? String,
+                    background: input["run_in_background"] as? Bool == true, startedAt: time))
+            }
             if let m = message["model"] as? String, m != "<synthetic>" { model = m }
             let context = n("input_tokens") + n("cache_read_input_tokens") + n("cache_creation_input_tokens")
             if context > 0 { contextTokens = context; peakContextTokens = max(peakContextTokens, context) }
             if let time { lastReplyAt = time }
         case "user":
-            guard !sidechain, obj["toolUseResult"] == nil, obj["isMeta"] as? Bool != true,
+            guard !sidechain else { return }
+            if let message = obj["message"] as? [String: Any] { trackSubagents(message["content"], result: obj["toolUseResult"], time: time) }
+            guard obj["toolUseResult"] == nil, obj["isMeta"] as? Bool != true,
                   let message = obj["message"] as? [String: Any], Self.isTypedPrompt(message["content"]) else { return }
             prompts += 1
             if let time { lastPromptAt = time }
@@ -197,6 +227,40 @@ public struct ClaudeUsage: Sendable {
         default:
             break
         }
+    }
+
+    /// Finishes subagents: a regular one by its tool result (status and stats in
+    /// `toolUseResult`), a background one by a `<task-notification>` naming its tool call.
+    private mutating func trackSubagents(_ content: Any?, result: Any?, time: Date?) {
+        if let text = (content as? String) ?? (content as? [[String: Any]])?.first?["text"] as? String,
+           text.hasPrefix("<task-notification>"),
+           let toolID = Self.tag("tool-use-id", in: text),
+           let i = subagents.firstIndex(where: { $0.id == toolID }) {
+            let status = Self.tag("status", in: text)
+            subagents[i].status = status == "completed" ? .completed : .failed
+            subagents[i].finishedAt = time
+            if let start = subagents[i].startedAt, let time { subagents[i].duration = time.timeIntervalSince(start) }
+            return
+        }
+        for block in content as? [[String: Any]] ?? [] where block["type"] as? String == "tool_result" {
+            guard let toolID = block["tool_use_id"] as? String,
+                  let i = subagents.firstIndex(where: { $0.id == toolID }) else { continue }
+            let r = result as? [String: Any] ?? [:]
+            if r["status"] as? String == "async_launched" { subagents[i].background = true; continue }
+            subagents[i].status = block["is_error"] as? Bool == true || (r["status"] as? String).map({ $0 != "completed" }) == true
+                ? .failed : .completed
+            subagents[i].finishedAt = time
+            if let ms = r["totalDurationMs"] as? Double { subagents[i].duration = ms / 1000 }
+            else if let start = subagents[i].startedAt, let time { subagents[i].duration = time.timeIntervalSince(start) }
+            subagents[i].totalTokens = r["totalTokens"] as? Int
+            subagents[i].toolUses = r["totalToolUseCount"] as? Int
+        }
+    }
+
+    private static func tag(_ name: String, in text: String) -> String? {
+        guard let open = text.range(of: "<\(name)>"),
+              let close = text.range(of: "</\(name)>", range: open.upperBound..<text.endIndex) else { return nil }
+        return String(text[open.upperBound..<close.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// `/context` prints "Opus 5.5 (1M context)" and "claude-opus-5-5[1m]"; `/model`
@@ -242,6 +306,7 @@ extension ClaudeUsage: Equatable {
             && a.model == b.model && a.prompts == b.prompts && a.lastPromptAt == b.lastPromptAt
             && a.lastReplyAt == b.lastReplyAt && a.lastTurnDuration == b.lastTurnDuration
             && a.declaredWindow == b.declaredWindow && a.lastUsedWindow == b.lastUsedWindow
+            && a.subagents == b.subagents
     }
 }
 

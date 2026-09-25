@@ -54,6 +54,9 @@ struct ClaudeSessionCards: View {
                     .multilineTextAlignment(.center)
                     .padding(.top, 16).padding(.horizontal, 8)
             } else if let usage = agent.usage {
+                if !usage.subagents.isEmpty {
+                    SubagentsCard(subagents: usage.subagents, processStart: agent.startedAt)
+                }
                 ContextCard(usage: usage)
                 TokensCard(usage: usage)
                 FactsCard(usage: usage, startedAt: agent.startedAt, resumed: agent.resumed)
@@ -161,6 +164,121 @@ private struct StatusGlyph: View {
             }
         }
         .frame(width: 40, height: 40)
+    }
+}
+
+/// Subagents Claude started, newest first: running ones with a live timer,
+/// finished ones with duration, tokens and tool calls.
+private struct SubagentsCard: View {
+    let subagents: [ClaudeSubagent]
+    /// When this Claude process started. A subagent launched before it (the session was
+    /// resumed) and never finished won't report back, so it isn't shown as running.
+    let processStart: Date?
+
+    static let visible = 8
+
+    private func isStale(_ a: ClaudeSubagent) -> Bool {
+        guard a.status == .running, let start = a.startedAt, let processStart else { return false }
+        return start < processStart
+    }
+
+    var body: some View {
+        let newestFirst = Array(subagents.reversed())
+        let running = subagents.filter { $0.status == .running && !isStale($0) }.count
+        Card {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Subagents").font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    if running > 0 {
+                        Text("\(running) running")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(ClaudeGlyph.claudeOrange)
+                            .padding(.horizontal, 6).padding(.vertical, 1)
+                            .background(Capsule().fill(ClaudeGlyph.claudeOrange.opacity(0.15)))
+                    }
+                }
+                ForEach(newestFirst.prefix(Self.visible)) { a in
+                    SubagentRow(agent: a, stale: isStale(a))
+                }
+                if newestFirst.count > Self.visible {
+                    Text("and \(newestFirst.count - Self.visible) earlier")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+}
+
+private struct SubagentRow: View {
+    let agent: ClaudeSubagent
+    let stale: Bool
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            icon.frame(width: 14)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(agent.description)
+                    .font(.system(size: 12, weight: agent.status == .running && !stale ? .semibold : .regular))
+                    .lineLimit(2)
+                HStack(spacing: 4) {
+                    if let type = agent.type { Text(type) }
+                    if agent.background { Text("·"); Text("background") }
+                    Text("·")
+                    detail
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
+        }
+    }
+
+    @ViewBuilder private var icon: some View {
+        switch (agent.status, stale) {
+        case (.running, false):
+            // Claude's own asterisk, spinning like the tab's, rather than a generic spinner.
+            TimelineView(.animation(minimumInterval: 1 / 20)) { ctx in
+                Image(systemName: "asterisk")
+                    .font(.system(size: 10, weight: .bold))
+                    .rotationEffect(.degrees(ctx.date.timeIntervalSinceReferenceDate * 180))
+            }
+            .foregroundStyle(ClaudeGlyph.claudeOrange)
+        case (.running, true):
+            Image(systemName: "minus.circle").foregroundStyle(.secondary)
+        case (.completed, _):
+            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+        case (.failed, _):
+            Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
+        }
+    }
+
+    @ViewBuilder private var detail: some View {
+        switch agent.status {
+        case .running where stale:
+            Text("didn't finish")
+        case .running:
+            TimelineView(.periodic(from: .now, by: 1)) { ctx in
+                if let start = agent.startedAt {
+                    Text(Duration.seconds(max(0, ctx.date.timeIntervalSince(start))).formatted(.time(pattern: .minuteSecond)))
+                        .monospacedDigit()
+                } else {
+                    Text("running")
+                }
+            }
+        case .completed, .failed:
+            Text(stats)
+        }
+    }
+
+    /// "1 min 30 s · 41k tokens · 12 tools", or "failed".
+    private var stats: String {
+        var parts: [String] = []
+        if agent.status == .failed { parts.append("failed") }
+        if let d = agent.duration { parts.append(Duration.seconds(d).formatted(.units(allowed: [.hours, .minutes, .seconds], width: .narrow))) }
+        if let t = agent.totalTokens { parts.append("\(TokenCount.short(t)) tokens") }
+        if let n = agent.toolUses { parts.append(n == 1 ? "1 tool" : "\(n) tools") }
+        return parts.isEmpty ? "done" : parts.joined(separator: " · ")
     }
 }
 

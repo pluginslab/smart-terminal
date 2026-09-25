@@ -105,6 +105,8 @@ the current tab, and follows you as you switch tabs:
   don't record the context window, so it's taken from `/context` or `/model` output if
   you've run one, from a context already past 200k, or from the model the folder last
   used. Failing all of those it shows "~200k". Run `/context` once to make it exact.
+- **Subagents** Claude started: running ones with a live timer, finished ones with how
+  long they took, their tokens and tool calls.
 - **Tokens this session:** output, input, cache reads and cache writes.
 - **Prompts** typed, how long the last turn took, when the session started, and the model.
 

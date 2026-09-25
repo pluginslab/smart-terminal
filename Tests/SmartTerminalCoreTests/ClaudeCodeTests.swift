@@ -84,6 +84,29 @@ import Testing
         #expect(u.contextWindow == (200_000, .declared))
     }
 
+    @Test func tracksSubagentsFromLaunchToFinish() {
+        var u = ClaudeUsage()
+        let lines = [
+            // Two launches in one reply: a regular one and a background one.
+            #"{"type":"assistant","timestamp":"2026-09-25T10:00:00.000Z","message":{"id":"m1","content":[{"type":"tool_use","id":"t1","name":"Agent","input":{"description":"Find the drop bug","subagent_type":"Explore"}},{"type":"tool_use","id":"t2","name":"Agent","input":{"description":"Research pricing","subagent_type":"general-purpose","run_in_background":true}},{"type":"tool_use","id":"t3","name":"Bash","input":{}}],"usage":{}}}"#,
+            #"{"type":"user","timestamp":"2026-09-25T10:00:01.000Z","message":{"content":[{"type":"tool_result","tool_use_id":"t2","content":"Async agent launched"}]},"toolUseResult":{"status":"async_launched","agentId":"a2"}}"#,
+            #"{"type":"user","timestamp":"2026-09-25T10:01:30.000Z","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"found it"}]},"toolUseResult":{"status":"completed","totalDurationMs":90000,"totalTokens":41000,"totalToolUseCount":12}}"#,
+        ]
+        lines.forEach { u.ingest(line: $0) }
+        #expect(u.subagents.map(\.description) == ["Find the drop bug", "Research pricing"])
+        #expect(u.subagents[0].status == .completed)
+        #expect(u.subagents[0].duration == 90)
+        #expect(u.subagents[0].totalTokens == 41_000)
+        #expect(u.subagents[0].toolUses == 12)
+        #expect(u.subagents[1].status == .running)
+        #expect(u.subagents[1].background)
+        // The background one finishes through a task notification.
+        u.ingest(line: #"{"type":"user","timestamp":"2026-09-25T10:05:00.000Z","origin":{"kind":"task-notification"},"message":{"content":"<task-notification>\n<task-id>a2</task-id>\n<tool-use-id>t2</tool-use-id>\n<status>completed</status>\n<summary>Agent finished</summary>"}}"#)
+        #expect(u.subagents[1].status == .completed)
+        #expect(u.subagents[1].duration == 300)
+        #expect(u.prompts == 0) // neither results nor notifications are prompts
+    }
+
     @Test func lastUsedWindowFromClaudeJSON() {
         let json = Data(#"{"projects":{"/srv":{"lastModelUsage":{"claude-haiku-4-5":{},"claude-opus-5-5[1m]":{}}},"/old":{"lastModelUsage":{"claude-opus-5-5":{}}}}}"#.utf8)
         #expect(ClaudeUsage.lastUsedWindow(claudeJSON: json, folder: "/srv", model: "claude-opus-5-5") == 1_000_000)
