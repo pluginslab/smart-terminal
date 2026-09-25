@@ -10,6 +10,14 @@ import SmartTerminalCore
 ///   scripts/debug.sh snapshot /tmp/out.png
 ///   scripts/debug.sh newTab [end] | newTabInGroup | sidebar | restoreClip N | pasteClip N | group Name color | rename Title | collapse | select N
 ///   scripts/debug.sh type 'ls -la\n' | dump /tmp/layout.json | moveTabToNewWindow
+/// UI state only the debug channel drives (a script can't hover).
+@MainActor
+@Observable
+final class DebugUI {
+    static let shared = DebugUI()
+    var subagentPopover: String?
+}
+
 @MainActor
 final class DebugChannel {
     /// One channel per instance, so a test instance never receives commands meant for another.
@@ -94,6 +102,16 @@ final class DebugChannel {
             w.title = "Subagent"
             w.makeKeyAndOrderFront(nil)
             debugWindows.append(w)
+        case "pane":
+            // Switches the sidebar pane: pane clipboard|claude
+            UserDefaults.standard.set(a1, forKey: "sidebarPane")
+        case "subagentPopover":
+            // Opens (N = 0 is the newest) or closes (no N) a subagent's hover popover.
+            let subs = activeTab.flatMap { model.agents[$0.id]?.usage?.subagents } ?? []
+            DebugUI.shared.subagentPopover = Int(a1).flatMap { n in subs.reversed().dropFirst(n).first?.id }
+        case "activate":
+            NSApp.activate()
+            NSApp.windows.first { $0 is TerminalWindow }?.makeKeyAndOrderFront(nil)
         case "snapshotSidebar":
             // Renders the panel on its own, e.g. to check rows at a fixed size.
             guard let w = keyWindowID else { return }
@@ -138,6 +156,11 @@ final class DebugChannel {
             guard let w = keyWindowID, let win = model.window(w), let t = win.activeTab,
                   let i = win.index(of: t.id), i > 0, let g = win.tabs[i - 1].groupID else { return }
             model.addTab(t.id, toGroup: g)
+        case "toggleGroup":
+            // Collapses or expands a group by name, whichever tab is active.
+            if let w = keyWindowID, let g = model.window(w)?.orderedGroups.first(where: { $0.name == a1 }) {
+                model.toggleCollapsed(g.id)
+            }
         case "collapse":
             if let g = activeTab?.groupID { model.toggleCollapsed(g) }
         case "editGroup":
@@ -149,6 +172,13 @@ final class DebugChannel {
         case "type":
             if let t = activeTab, let s = model.sessions.existing(t.id) {
                 s.view.send(txt: a1.replacingOccurrences(of: "\\n", with: "\r"))
+            }
+        case "typeSlow":
+            // Types into the active tab one character at a time, like a person (demo recording).
+            guard let t = activeTab, let session = model.sessions.existing(t.id) else { return }
+            let chars = Array(a1.replacingOccurrences(of: "\\n", with: "\r"))
+            for (i, c) in chars.enumerated() {
+                DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.045) { session.view.send(txt: String(c)) }
             }
         case "dump":
             let enc = JSONEncoder()

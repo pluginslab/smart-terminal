@@ -79,7 +79,23 @@ If you add a tab or group operation, add a unit test for it and make sure the
 invariant fuzz test still passes. Test data must be invented: no real host names,
 folders or session names.
 
-## Screenshots
+## Demo video and screenshots
+
+`assets/demo.{mp4,gif}` (the README's video) is recorded from the app itself, with
+nothing real in it:
+
+```bash
+scripts/record-demo.sh --dry-run   # play the scenes without recording
+scripts/record-demo.sh             # record, then encode with ffmpeg
+```
+
+A demo copy of the app runs with `HOME=demo/home` (a plain zsh prompt) and a throwaway
+`CLAUDE_CONFIG_DIR`. In that shell, `claude` is `demo/fake-claude.swift`, which writes
+Claude Code's session file, transcript and subagent transcripts without calling
+anything; the shell defines `claude` as a function so the real one can't start, and the
+script checks that before playing. It drives the app through the debug channel and
+records only the window with `screencapture`. For those ~45 s, leave the window in front
+and don't copy anything; your clipboard is saved and restored.
 
 `assets/screenshot.{svg,png}` are generated from invented demo data:
 

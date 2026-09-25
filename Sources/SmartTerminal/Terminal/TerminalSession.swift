@@ -79,6 +79,7 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
     var onOutput: ((TerminalSession) -> Void)?
 
     private var pollTimer: Timer?
+    private var reportedOnce = false
     private let shellPath: String
 
     init(tabID: UUID, profile: TerminalProfile, fontSize: CGFloat?) {
@@ -97,7 +98,7 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
         guard !isRunning else { return }
         var isDir: ObjCBool = false
         let dir = cwd.flatMap { FileManager.default.fileExists(atPath: $0, isDirectory: &isDir) && isDir.boolValue ? $0 : nil }
-            ?? NSHomeDirectory()
+            ?? Self.homeDirectory
         currentDirectory = dir
         let shellName = (shellPath as NSString).lastPathComponent
         view.startProcess(executable: shellPath, args: [], environment: Self.environment(shell: shellPath),
@@ -161,7 +162,10 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
             commandLine = newCommand
             onTerminalTitle?(self)
         }
-        if cwd != currentDirectory || fg != foregroundProcess || newAgent != agent {
+        // Always report the first poll: a tab that starts in its folder and whose shell
+        // never sets a title would otherwise keep the placeholder name.
+        if !reportedOnce || cwd != currentDirectory || fg != foregroundProcess || newAgent != agent {
+            reportedOnce = true
             currentDirectory = cwd
             foregroundProcess = fg
             agent = newAgent
@@ -233,10 +237,11 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
     static func environment(shell: String) -> [String] {
         let inherited = ProcessInfo.processInfo.environment
         var env: [String: String] = [:]
-        for key in ["HOME", "USER", "LOGNAME", "PATH", "TMPDIR", "SSH_AUTH_SOCK", "__CF_USER_TEXT_ENCODING"] {
+        // CLAUDE_CONFIG_DIR: the app watches Claude's files there, so the shells' `claude` must use it too.
+        for key in ["HOME", "USER", "LOGNAME", "PATH", "TMPDIR", "SSH_AUTH_SOCK", "__CF_USER_TEXT_ENCODING", "CLAUDE_CONFIG_DIR"] {
             if let v = inherited[key] { env[key] = v }
         }
-        env["HOME"] = env["HOME"] ?? NSHomeDirectory()
+        env["HOME"] = Self.homeDirectory
         env["USER"] = env["USER"] ?? NSUserName()
         env["LOGNAME"] = env["LOGNAME"] ?? NSUserName()
         env["PATH"] = env["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"
@@ -249,8 +254,15 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
         return env.map { "\($0.key)=\($0.value)" }
     }
 
+    /// `$HOME` when set, like a shell, else the account's home. (`NSHomeDirectory()`
+    /// ignores `$HOME`; honouring it lets the README demo run in a clean home folder.)
+    static var homeDirectory: String {
+        if let h = ProcessInfo.processInfo.environment["HOME"], !h.isEmpty { return h }
+        return NSHomeDirectory()
+    }
+
     static func prettyFolder(_ path: String) -> String {
-        if path == NSHomeDirectory() || path == "~" { return "~" }
+        if path == homeDirectory || path == "~" { return "~" }
         if path == "/" { return "/" }
         return (path as NSString).lastPathComponent
     }

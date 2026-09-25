@@ -219,6 +219,9 @@ private struct SubagentRow: View {
                 overRow = inside
                 inside ? openSoon() : closeSoon()
             }
+            #if DEBUG
+            .onChange(of: DebugUI.shared.subagentPopover) { _, id in showActivity = id == agent.id }
+            #endif
             .popover(isPresented: $showActivity, arrowEdge: .leading) {
                 if let transcriptPath {
                     SubagentPopover(agent: agent, stale: stale, transcriptPath: transcriptPath)

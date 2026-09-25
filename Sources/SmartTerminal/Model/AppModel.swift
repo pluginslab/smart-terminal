@@ -140,7 +140,7 @@ final class AppModel {
     @discardableResult
     func newWindow(cwd: String? = nil, frame: WindowFrame? = nil, open: Bool = true) -> UUID {
         var w = WindowLayout(frame: frame)
-        w.addTab(TerminalTab(cwd: cwd ?? NSHomeDirectory()))
+        w.addTab(TerminalTab(cwd: cwd ?? TerminalSession.homeDirectory))
         mutate { $0.windows.append(w) }
         if open { windows?.openWindow(for: w.id) }
         return w.id
@@ -168,14 +168,14 @@ final class AppModel {
 
     func newTab(in windowID: UUID, nextToActive: Bool = true) {
         let cwd = window(windowID)?.activeTab.flatMap { sessions.currentDirectory(of: $0.id) ?? $0.cwd }
-        update(windowID) { $0.addTab(TerminalTab(cwd: cwd ?? NSHomeDirectory()), nextToActive: nextToActive) }
+        update(windowID) { $0.addTab(TerminalTab(cwd: cwd ?? TerminalSession.homeDirectory), nextToActive: nextToActive) }
     }
 
     /// New tab at the end of a group, starting in the folder of the group's last tab.
     func newTab(inGroup groupID: UUID) {
         guard let wid = layout.windowID(containingGroup: groupID) else { return }
         let cwd = window(wid)?.tabs(in: groupID).last.flatMap { sessions.currentDirectory(of: $0.id) ?? $0.cwd }
-        update(wid) { $0.insert(TerminalTab(cwd: cwd ?? NSHomeDirectory()), at: .intoGroup(groupID)) }
+        update(wid) { $0.insert(TerminalTab(cwd: cwd ?? TerminalSession.homeDirectory), at: .intoGroup(groupID)) }
     }
 
     func select(_ tabID: UUID) {

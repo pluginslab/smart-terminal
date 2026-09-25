@@ -4,3 +4,8 @@
 *.zip
 .DS_Store
 dist/
+# What demo shells write into the demo home (scripts/record-demo.sh)
+demo/home/Library/
+demo/home/.zcompdump*
+demo/home/.zsh_sessions/
+demo/home/.zsh_history
