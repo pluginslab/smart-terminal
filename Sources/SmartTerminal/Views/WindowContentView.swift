@@ -17,6 +17,13 @@ struct WindowContentView: View {
             // container alive and only swaps the terminal view inside it.
             TerminalContainer(tab: window?.activeTab, model: model)
                 .background(terminalBackground)
+                .inspector(isPresented: Binding(
+                    get: { model.isSidebarOpen(windowID) },
+                    set: { model.setSidebar(windowID, open: $0) }
+                )) {
+                    SidebarView(windowID: windowID, model: model)
+                        .inspectorColumnWidth(min: 220, ideal: 280, max: 440)
+                }
         }
         .frame(minWidth: 480, minHeight: 240)
     }

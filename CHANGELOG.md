@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.6.0] - 2026-09-25
+- Sidebar (⌃⌘S, or the button at the right end of the tab strip): a panel on the right, built as a SwiftUI inspector like Xcode's and Pages'.
+- Its first tool is a clipboard history. Every text copy, including `pbcopy`, lands at the top and flashes. With the sidebar closed, its button bounces and shows a dot instead. Click an entry to copy it again (it confirms "Copied" in place); right-click to paste it into the current tab or delete it. Holds the last 50 copies, in memory only. Copies marked concealed or transient (password managers) are skipped.
+- Debug commands `sidebar` and `snapshotSidebar`.
+
 ## [0.5.2] - 2026-09-25
 - Every expanded group gets its own "+" in its color, right after its last tab: it opens a tab at the end of that group, in the folder of the group's last tab.
 - The "+" at the end of the strip now always opens an ungrouped tab at the end. It used to join whichever group the selected tab was in, so the result depended on the selection. ⌘T still opens the tab next to the current one.

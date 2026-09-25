@@ -28,12 +28,17 @@ Useful context if you are assessing risk.
 - Process information for processes in its own tabs, and, during an import, in
   Terminal.app's tabs: working folder, command line and foreground process group,
   via `libproc`, `sysctl` and `ps`.
+- The general clipboard's text, polled every 0.4 s for the clipboard history, and the
+  name of the frontmost app at the time of a copy. It's kept in memory (last 50
+  entries) and never written to disk. Copies with the nspasteboard.org concealed or
+  transient markers are skipped.
 
 **It writes:**
 - Its layout file, `~/Library/Application Support/SmartTerminal/layout.json`: window
   frames, group names and colors, tab names, working folders, and the id, title and
   command-line flags of Claude sessions so they can be resumed.
-- The font-size preference in its own user defaults.
+- The font-size preference and whether the sidebar is open, in its own user defaults.
+- The clipboard, only when you click a clipboard history entry.
 
 **It runs:**
 - Your login shell (`$SHELL`) in each tab.

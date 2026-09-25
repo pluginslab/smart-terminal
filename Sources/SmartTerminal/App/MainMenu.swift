@@ -69,6 +69,8 @@ enum MainMenu {
             item("Smaller", #selector(AppDelegate.smallerFont(_:)), "-"),
             item("Default Size", #selector(AppDelegate.resetFont(_:)), "0"),
             .separator(),
+            item("Show Sidebar", #selector(AppDelegate.toggleSidebar(_:)), "s", [.command, .control]),
+            .separator(),
             item("Enter Full Screen", #selector(NSWindow.toggleFullScreen(_:)), "f", [.command, .control], to: nil),
         ])
 

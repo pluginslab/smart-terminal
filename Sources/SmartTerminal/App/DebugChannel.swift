@@ -1,5 +1,6 @@
 #if DEBUG
 import AppKit
+import SwiftUI
 import UserNotifications
 import SmartTerminalCore
 
@@ -7,7 +8,7 @@ import SmartTerminalCore
 /// drive the app and snapshot windows without Screen Recording permission:
 ///
 ///   scripts/debug.sh snapshot /tmp/out.png
-///   scripts/debug.sh newTab [end] | newTabInGroup | group Name color | rename Title | collapse | select N
+///   scripts/debug.sh newTab [end] | newTabInGroup | sidebar | group Name color | rename Title | collapse | select N
 ///   scripts/debug.sh type 'ls -la\n' | dump /tmp/layout.json | moveTabToNewWindow
 @MainActor
 final class DebugChannel {
@@ -49,6 +50,28 @@ final class DebugChannel {
             if let w = keyWindowID { model.newTab(in: w, nextToActive: a1 != "end") }
         case "newTabInGroup":
             if let g = activeTab?.groupID { model.newTab(inGroup: g) }
+        case "sidebar":
+            if let w = keyWindowID { model.toggleSidebar(w) }
+        case "snapshotSidebar":
+            // Layer snapshots can't draw the inspector column; render the panel on its own.
+            guard let w = keyWindowID else { return }
+            // ImageRenderer draws ScrollViews as placeholders, so rows go in a plain stack.
+            let entries = model.clipboard.entries
+            let panel = entries.isEmpty ? AnyView(SidebarView(windowID: w, model: model)) : AnyView(
+                VStack(spacing: 6) {
+                    ForEach(Array(entries.enumerated()), id: \.element.id) { i, e in
+                        ClipRow(entry: e, isConfirmed: a2 == "confirm" && i == 1, isFlashing: i == 0,
+                                copy: {}, paste: {}, delete: {})
+                    }
+                    Spacer()
+                }.padding(10))
+            let r = ImageRenderer(content: panel
+                .frame(width: 280, height: 520).background(.background).environment(\.colorScheme, .dark))
+            r.scale = 2
+            if let img = r.nsImage, let tiff = img.tiffRepresentation,
+               let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
+                try? png.write(to: URL(fileURLWithPath: a1))
+            }
         case "newWindow":
             model.newWindow()
         case "select":

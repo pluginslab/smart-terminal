@@ -94,6 +94,24 @@ running Claude comes back with a bar: *Claude session "…" was running here.*
 **Resume** (`⌘⇧R`) runs `claude --resume <id>` with the flags the session was started
 with. If you exit Claude yourself, the tab forgets the session.
 
+### Sidebar: clipboard history
+
+`⌃⌘S`, or the sidebar button at the right end of the tab strip, opens a panel on the
+right. Its first tool is a clipboard history. Every text copy lands there, including
+`pbcopy` from a shell, a script or Claude Code, and flashes as it arrives. If the
+sidebar is closed, its button bounces and shows a dot instead.
+
+- **Click** an entry to put it back on the clipboard.
+- **Right-click** an entry to paste it into the current tab or delete it.
+- Copying something that's already in the list moves it back to the top.
+
+Each entry shows where it came from. That's the tab you were in if the copy happened
+in Smart Terminal, otherwise the app you were using.
+
+The history holds the last 50 copies, in memory only, and is gone when you quit.
+Copies that password managers mark as concealed or transient (the
+[nspasteboard.org](http://nspasteboard.org) markers, which 1Password uses) are never recorded.
+
 ### The title bar
 
 The title bar follows Terminal.app's format and updates live, spinner included:
@@ -155,7 +173,8 @@ Claude, and `tmux list-clients` to map a tty to a tmux session.
 ### Privacy
 
 Everything stays on your Mac. **Smart Terminal makes no network requests.**
-Notifications are local, and links open only when you click them. What it reads,
+Notifications are local, and links open only when you click them. The clipboard
+history is kept in memory and never written to disk. What it reads,
 writes and runs is listed in [SECURITY.md](SECURITY.md).
 
 ## Configuration
@@ -194,6 +213,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). The design notes and the build log are i
 - **No automatic updates yet.** Watch the repository's releases.
 - **No split panes**, and processes don't survive quitting the app. Only the layout
   and Claude sessions (via resume) come back.
+- **Clipboard sources are a best guess.** macOS doesn't say who wrote to the
+  clipboard, so a `pbcopy` in a background tab shows up under the tab or app that
+  was in front at the time.
 - **macOS 26 or later only.**
 
 ## License

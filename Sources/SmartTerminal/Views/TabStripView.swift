@@ -14,6 +14,7 @@ enum StripMetrics {
     static let maxTabWidth: CGFloat = 220
     static let newTabButtonWidth: CGFloat = 32
     static let groupNewTabButtonWidth: CGFloat = 22
+    static let sidebarToggleWidth: CGFloat = 40
 }
 
 /// Chrome-style tab strip for one window: group chips, tabs, a "+" per expanded
@@ -33,7 +34,7 @@ struct TabStripView: View {
                 return sum + 30 + CGFloat(min(g.name.count, 20)) * 7
                     + (g.isCollapsed ? 22 : StripMetrics.groupNewTabButtonWidth)
             }
-            let available = geo.size.width - StripMetrics.newTabButtonWidth - chipsWidth - 24
+            let available = geo.size.width - StripMetrics.newTabButtonWidth - StripMetrics.sidebarToggleWidth - chipsWidth - 24
             let tabWidth = min(StripMetrics.maxTabWidth,
                                max(StripMetrics.minTabWidth, available / CGFloat(max(tabCount, 1))))
 
@@ -64,6 +65,7 @@ struct TabStripView: View {
                         NewTabButton { model.newTab(in: windowID, nextToActive: false) }
                     }
                     .padding(.leading, 6)
+                    .padding(.trailing, StripMetrics.sidebarToggleWidth)
                     .frame(minWidth: geo.size.width, minHeight: geo.size.height, alignment: .leading)
                     .background(TrailingDropArea(windowID: windowID, model: model))
                     .animation(.snappy(duration: 0.18), value: items)
@@ -73,8 +75,50 @@ struct TabStripView: View {
                 }
             }
         }
+        .overlay(alignment: .trailing) { SidebarToggle(windowID: windowID, model: model) }
         .frame(height: StripMetrics.height)
         .background(.bar)
+    }
+}
+
+/// Shows and hides the sidebar. While it is hidden, a new copy bounces the
+/// button and leaves a dot until the sidebar is opened (like Safari's Downloads button).
+private struct SidebarToggle: View {
+    let windowID: UUID
+    let model: AppModel
+    @State private var unseen = false
+    @State private var bounces = 0
+    @State private var hovering = false
+
+    var body: some View {
+        let open = model.isSidebarOpen(windowID)
+        Button { model.toggleSidebar(windowID) } label: {
+            Image(systemName: "sidebar.right")
+                .font(.system(size: 13))
+                .symbolEffect(.bounce, value: bounces)
+                .foregroundStyle(open ? Color.accentColor : .secondary)
+                .frame(width: 28, height: 24)
+                .background(RoundedRectangle(cornerRadius: 6).fill(hovering ? Color.primary.opacity(0.08) : .clear))
+                .overlay(alignment: .topTrailing) {
+                    if unseen {
+                        Circle().fill(Color.accentColor).frame(width: 7, height: 7)
+                            .offset(x: -3, y: 3)
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help(open ? "Hide Sidebar (⌃⌘S)" : "Show Sidebar (⌃⌘S)")
+        .padding(.horizontal, 6)
+        .frame(maxHeight: .infinity)
+        .background(.bar) // covers tabs scrolled beneath it
+        .onChange(of: model.clipboard.flashCount) { _, _ in
+            guard !model.isSidebarOpen(windowID) else { return }
+            bounces += 1
+            withAnimation(.snappy) { unseen = true }
+        }
+        .onChange(of: open) { _, isOpen in if isOpen { withAnimation { unseen = false } } }
     }
 }
 

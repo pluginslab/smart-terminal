@@ -216,6 +216,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     @objc func smallerFont(_ sender: Any?) { model.sessions.setFontSize(model.sessions.fontSize - 1) }
     @objc func resetFont(_ sender: Any?) { model.sessions.setFontSize(nil) }
 
+    @objc func toggleSidebar(_ sender: Any?) {
+        if let id = keyWindowID { model.toggleSidebar(id) }
+    }
+
     @objc func clearScrollback(_ sender: Any?) {
         guard let t = activeTabID, let s = model.sessions.existing(t) else { return }
         s.view.getTerminal().resetToInitialState()
@@ -226,6 +230,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         let wid = keyWindowID
         let tab = activeTabID.flatMap { t in wid.flatMap { model.window($0)?.tab(t) } }
         switch item.action {
+        case #selector(toggleSidebar(_:)):
+            item.title = wid.map(model.isSidebarOpen) == true ? "Hide Sidebar" : "Show Sidebar"
+            return wid != nil
         case #selector(closeTab(_:)), #selector(closeWindow(_:)):
             return NSApp.keyWindow != nil
         case #selector(renameTab(_:)), #selector(groupActiveTab(_:)), #selector(clearScrollback(_:)):

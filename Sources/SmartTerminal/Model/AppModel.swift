@@ -53,7 +53,12 @@ final class AppModel {
     /// Claude Code sessions running in tabs.
     private(set) var agents: [UUID: AgentSnapshot] = [:]
 
+    /// Per-window sidebar state; windows never toggled follow the last toggle anywhere.
+    private var sidebarOpen: [UUID: Bool] = [:]
+    private var sidebarDefault = UserDefaults.standard.bool(forKey: "sidebarOpen")
+
     @ObservationIgnored let sessions = SessionRegistry()
+    @ObservationIgnored let clipboard = ClipboardHistory()
     @ObservationIgnored weak var windows: WindowManaging?
     @ObservationIgnored var notifier: Notifier?
     @ObservationIgnored private let store: LayoutStore
@@ -63,6 +68,30 @@ final class AppModel {
         self.store = store
         self.layout = store.load() ?? AppLayout()
         sessions.model = self
+        clipboard.localSource = { [weak self] in
+            guard let self, let wid = (NSApp.keyWindow as? TerminalWindow)?.windowID else { return nil }
+            return self.window(wid)?.activeTab?.displayTitle
+        }
+        clipboard.start()
+    }
+
+    // MARK: - Sidebar
+
+    func isSidebarOpen(_ windowID: UUID) -> Bool { sidebarOpen[windowID] ?? sidebarDefault }
+
+    func setSidebar(_ windowID: UUID, open: Bool) {
+        sidebarOpen[windowID] = open
+        sidebarDefault = open
+        UserDefaults.standard.set(open, forKey: "sidebarOpen")
+    }
+
+    func toggleSidebar(_ windowID: UUID) { setSidebar(windowID, open: !isSidebarOpen(windowID)) }
+
+    /// Pastes the clipboard into the window's active tab, as ⌘V would.
+    func pasteClipboard(inWindow windowID: UUID) {
+        guard let t = window(windowID)?.activeTabID, let s = sessions.existing(t) else { return }
+        s.view.paste(self)
+        s.view.window?.makeFirstResponder(s.view)
     }
 
     // MARK: - Lookup
