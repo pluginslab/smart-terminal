@@ -25,9 +25,7 @@ colored, collapsible groups** that you drag around like Chrome's. Tabs running
 Claude Code **name themselves after the session**, show whether Claude is working or
 waiting, and **notify you** when one you can't see needs an answer.
 
-[![Smart Terminal in 45 seconds: tab groups, a Claude Code tab with its status, the sidebar's Claude pane with subagents, and the clipboard history](assets/demo.gif)](assets/demo.mp4)
-
-<sub>45 seconds, recorded from the app with invented data. Click for the sharper MP4.</sub>
+![Smart Terminal: tab groups (one collapsed), a Claude Code tab at work, and the sidebar's Claude pane with its subagents, context and tokens](assets/screenshot.png)
 
 ## Install
 
@@ -220,8 +218,7 @@ swift test                   # core model tests (tabs, groups, drops, Claude par
 scripts/bundle.sh --open     # debug build of SmartTerminal.app, then launch it
 scripts/dev-run.sh           # dev instance with its own layout file and a debug control channel
 scripts/test-run.sh          # throwaway test instance for automated checks
-python3 scripts/mock-screenshot.py   # regenerate assets/screenshot.{svg,png} from demo data
-scripts/record-demo.sh       # record assets/demo.{mp4,gif}: scripted, invented data (see CONTRIBUTING)
+scripts/demo-screenshot.sh   # retake assets/screenshot.png from the app, with invented data (see CONTRIBUTING)
 scripts/release.sh           # universal build, Developer ID signing, notarization, DMG in dist/
 ```
 

@@ -13,7 +13,7 @@
   - Prompts typed, last turn duration, session start.
 - Token totals count each API message once. A response is logged as one line per content block, each repeating the same usage, so counting lines would inflate totals about 2.3×.
 - Each transcript is read once in full, off the main thread and one at a time (11 MB in 0.23 s), then followed as it grows.
-- README demo video (`assets/demo.gif`, `assets/demo.mp4`), recorded by `scripts/record-demo.sh` from a demo copy of the app with invented data: a clean `HOME` (`demo/home`), a throwaway `CLAUDE_CONFIG_DIR`, and `demo/fake-claude.swift` standing in for `claude`.
+- README screenshot is now taken from the app by `scripts/demo-screenshot.sh`, with invented data: a clean `HOME` (`demo/home`), a throwaway `CLAUDE_CONFIG_DIR`, and `demo/fake-claude.swift` standing in for `claude`. It shows tab groups (one collapsed), a Claude tab at work and the sidebar's Claude pane with subagents. The drawn mock (`scripts/mock-screenshot.py`) is gone.
 - Fix: a new tab that starts in its folder and whose shell never sets a title was named "Terminal"; the first poll now always reports.
 - The app honours `$HOME` for its default folder, and passes `CLAUDE_CONFIG_DIR` to its shells (it already read Claude's files from there).
 - Debug commands `snapshotClaude`, `showSubagent`, `pane`, `subagentPopover`, `toggleGroup`, `typeSlow`, `activate`.

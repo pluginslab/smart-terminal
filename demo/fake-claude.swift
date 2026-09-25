@@ -1,11 +1,11 @@
-// A stand-in for `claude`, for recording the README demo without real sessions.
+// A stand-in for `claude`, for the README screenshot without real sessions.
 //
 // It writes what Claude Code writes, so Smart Terminal treats it as a real session:
 // the session file ($CLAUDE_CONFIG_DIR/sessions/<pid>.json), a transcript with token
 // usage and an AI title, the ◐/✳ terminal title, and three subagents with their own
 // transcripts and .meta.json files. Everything is invented; nothing is sent anywhere.
 //
-// scripts/record-demo.sh compiles it to .build/demo-bin/claude, which demo/home/.zshrc
+// scripts/demo-screenshot.sh compiles it to .build/demo-bin/claude, which demo/home/.zshrc
 // puts first on PATH. A real executable named `claude` keeps the window title honest:
 // no interpreter name, no script path.
 import Foundation

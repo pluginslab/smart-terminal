@@ -79,33 +79,22 @@ If you add a tab or group operation, add a unit test for it and make sure the
 invariant fuzz test still passes. Test data must be invented: no real host names,
 folders or session names.
 
-## Demo video and screenshots
+## Screenshot
 
-`assets/demo.{mp4,gif}` (the README's video) is recorded from the app itself, with
-nothing real in it:
+`assets/screenshot.png` is taken from the app itself, with nothing real in it:
 
 ```bash
-scripts/record-demo.sh --dry-run   # play the scenes without recording
-scripts/record-demo.sh             # record, then encode with ffmpeg
+scripts/demo-screenshot.sh
 ```
 
 A demo copy of the app runs with `HOME=demo/home` (a plain zsh prompt) and a throwaway
 `CLAUDE_CONFIG_DIR`. In that shell, `claude` is `demo/fake-claude.swift`, which writes
 Claude Code's session file, transcript and subagent transcripts without calling
-anything; the shell defines `claude` as a function so the real one can't start, and the
-script checks that before playing. It drives the app through the debug channel and
-records only the window with `screencapture`. For those ~45 s, leave the window in front
-and don't copy anything; your clipboard is saved and restored.
-
-`assets/screenshot.{svg,png}` are generated from invented demo data:
-
-```bash
-python3 scripts/mock-screenshot.py
-```
-
-It writes the SVG and rasterises it with headless Chrome at 2×. Chrome honours the
-SVG's declared size, whereas `qlmanage` pads and clips. If the UI changes visibly,
-update the mock in the same PR.
+anything. The shell defines `claude` as a function so the real one can't start, and the
+script checks that before playing. It sets up tabs and groups through the debug channel,
+starts the fake, opens the sidebar and captures the window with `screencapture -l`
+(no pointer; other windows don't matter). Your clipboard is saved and restored. If the
+UI changes visibly, retake it in the same PR.
 
 ## Style
 

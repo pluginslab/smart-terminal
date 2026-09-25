@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 #
-# Records the README demo: assets/demo.mp4 and assets/demo.gif.
+# Takes the README screenshot, assets/screenshot.png, from the app itself:
+# tab groups (one collapsed), a Claude Code tab at work, and the sidebar's Claude pane
+# with subagents running and done.
 #
-#   scripts/record-demo.sh            build, play the scenes, record, encode
-#   scripts/record-demo.sh --dry-run  play the scenes without recording
+#   scripts/demo-screenshot.sh
 #
 # Everything shown is invented: a demo copy of the app runs with HOME=demo/home (a
 # plain zsh prompt, no personal config) and CLAUDE_CONFIG_DIR in a temp folder, and
@@ -14,13 +15,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 REPO="$PWD"
-DRY=0; [[ "${1:-}" == "--dry-run" ]] && DRY=1
 
 APP="$REPO/.build/SmartTerminal-demo.app"
 WORK="$(mktemp -d -t smart-terminal-demo)"
 HELPER="$REPO/.build/demo-helper"
 CHANNEL=demo
-DURATION=46
 
 echo "==> build"
 swiftc -O scripts/demo-helper.swift -o "$HELPER" 2>/dev/null
@@ -63,62 +62,32 @@ if ! grep -q "claude: function" "$WORK/which" 2>/dev/null; then
 fi
 st type $'\x15clear\\n'
 sleep 0.8
-BOUNDS="$("$HELPER" bounds "$PID")"
-echo "    window: $BOUNDS"
 
-T0=0
-at() { # at <seconds> <debug command...>: waits until that point in the scene, then sends it
-    local target="$1"; shift
-    local now; now="$(python3 -c "import time; print(time.time())")"
-    local wait; wait="$(python3 -c "print(max(0, $T0 + $target - $now))")"
-    sleep "$wait"
-    [[ $# -gt 0 ]] && st "$@"
-    return 0
-}
+echo "==> scene"
+# A new tab's shell starts when the tab is shown: give it a moment before typing.
+st type 'cd code/acme-api\n'
+sleep 0.6; st group api blue
+sleep 0.5; st newTabInGroup
+sleep 1.0; st newTab end
+sleep 1.0; st type 'cd ~/code/acme-web\n'
+sleep 0.6; st group web green
+sleep 0.5; st newTab end
+sleep 1.0; st type 'cd ~/code/infra\n'
+sleep 0.6; st toggleGroup web     # collapsed: shows as a chip with its tab count
+sleep 0.4; st select 1
+sleep 0.4; st type 'claude\n'
+sleep 1.0; st sidebar             # opens on the Claude pane
+# The fake launches three subagents ~5 s in; ~13 s in, one is done and two still run.
+sleep 10.8
+st activate
+# macOS won't let a background app bring itself forward while you're in another one;
+# System Events can, so the window is captured as the active one (coloured buttons).
+osascript -e "tell application \"System Events\" to set frontmost of (first process whose unix id is $PID) to true" >/dev/null 2>&1 || true
+sleep 0.8
 
-if [[ $DRY -eq 0 ]]; then
-    echo "==> recording ${DURATION}s: leave the window alone"
-    screencapture -v -V $DURATION -R"$BOUNDS" "$WORK/demo.mov" &
-    REC=$!
-    sleep 1.2 # the recorder takes a moment to start
-fi
-T0="$(python3 -c "import time; print(time.time())")"
-
-# Tabs and groups
-at 0.5  typeSlow 'cd code/acme-api\n'
-at 2.2  group api blue
-at 3.2  newTabInGroup
-at 4.0  typeSlow 'ls\n'
-at 5.2  newTab end
-at 5.8  typeSlow 'cd ~/code/acme-web\n'
-at 7.4  group web green
-at 8.4  newTab end
-at 9.0  typeSlow 'cd ~/code/infra\n'
-at 10.8 toggleGroup web
-at 12.4 toggleGroup web
-# Claude in the first tab, with the sidebar's Claude pane
-at 13.6 select 1
-at 14.2 typeSlow 'claude\n'
-at 16.4 sidebar
-at 24.0 subagentPopover 1
-at 28.2 subagentPopover
-# Clipboard: a pbcopy and a copied image flash in
-at 35.0 pane clipboard
-at 35.6 select 4
-at 36.2 typeSlow 'echo "https://github.com/acme/api/pull/482" | pbcopy\n'
-at 40.0
-"$HELPER" image "$REPO/Resources/AppIcon.png"
-at 42.0 typeSlow 'printf "deploy acme-api@4.12.0" | pbcopy\n'
-at $DURATION
-
-if [[ $DRY -eq 1 ]]; then echo "==> dry run done"; exit 0; fi
-wait $REC || true
-
-echo "==> encode"
+echo "==> capture"
+WID="$("$HELPER" windowid "$PID")"
 mkdir -p assets
-ffmpeg -loglevel error -y -i "$WORK/demo.mov" -vf "fps=30,scale=1440:-2:flags=lanczos" \
-    -c:v libx264 -crf 23 -preset slow -pix_fmt yuv420p -movflags +faststart -an assets/demo.mp4
-ffmpeg -loglevel error -y -i "$WORK/demo.mov" -vf "fps=12,scale=960:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=160:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" \
-    assets/demo.gif
-ls -la assets/demo.mp4 assets/demo.gif
-echo "==> done (work files in $WORK)"
+screencapture -x -l"$WID" assets/screenshot.png   # with the window's shadow, on transparency
+sips -g pixelWidth -g pixelHeight assets/screenshot.png | tail -2
+ls -la assets/screenshot.png

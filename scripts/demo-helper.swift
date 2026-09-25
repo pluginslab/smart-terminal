@@ -1,8 +1,9 @@
-// Helpers for scripts/record-demo.sh, compiled once so each call is instant.
+// Helpers for scripts/demo-screenshot.sh, compiled once so each call is instant.
 //   demo-helper post <channel-id> <cmd> [args...]   debug command (like scripts/debug.sh)
 //   demo-helper save <file> | restore <file>         the whole clipboard, every item and type
 //   demo-helper image <png>                          copy an image, like a screenshot to clipboard
 //   demo-helper bounds <pid>                         x,y,w,h of that process's largest window
+//   demo-helper windowid <pid>                       its window number, for screencapture -l
 import AppKit
 
 let args = Array(CommandLine.arguments.dropFirst())
@@ -31,6 +32,13 @@ case "restore":
 case "image":
     pb.clearContents()
     pb.setData(try Data(contentsOf: URL(fileURLWithPath: args[1])), forType: .png)
+case "windowid":
+    // The number of that process's largest on-screen window, for screencapture -l.
+    let pid = Int32(args[1])!
+    let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
+    let wins = list.filter { ($0["kCGWindowOwnerPID"] as? Int32) == pid && ($0["kCGWindowLayer"] as? Int) == 0 }
+    func area(_ w: [String: Any]) -> CGFloat { let b = w["kCGWindowBounds"] as? [String: CGFloat] ?? [:]; return (b["Width"] ?? 0) * (b["Height"] ?? 0) }
+    if let w = wins.max(by: { area($0) < area($1) }), let n = w["kCGWindowNumber"] as? Int { print(n) }
 case "bounds":
     let pid = Int32(args[1])!
     let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
