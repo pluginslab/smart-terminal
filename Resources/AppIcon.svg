@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Smart Terminal app icon. Full-bleed square: macOS applies its own mask.
+       Render: scripts/render-icon.sh -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#262a33"/>
+      <stop offset="1" stop-color="#07090f"/>
+    </linearGradient>
+    <radialGradient id="bgLight" cx="0.5" cy="0.3" r="0.7">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="slab" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a4e57"/>
+      <stop offset="1" stop-color="#25282f"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.18"/>
+    </linearGradient>
+    <radialGradient id="screen" cx="0.5" cy="0.12" r="0.95">
+      <stop offset="0" stop-color="#2b2e35"/>
+      <stop offset="0.55" stop-color="#17191e"/>
+      <stop offset="1" stop-color="#101216"/>
+    </radialGradient>
+    <!-- user space: a horizontal stroke has no height to stretch a bounding-box gradient over -->
+    <linearGradient id="spark" gradientUnits="userSpaceOnUse" x1="0" y1="-120" x2="0" y2="120">
+      <stop offset="0" stop-color="#f7a160"/>
+      <stop offset="1" stop-color="#e2672c"/>
+    </linearGradient>
+    <linearGradient id="chev" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dfe3ea"/>
+    </linearGradient>
+    <filter id="glowWhite" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+    <filter id="glowOrange" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <!-- the bar is short: give its glow room in user space, or it's cut off square -->
+    <filter id="glowTab" filterUnits="userSpaceOnUse" x="560" y="100" width="380" height="220">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+  </defs>
+
+  <!-- background -->
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#bgLight)"/>
+
+  <!-- tab-group bars -->
+  <rect x="647" y="186" width="206" height="44" rx="11" fill="#ff8a3a" opacity="0.55" filter="url(#glowTab)"/>
+  <rect x="172" y="192" width="206" height="48" rx="11" fill="#3a78d8"/>
+  <rect x="410" y="192" width="206" height="48" rx="11" fill="#2f9e4a"/>
+  <rect x="647" y="192" width="206" height="48" rx="11" fill="#ff8f3d"/>
+  <rect x="172" y="192" width="206" height="10" rx="5" fill="#ffffff" opacity="0.18"/>
+  <rect x="410" y="192" width="206" height="10" rx="5" fill="#ffffff" opacity="0.18"/>
+  <rect x="647" y="192" width="206" height="10" rx="5" fill="#ffffff" opacity="0.25"/>
+
+  <!-- slab -->
+  <rect x="112" y="260" width="800" height="590" rx="46" fill="#000" opacity="0.55" filter="url(#shadow)"/>
+  <rect x="100" y="228" width="824" height="598" rx="46" fill="url(#slab)"/>
+  <rect x="101.5" y="229.5" width="821" height="595" rx="44.5" fill="none" stroke="url(#rim)" stroke-width="3"/>
+  <rect x="132" y="262" width="760" height="530" rx="28" fill="url(#screen)"/>
+  <rect x="132.75" y="262.75" width="758.5" height="528.5" rx="27.25" fill="none" stroke="#000" stroke-opacity="0.45" stroke-width="1.5"/>
+
+  <!-- prompt: > -->
+  <polyline points="306,400 420,512 306,624" fill="none" stroke="#ffffff" stroke-opacity="0.35"
+            stroke-width="60" stroke-linecap="round" stroke-linejoin="round" filter="url(#glowWhite)"/>
+  <polyline points="306,400 420,512 306,624" fill="none" stroke="url(#chev)"
+            stroke-width="56" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- cursor: asterisk -->
+  <g transform="translate(612 512)" stroke-linecap="round">
+    <g stroke="#ff7a30" stroke-opacity="0.6" stroke-width="44" filter="url(#glowOrange)">
+      <line x1="0" y1="-108" x2="0" y2="108"/>
+      <line x1="-108" y1="0" x2="108" y2="0"/>
+      <line x1="-76" y1="-76" x2="76" y2="76"/>
+      <line x1="-76" y1="76" x2="76" y2="-76"/>
+    </g>
+    <g stroke="url(#spark)" stroke-width="38">
+      <line x1="0" y1="-108" x2="0" y2="108"/>
+      <line x1="-108" y1="0" x2="108" y2="0"/>
+      <line x1="-76" y1="-76" x2="76" y2="76"/>
+      <line x1="-76" y1="76" x2="76" y2="-76"/>
+    </g>
+  </g>
+</svg>
