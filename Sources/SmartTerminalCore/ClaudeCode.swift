@@ -374,6 +374,8 @@ public struct AgentSnapshot: Equatable, Sendable {
     public var usage: ClaudeUsage?
     /// The session transcript; its subagents' transcripts are in `<name>/subagents/`.
     public var transcriptPath: String?
+    /// Claude's working folder, from its session file.
+    public var cwd: String?
 
     public init(status: AgentStatus, title: String? = nil, lastPrompt: String? = nil,
                 prNumber: String? = nil, prURL: String? = nil, sessionID: String? = nil) {
@@ -394,6 +396,7 @@ public struct AgentSnapshot: Equatable, Sendable {
                              sessionID: record?.sessionId)
         if status == .waiting { snap.waitingFor = record?.waitingFor }
         snap.startedAt = record?.startDate
+        snap.cwd = record?.cwd
         snap.usage = usage
         snap.resumed = arguments.contains { ["--resume", "-r", "--continue", "-c"].contains($0) }
         return snap
@@ -407,9 +410,12 @@ public struct AgentSessionRef: Codable, Hashable, Sendable {
     public var title: String?
     /// argv of the original `claude` invocation, e.g. ["claude", "--dangerously-skip-permissions"].
     public var arguments: [String]
+    /// Claude's own folder. `--resume` only finds a session from its project folder,
+    /// which inside tmux needn't be the tab's.
+    public var cwd: String?
 
-    public init(sessionID: String, title: String?, arguments: [String]) {
-        self.sessionID = sessionID; self.title = title; self.arguments = arguments
+    public init(sessionID: String, title: String?, arguments: [String], cwd: String? = nil) {
+        self.sessionID = sessionID; self.title = title; self.arguments = arguments; self.cwd = cwd
     }
 
     /// Flags that pick a session or make the run non-interactive; dropped before

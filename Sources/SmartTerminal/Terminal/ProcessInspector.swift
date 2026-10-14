@@ -29,6 +29,31 @@ enum ProcessInspector {
         return pgid > 0 ? pgid : nil
     }
 
+    /// Foreground process group of the terminal a process belongs to, from the kernel's
+    /// view of it (works for ttys we don't hold, e.g. a tmux pane's).
+    static func terminalForegroundGroup(of pid: pid_t) -> pid_t? {
+        var info = proc_bsdinfo()
+        let size = Int32(MemoryLayout<proc_bsdinfo>.size)
+        guard pid > 0, proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, size) == size else { return nil }
+        let pgid = pid_t(bitPattern: info.e_tpgid)
+        return pgid > 0 ? pgid : nil
+    }
+
+    /// Direct children of a process.
+    static func children(of pid: pid_t) -> [pid_t] {
+        let count = proc_listchildpids(pid, nil, 0)
+        guard count > 0 else { return [] }
+        var pids = [pid_t](repeating: 0, count: Int(count) * 2)
+        let n = proc_listchildpids(pid, &pids, Int32(pids.count * MemoryLayout<pid_t>.size))
+        return n > 0 ? pids.prefix(Int(n)).filter { $0 > 0 } : []
+    }
+
+    /// Slave tty of a pty master, e.g. "/dev/ttys012".
+    static func ttyName(ptyMaster fd: Int32) -> String? {
+        guard fd >= 0, let name = ptsname(fd) else { return nil }
+        return String(cString: name)
+    }
+
     /// Full argv of a process, e.g. ["claude", "--dangerously-skip-permissions"]
     /// (argv[0] shortened to its last path component).
     static func arguments(of pid: pid_t) -> [String]? {

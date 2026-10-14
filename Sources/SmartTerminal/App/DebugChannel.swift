@@ -238,6 +238,10 @@ final class DebugChannel {
                 let title = model.layout.windows.lazy.compactMap { $0.tab(id) }.first?.displayTitle ?? "?"
                 out.append("\(title): \(a.status.rawValue) waitingFor=\(a.waitingFor ?? "-") attention=\(model.attention.contains(id))")
             }
+            for tab in model.layout.windows.flatMap(\.tabs) where tab.agentSession != nil || tab.tmuxSession != nil {
+                let rec = model.recovery(tab.id).map { "\($0)" } ?? "-"
+                out.append("saved \(tab.displayTitle): claude=\(tab.agentSession?.sessionID ?? "-") cwd=\(tab.agentSession?.cwd ?? "-") tmux=\(tab.tmuxSession?.session ?? "-") \(tab.tmuxSession?.socketArgs ?? []) recovery=\(rec)")
+            }
             let path = a1
             UNUserNotificationCenter.current().getNotificationSettings { settings in
                 out.insert("notifications=\(settings.authorizationStatus.rawValue) (2=authorized, 1=denied, 0=not asked) alerts=\(settings.alertSetting.rawValue)", at: 0)

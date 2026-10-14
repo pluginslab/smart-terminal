@@ -13,8 +13,9 @@ struct WindowContentView: View {
             // desktop showed through it.
             TabStripView(windowID: windowID, model: model)
                 .overlay(alignment: .bottom) { Divider() }
-            if let tab = window?.activeTab, let ref = model.resumableSession(tab.id) {
-                ResumeBar(ref: ref, resume: { model.resumeAgent(tab.id) }, dismiss: { model.dismissResume(tab.id) })
+            if let tab = window?.activeTab, let recovery = model.recovery(tab.id) {
+                ResumeBar(recovery: recovery, command: recovery.command(cwd: tab.cwd),
+                          resume: { model.resumeAgent(tab.id) }, dismiss: { model.dismissResume(tab.id) })
             }
             // Always present (never inside an if/else) so SwiftUI keeps the
             // container alive and only swaps the terminal view inside it.
@@ -52,31 +53,61 @@ struct VisualEffectBackground: NSViewRepresentable {
     func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
 }
 
-/// Offered after a restart when Claude Code was running in this tab.
+/// Offered after a restart when Claude Code, or a tmux session, was running in this tab.
 struct ResumeBar: View {
-    let ref: AgentSessionRef
+    let recovery: TabRecovery
+    /// What the button types, shown as its tooltip.
+    let command: String
     let resume: () -> Void
     let dismiss: () -> Void
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: "asterisk")
+            Image(systemName: recovery.agent == nil ? "square.stack.3d.up" : "asterisk")
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(ClaudeGlyph.claudeOrange)
-            Text("Claude session \(ref.title.map { "“\($0)”" } ?? "") was running here.")
+            Text(message)
                 .font(.system(size: 12))
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 8)
-            Button("Resume", action: resume)
+            Button(buttonTitle, action: resume)
                 .keyboardShortcut("r", modifiers: [.command, .shift])
-                .help(ref.resumeCommand)
+                .help(command)
             Button("Dismiss", action: dismiss)
         }
         .controlSize(.small)
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
+        // The tint alone let the desktop through in translucent windows; the strip's
+        // own material goes underneath.
         .background(ClaudeGlyph.claudeOrange.opacity(0.12))
+        .background(.bar)
         .overlay(alignment: .bottom) { Divider() }
+    }
+
+    private func quoted(_ s: String?) -> String { s.map { "“\($0)”" } ?? "" }
+
+    private var claude: String { "Claude session \(quoted(recovery.agent?.title))" }
+
+    private var message: String {
+        switch recovery {
+        case .resume:
+            "\(claude) was running here."
+        case .reattach(let t, let agent):
+            agent == nil ? "tmux session \(quoted(t.session)) is still running."
+                : "tmux session \(quoted(t.session)) is still running, with the \(claude) inside."
+        case .recreate(let t, let agent):
+            agent == nil ? "tmux session \(quoted(t.session)) was attached here and has ended."
+                : "\(claude) was running here in tmux \(quoted(t.session)), which has ended."
+        }
+    }
+
+    private var buttonTitle: String {
+        switch recovery {
+        case .resume: "Resume"
+        case .reattach: "Reattach"
+        case .recreate(_, let agent): agent == nil ? "Recreate" : "Resume in tmux"
+        }
     }
 }

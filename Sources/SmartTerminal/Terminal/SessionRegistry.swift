@@ -27,7 +27,8 @@ final class SessionRegistry {
         let s = TerminalSession(tabID: tabID, profile: profile, fontSize: fontSizeOverride)
         s.onChange = { [weak self] s in
             self?.model?.sessionUpdated(tabID: s.tabID, autoTitle: s.autoTitle, cwd: s.currentDirectory)
-            self?.model?.agentUpdated(tabID: s.tabID, agent: s.agent, ref: s.agentRef)
+            self?.model?.agentUpdated(tabID: s.tabID, agent: s.agent, ref: s.agentRef,
+                                      agentStillRunning: s.agentStillRunning, tmux: s.tmuxSession)
         }
         s.onTerminalTitle = { [weak self] s in
             self?.model?.titleBarChanged(tabID: s.tabID, info: TitleBarInfo(

@@ -40,7 +40,8 @@ Useful context if you are assessing risk.
 **It writes:**
 - Its layout file, `~/Library/Application Support/SmartTerminal/layout.json`: window
   frames, group names and colors, tab names, working folders, and the id, title and
-  command-line flags of Claude sessions so they can be resumed.
+  command-line flags and folder of Claude sessions so they can be resumed, and the
+  name (and `-L`/`-S` socket) of the tmux session a tab was attached to.
 - The font-size preference and whether the sidebar is open, in its own user defaults.
 - The clipboard, only when you click a clipboard history entry.
 - A PNG in `$TMPDIR/SmartTerminal Clips/`, only when you paste an image entry into a tab.
@@ -50,6 +51,12 @@ Useful context if you are assessing risk.
 - Your login shell (`$SHELL`) in each tab.
 - `claude --resume <id> [original flags]`, typed into a tab's shell, only when you press
   **Resume** or during an import you started.
+- `tmux display-message -p -c <tab's tty>`, at most once a second while a tmux client is
+  in front of a tab, to learn which pane it shows; `tmux has-session` once for a tab
+  whose saved tmux session it offers to re-attach.
+- `tmux attach`, or `tmux new-session` + `tmux send-keys` (with the resume command)
+  + `tmux attach`, typed into a tab's shell, only when you press **Reattach** or
+  **Resume in tmux**.
 - During an import, and only for the tabs you checked: AppleScript that lists
   Terminal.app's tabs and types `/exit` into the Claude sessions being handed over,
   and `tmux detach-client` for tmux clients being moved.

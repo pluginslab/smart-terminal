@@ -32,15 +32,19 @@ public struct TerminalTab: Identifiable, Codable, Hashable, Sendable {
     public var groupID: UUID?
     /// Claude Code session running here when last seen; survives quit/crash so it can be resumed.
     public var agentSession: AgentSessionRef?
+    /// tmux session the tab was attached to when last seen; re-attached or recreated after a restart.
+    public var tmuxSession: TmuxSessionRef?
 
     public init(id: UUID = UUID(), customTitle: String? = nil, autoTitle: String = "Terminal",
-                cwd: String? = nil, groupID: UUID? = nil, agentSession: AgentSessionRef? = nil) {
+                cwd: String? = nil, groupID: UUID? = nil, agentSession: AgentSessionRef? = nil,
+                tmuxSession: TmuxSessionRef? = nil) {
         self.id = id
         self.customTitle = customTitle
         self.autoTitle = autoTitle
         self.cwd = cwd
         self.groupID = groupID
         self.agentSession = agentSession
+        self.tmuxSession = tmuxSession
     }
 
     public var displayTitle: String {

@@ -60,9 +60,16 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
     /// What to persist so this Claude session can be resumed after a restart.
     var agentRef: AgentSessionRef? {
         guard let agent, let id = agent.sessionID else { return nil }
-        return AgentSessionRef(sessionID: id, title: agent.title, arguments: claude.arguments)
+        return AgentSessionRef(sessionID: id, title: agent.title, arguments: claude.arguments, cwd: agent.cwd)
     }
     private let claude = ClaudeWatcher()
+    /// Set while a tmux client is in front: the session it shows (persisted for after a restart).
+    private(set) var tmuxSession: TmuxSessionRef?
+    private let tmux = TmuxProbe()
+    /// The Claude process last seen here. Gone from the front isn't gone: it may be
+    /// suspended or in another tmux window, and then it can still be resumed.
+    private var lastAgentPID: pid_t = 0
+    var agentStillRunning: Bool { lastAgentPID > 0 && kill(lastAgentPID, 0) == 0 }
 
     var onChange: ((TerminalSession) -> Void)?
     /// Title-bar inputs changed: program title (every spinner frame), command, grid size.
@@ -92,6 +99,7 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
         profile.apply(to: view, fontSize: fontSize)
         view.onBell = { [weak self] in self.map { $0.onBell?($0) } }
         view.onOutput = { [weak self] in self.map { $0.onOutput?($0) } }
+        tmux.onAnswer = { [weak self] in self?.poll() }
     }
 
     func start(cwd: String?) {
@@ -156,7 +164,25 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
         let cwd = ProcessInspector.cwd(of: shellPid) ?? currentDirectory
         let fg = runningCommand
         let pgid = ProcessInspector.foregroundGroup(ptyFD: view.process.childfd).flatMap { $0 == shellPid ? nil : $0 }
-        let newAgent = claude.update(foregroundPGID: pgid, terminalTitle: shellTitle)
+        // A tmux client in front: follow the pane it shows instead (its own foreground
+        // group and the title its program set), and remember the session.
+        var claudeGroup = pgid
+        var title = shellTitle
+        var newTmux: TmuxSessionRef?
+        if let pgid, ProcessInspector.name(of: pgid) == "tmux",
+           let tty = ProcessInspector.ttyName(ptyMaster: view.process.childfd) {
+            tmux.refresh(clientPID: pgid, clientTTY: tty)
+            claudeGroup = nil
+            if let pane = tmux.pane {
+                newTmux = TmuxSessionRef(session: pane.session, socketArgs: tmux.socketArgs)
+                claudeGroup = ProcessInspector.terminalForegroundGroup(of: pane.panePID) ?? pane.panePID
+                title = pane.title
+            }
+        } else {
+            tmux.reset()
+        }
+        let newAgent = claude.update(foregroundPGID: claudeGroup, terminalTitle: title, titleNeedsRecord: claudeGroup != pgid)
+        if newAgent != nil { lastAgentPID = claude.pid }
         let newCommand = Self.describeCommand(leader: pgid, shell: shellPath)
         if newCommand != commandLine {
             commandLine = newCommand
@@ -164,11 +190,12 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
         }
         // Always report the first poll: a tab that starts in its folder and whose shell
         // never sets a title would otherwise keep the placeholder name.
-        if !reportedOnce || cwd != currentDirectory || fg != foregroundProcess || newAgent != agent {
+        if !reportedOnce || cwd != currentDirectory || fg != foregroundProcess || newAgent != agent || newTmux != tmuxSession {
             reportedOnce = true
             currentDirectory = cwd
             foregroundProcess = fg
             agent = newAgent
+            tmuxSession = newTmux
             onChange?(self)
         }
     }

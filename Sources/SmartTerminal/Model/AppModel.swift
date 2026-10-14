@@ -189,6 +189,8 @@ final class AppModel {
         sessions.terminate(tabID)
         clearIndicators(tabID)
         agents[tabID] = nil
+        liveTmux[tabID] = nil
+        tmuxAlive[tabID] = nil
         titleBars[tabID] = nil
         update(wid) { $0.removeTab(tabID) }
         if window(wid)?.isEmpty == true { closeIfEmptied(wid) }
@@ -367,7 +369,8 @@ final class AppModel {
         if titleBars[tabID] != info { titleBars[tabID] = info }
     }
 
-    func agentUpdated(tabID: UUID, agent: AgentSnapshot?, ref: AgentSessionRef?) {
+    func agentUpdated(tabID: UUID, agent: AgentSnapshot?, ref: AgentSessionRef?,
+                      agentStillRunning: Bool = false, tmux: TmuxSessionRef? = nil) {
         let previous = agents[tabID]
         if previous != agent {
             if previous?.status != agent?.status {
@@ -376,13 +379,28 @@ final class AppModel {
             agents[tabID] = agent
             if let agent, previous?.status != agent.status { agentStatusChanged(tabID, from: previous?.status, to: agent) }
         }
+        let previousTmux = liveTmux[tabID]
+        if previousTmux != tmux { liveTmux[tabID] = tmux }
         guard let wid = windowID(containingTab: tabID), let tab = window(wid)?.tab(tabID) else { return }
-        if let ref, tab.agentSession != ref {
-            update(wid) { $0.updateTab(tabID) { $0.agentSession = ref } }
-        } else if agent == nil, previous != nil, tab.agentSession != nil {
+        var agentSession = tab.agentSession
+        var tmuxSession = tab.tmuxSession
+        if let tmux {
+            tmuxSession = tmux
+        } else if previousTmux != nil {
+            // Detached, or tmux exited, while we watched. A Claude inside lives on in
+            // the tmux server (or is gone with it): either way not this tab's to resume.
+            tmuxSession = nil
+            agentSession = nil
+        }
+        if let ref {
+            agentSession = ref
+        } else if agent == nil, previous != nil, !agentStillRunning {
             // Claude exited while we watched (/exit, ^C): nothing left to resume.
             // A quit or crash never gets here, so the reference survives for the next launch.
-            update(wid) { $0.updateTab(tabID) { $0.agentSession = nil } }
+            agentSession = nil
+        }
+        if agentSession != tab.agentSession || tmuxSession != tab.tmuxSession {
+            update(wid) { $0.updateTab(tabID) { $0.agentSession = agentSession; $0.tmuxSession = tmuxSession } }
         }
     }
 
@@ -418,25 +436,36 @@ final class AppModel {
 
     /// Tabs where a resume was just typed; hides the offer until Claude shows up.
     private(set) var resumeLaunched: Set<UUID> = []
+    /// Per tab, the tmux session its client is showing right now.
+    private(set) var liveTmux: [UUID: TmuxSessionRef] = [:]
+    /// `tmux has-session`, asked once per tab while its offer is up (views read it while drawing).
+    @ObservationIgnored private var tmuxAlive: [UUID: Bool] = [:]
 
-    /// A Claude session that ran in this tab before the app restarted.
-    func resumableSession(_ tabID: UUID) -> AgentSessionRef? {
-        guard agents[tabID] == nil, !resumeLaunched.contains(tabID),
-              let wid = windowID(containingTab: tabID) else { return nil }
-        return window(wid)?.tab(tabID)?.agentSession
+    /// What this tab was running before the app restarted: a Claude session to resume,
+    /// or a tmux session to re-attach (or recreate, with Claude resumed inside).
+    func recovery(_ tabID: UUID) -> TabRecovery? {
+        guard agents[tabID] == nil, liveTmux[tabID] == nil, !resumeLaunched.contains(tabID),
+              let wid = windowID(containingTab: tabID), let tab = window(wid)?.tab(tabID) else { return nil }
+        return TabRecovery.make(agent: tab.agentSession, tmux: tab.tmuxSession) { ref in
+            if let known = tmuxAlive[tabID] { return known }
+            let alive = TmuxProbe.hasSession(ref)
+            tmuxAlive[tabID] = alive
+            return alive
+        }
     }
 
     func resumeAgent(_ tabID: UUID) {
-        guard let ref = resumableSession(tabID), let wid = windowID(containingTab: tabID),
+        guard let recovery = recovery(tabID), let wid = windowID(containingTab: tabID),
               let tab = window(wid)?.tab(tabID) else { return }
         resumeLaunched.insert(tabID)
+        tmuxAlive[tabID] = nil
         let session = sessions.session(for: tabID, cwd: tab.cwd)
-        session.view.send(txt: ref.resumeCommand + "\r") // the shell buffers it until its prompt is up
+        session.view.send(txt: recovery.command(cwd: tab.cwd) + "\r") // the shell buffers it until its prompt is up
     }
 
     func dismissResume(_ tabID: UUID) {
         guard let wid = windowID(containingTab: tabID) else { return }
-        update(wid) { $0.updateTab(tabID) { $0.agentSession = nil } }
+        update(wid) { $0.updateTab(tabID) { $0.agentSession = nil; $0.tmuxSession = nil } }
     }
 
     func markAttention(_ tabID: UUID, force: Bool = false) {

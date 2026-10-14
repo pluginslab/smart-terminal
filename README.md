@@ -94,6 +94,19 @@ running Claude comes back with a bar: *Claude session "…" was running here.*
 **Resume** (`⌘⇧R`) runs `claude --resume <id>` with the flags the session was started
 with. If you exit Claude yourself, the tab forgets the session.
 
+**Claude inside tmux** works the same way. Smart Terminal asks tmux which pane the
+tab's client is showing and follows the Claude running there: the tab's name and
+status, notifications and the sidebar all work. After a restart the tab offers to get
+back into its tmux session:
+
+- **Reattach** if the tmux server still has the session. Claude never stopped, so
+  nothing is resumed.
+- **Resume in tmux** if the session is gone (after a reboot, say). The session is
+  recreated in Claude's folder, `claude --resume <id>` is typed into it, and the tab
+  attaches.
+
+Detach (`prefix d`) yourself and the tab forgets the tmux session.
+
 ### Sidebar: Claude Code
 
 The sidebar's second pane (the asterisk at its top) shows the Claude Code session in
@@ -182,6 +195,10 @@ anything:
   `waitingFor`, such as a permission prompt). The process group in the foreground of a
   tab's terminal *is* that pid, so detection is exact. The file is read about once a
   second, and only while a program other than the shell is in front.
+- **tmux**, when a tmux client is in front of a tab: `tmux display-message` says which
+  pane the client shows, and that pane's foreground process group is followed instead,
+  with the title its program set. A wrapper such as `zsh -c 'claude …'` leads that
+  group, so Claude is looked for among the leader's children too.
 - **The session transcript** (`~/.claude/projects/…/<session-id>.jsonl`), for the
   `custom-title`, `ai-title`, `last-prompt` and `pr-link` entries. Transcripts reach
   tens of megabytes, so they are never read whole. The app scans backwards from the end
@@ -232,8 +249,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). The design notes and the build log are i
 
 ## Limitations
 
-- **Claude inside tmux is not detected yet.** The tab's foreground process is the
-  tmux client, so Claude's status and title don't reach it.
 - **`⌃←` `⌃→` are taken by macOS** for switching Spaces by default. Turn off *Move
   left/right a space* in System Settings → Keyboard → Keyboard Shortcuts → Mission
   Control, or use `⌃⌥←` `⌃⌥→`.

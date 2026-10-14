@@ -31,12 +31,15 @@ final class ClaudeWatcher {
     private var lastLookup = Date.distantPast
 
     /// Returns the snapshot for the foreground process group, or nil when it is not Claude.
-    func update(foregroundPGID: pid_t?, terminalTitle: String?) -> AgentSnapshot? {
-        let osc = terminalTitle.flatMap(ClaudeTitle.parse)
+    /// `titleNeedsRecord`: the title alone doesn't prove Claude is running (tmux keeps a
+    /// pane's title after its program exits).
+    func update(foregroundPGID: pid_t?, terminalTitle: String?, titleNeedsRecord: Bool = false) -> AgentSnapshot? {
         guard let pgid = foregroundPGID else { reset(); return nil }
-        if pgid != pid { reset(); pid = pgid; arguments = ProcessInspector.arguments(of: pgid) ?? [] }
+        let claudePID = Self.claudeProcess(inGroup: pgid)
+        if claudePID != pid { reset(); pid = claudePID; arguments = ProcessInspector.arguments(of: claudePID) ?? [] }
 
-        record = readRecord(pid: pgid)
+        record = readRecord(pid: claudePID)
+        let osc = titleNeedsRecord && record == nil ? nil : terminalTitle.flatMap(ClaudeTitle.parse)
         guard record != nil || osc != nil else { return nil }
 
         if let rec = record {
@@ -66,6 +69,16 @@ final class ClaudeWatcher {
     }
 
     private func readRecord(pid: pid_t) -> ClaudeSessionRecord? { Self.sessionRecord(pid: pid) }
+
+    /// The Claude process of a foreground group: usually its leader, but a wrapper
+    /// (`zsh -c 'claude …; exec bash'`, as tmux panes often run) leads the group with
+    /// Claude as its child.
+    static func claudeProcess(inGroup pgid: pid_t) -> pid_t {
+        let sessions = claudeDir.appendingPathComponent("sessions")
+        func hasRecord(_ p: pid_t) -> Bool { FileManager.default.fileExists(atPath: sessions.appendingPathComponent("\(p).json").path) }
+        if hasRecord(pgid) { return pgid }
+        return ProcessInspector.children(of: pgid).first { getpgid($0) == pgid && hasRecord($0) } ?? pgid
+    }
 
     /// `~/.claude/sessions/<pid>.json`, if that pid is a live Claude Code session.
     static func sessionRecord(pid: pid_t) -> ClaudeSessionRecord? {

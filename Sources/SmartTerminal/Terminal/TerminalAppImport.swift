@@ -181,24 +181,7 @@ enum TerminalAppImport {
     // MARK: - Helpers
 
     @discardableResult
-    static func run(_ path: String, _ args: [String]) -> String? {
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: path)
-        p.arguments = args
-        let pipe = Pipe()
-        p.standardOutput = pipe
-        p.standardError = Pipe()
-        do { try p.run() } catch { return nil }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        p.waitUntilExit()
-        guard p.terminationStatus == 0 else { return nil }
-        return String(decoding: data, as: UTF8.self)
-    }
+    static func run(_ path: String, _ args: [String]) -> String? { Shell.run(path, args) }
 
-    /// GUI apps get a minimal PATH; look in the usual places.
-    static func which(_ tool: String) -> String? {
-        ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"]
-            .map { "\($0)/\(tool)" }
-            .first { FileManager.default.isExecutableFile(atPath: $0) }
-    }
+    static func which(_ tool: String) -> String? { Shell.which(tool) }
 }
