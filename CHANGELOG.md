@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.8.0] - 2026-10-14
+- New app icon: a dark terminal slab with a `>` prompt and an orange asterisk cursor, with three tab-group bars along its top. Generated with Nano Banana Pro (`scripts/gen-icon-art.py`, prompt `a2-slab-tabs`, then cropped tighter).
+- Claude Code inside tmux: when a tmux client is in front of a tab, Smart Terminal asks tmux which pane it shows (`display-message -c <tty>`, at most once a second, off the main thread) and follows the Claude in that pane. Tab name and status, notifications, the Dock badge and the sidebar's Claude pane all work. A client started with `-L`/`-S` asks that server.
+- Claude started through a wrapper (`zsh -c 'claude …; exec bash -l'`, as tmux panes often run it) is found too. The wrapper leads the foreground group, so Claude is looked for among its children.
+- Recovery for tmux tabs. The tab remembers the tmux session it was attached to, and after a restart offers **Reattach** if the server still has it (Claude inside never stopped) or **Resume in tmux** if it's gone: the session is recreated in Claude's folder, `claude --resume` is typed into it, and the tab attaches. Detaching yourself forgets the session.
+- Saved Claude sessions remember Claude's folder (`--resume` only finds a session from its own project folder).
+- A Claude that is still running but no longer in front (suspended, or in another tmux window) keeps its resume offer.
+- Fix: the resume bar was see-through in translucent windows.
+- Debug `state` lists each tab's saved Claude and tmux sessions and its recovery offer.
+
 ## [0.7.0] - 2026-09-25
 - Sidebar panes: icons in the sidebar's header row switch between Clipboard and Claude Code, like Xcode's inspector tabs. The pane's title (and the clipboard's count and Clear) share that row. A copy arriving while another pane is showing puts a dot on the clipboard icon.
 - Claude Code pane, following the current tab:
