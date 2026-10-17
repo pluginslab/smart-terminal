@@ -132,7 +132,11 @@ final class AppModel {
     // MARK: - Windows
 
     /// Makes sure there is at least one window with one tab; opens all windows.
+    /// With none left open at quit, the last one closed comes back.
     func restoreOrCreate() {
+        if layout.windows.isEmpty, layout.closedWindows.isEmpty == false {
+            mutate { _ = $0.reopenClosedWindow() }
+        }
         if layout.windows.isEmpty { _ = newWindow(open: false) }
         for w in layout.windows { windows?.openWindow(for: w.id) }
     }
@@ -146,11 +150,19 @@ final class AppModel {
         return w.id
     }
 
-    /// The user closed a window: kill its sessions and forget it.
+    /// The user closed a window: kill its sessions and keep it for Reopen Closed Window.
     func windowClosedByUser(_ windowID: UUID) {
         guard let w = window(windowID) else { return }
         w.tabs.forEach { sessions.terminate($0.id) }
-        mutate { $0.removeWindow(windowID) }
+        mutate { $0.closeWindow(windowID) }
+    }
+
+    var canReopenClosedWindow: Bool { !layout.closedWindows.isEmpty }
+
+    func reopenClosedWindow() {
+        var id: UUID?
+        mutate { id = $0.reopenClosedWindow() }
+        if let id { windows?.openWindow(for: id) }
     }
 
     func setFrame(_ frame: WindowFrame, for windowID: UUID) {
@@ -462,6 +474,11 @@ final class AppModel {
         let session = sessions.session(for: tabID, cwd: tab.cwd)
         session.view.send(txt: recovery.command(cwd: tab.cwd) + "\r") // the shell buffers it until its prompt is up
     }
+
+    /// Every tab, in every window, that offers to resume or reattach.
+    var recoverableTabs: [UUID] { layout.windows.flatMap(\.tabs).map(\.id).filter { recovery($0) != nil } }
+
+    func resumeAll() { recoverableTabs.forEach(resumeAgent) }
 
     func dismissResume(_ tabID: UUID) {
         guard let wid = windowID(containingTab: tabID) else { return }

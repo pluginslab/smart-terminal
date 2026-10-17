@@ -39,6 +39,8 @@ enum MainMenu {
         _ = submenu("Shell", [
             item("New Tab", #selector(AppDelegate.newTab(_:)), "t"),
             item("New Window", #selector(AppDelegate.newWindow(_:)), "n"),
+            item("Reopen Closed Window", #selector(AppDelegate.reopenClosedWindow(_:)), "t", [.command, .shift]),
+            item("Resume All Sessions", #selector(AppDelegate.resumeAllSessions(_:))),
             .separator(),
             item("Import Tabs from Terminal.app…", #selector(AppDelegate.importFromTerminal(_:))),
             .separator(),

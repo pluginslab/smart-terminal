@@ -4,12 +4,28 @@ import Foundation
 public struct AppLayout: Codable, Hashable, Sendable {
     public static let currentVersion = 1
 
+    /// Windows kept after the user closed them, most recent last, so they can be
+    /// reopened (and closing the last window doesn't throw the layout away).
+    public static let closedWindowLimit = 10
+
     public var version: Int
     public var windows: [WindowLayout]
+    public var closedWindows: [WindowLayout]
 
-    public init(windows: [WindowLayout] = []) {
+    public init(windows: [WindowLayout] = [], closedWindows: [WindowLayout] = []) {
         self.version = Self.currentVersion
         self.windows = windows
+        self.closedWindows = closedWindows
+    }
+
+    private enum CodingKeys: String, CodingKey { case version, windows, closedWindows }
+
+    // `closedWindows` is optional so layouts saved before it existed still load.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.version = try c.decode(Int.self, forKey: .version)
+        self.windows = try c.decode([WindowLayout].self, forKey: .windows)
+        self.closedWindows = try c.decodeIfPresent([WindowLayout].self, forKey: .closedWindows) ?? []
     }
 
     public func windowIndex(_ id: UUID) -> Int? { windows.firstIndex { $0.id == id } }
@@ -80,5 +96,21 @@ public struct AppLayout: Codable, Hashable, Sendable {
 
     public mutating func removeWindow(_ id: UUID) {
         windows.removeAll { $0.id == id }
+    }
+
+    /// Removes a window the user closed, keeping it for `reopenClosedWindow()`.
+    public mutating func closeWindow(_ id: UUID) {
+        guard let i = windowIndex(id) else { return }
+        let w = windows.remove(at: i)
+        guard !w.isEmpty else { return }
+        closedWindows.append(w)
+        if closedWindows.count > Self.closedWindowLimit { closedWindows.removeFirst() }
+    }
+
+    /// Brings back the most recently closed window. Returns its id.
+    public mutating func reopenClosedWindow() -> UUID? {
+        guard let w = closedWindows.popLast() else { return nil }
+        windows.append(w)
+        return w.id
     }
 }

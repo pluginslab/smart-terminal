@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1] - 2026-10-17
+- Closing a window no longer throws its tabs away. It's kept (the last 10 closed), and **Shell → Reopen Closed Window** (`⌘⇧T`) brings it back with its tabs, groups, names and saved Claude and tmux sessions. Before, closing the last window and then quitting saved an empty layout, so the next launch started from one fresh tab.
+- Quitting with no window open brings back the last window you closed at the next launch.
+- **Shell → Resume All Sessions**: every tab offering Resume, Reattach or Resume in tmux takes it at once, in every window. Handy after a restart with many Claude tabs.
+- A save that drops a window first copies the file on disk to `layout.json.prev`, so a layout lost by mistake can be put back by hand.
+- Debug command `resumeAll`.
+
 ## [0.8.0] - 2026-10-14
 - New app icon: a dark terminal slab with a `>` prompt and an orange asterisk cursor, with three tab-group bars along its top. Drawn as SVG (`Resources/AppIcon.svg`) after a Nano Banana Pro concept (`scripts/gen-icon-art.py`), rendered by `scripts/render-icon.sh`.
 - Claude Code inside tmux: when a tmux client is in front of a tab, Smart Terminal asks tmux which pane it shows (`display-message -c <tty>`, at most once a second, off the main thread) and follows the Claude in that pane. Tab name and status, notifications, the Dock badge and the sidebar's Claude pane all work. A client started with `-L`/`-S` asks that server.

@@ -91,6 +91,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         model.newWindow(cwd: cwd)
     }
 
+    @objc func reopenClosedWindow(_ sender: Any?) { model.reopenClosedWindow() }
+
+    @objc func resumeAllSessions(_ sender: Any?) { model.resumeAll() }
+
     static let repoURL = URL(string: "https://github.com/pluginslab/smart-terminal")!
 
     @objc func showAbout(_ sender: Any?) {
@@ -235,6 +239,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
             return wid != nil
         case #selector(closeTab(_:)), #selector(closeWindow(_:)):
             return NSApp.keyWindow != nil
+        case #selector(reopenClosedWindow(_:)):
+            return model.canReopenClosedWindow
+        case #selector(resumeAllSessions(_:)):
+            return !model.recoverableTabs.isEmpty
         case #selector(renameTab(_:)), #selector(groupActiveTab(_:)), #selector(clearScrollback(_:)):
             return tab != nil
         case #selector(removeActiveTabFromGroup(_:)), #selector(toggleActiveGroup(_:)):

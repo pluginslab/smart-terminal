@@ -267,6 +267,8 @@ final class DebugChannel {
                     DebugLog.write("import done tabs=\(r.tabs) handedOver=\(r.handedOver) tmux=\(r.tmux) failed=\(r.failed)")
                 }
             }
+        case "resumeAll":
+            model.resumeAll()
         case "quit":
             NSApp.terminate(nil)
         default:

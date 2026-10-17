@@ -59,6 +59,8 @@ open tabs over (see [below](#import-from-terminalapp)).
 | Switch tabs | `⌘1`…`⌘8`, `⌘9` for the last, `⌃Tab` / `⌃⇧Tab`, `⌘⇧]` / `⌘⇧[` |
 | Move a tab or group to a new window | drag it onto the desktop, or right-click → *Move to New Window* |
 | New window, close tab, close window | `⌘N`, `⌘W`, `⌘⇧W` |
+| Reopen a closed window (its tabs and groups) | `⌘⇧T` |
+| Resume every Claude and tmux session after a restart | *Shell → Resume All Sessions* |
 | Font size, clear, find | `⌘+` `⌘-` `⌘0`, `⌘K`, `⌘F` |
 
 **Dragging.** Where you drop a tab decides its group, the same way Chrome does:
@@ -183,7 +185,9 @@ profile can't be read, it falls back to a built-in dark or light theme.
 
 Your windows, groups (name, color, collapsed state), tab order, custom names and each
 tab's working folder are saved and restored at launch. Shells restart in the folder
-they were in.
+they were in. A window you close is kept too (the last 10): `⌘⇧T` reopens it, and if
+you quit with no window open, the last one you closed comes back at the next launch.
+A save that drops a window first copies the previous layout to `layout.json.prev`.
 
 ## How it works
 

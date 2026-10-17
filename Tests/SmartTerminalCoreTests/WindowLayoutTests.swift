@@ -306,6 +306,49 @@ func render(_ w: WindowLayout) -> String {
         #expect(store.load() == nil)
         #expect(FileManager.default.fileExists(atPath: store.url.path + ".corrupt"))
     }
+
+    @Test func closedWindowIsKeptAndReopened() {
+        let (w1, _, _) = make("a b")
+        let (w2, _, _) = make("c")
+        var app = AppLayout(windows: [w1, w2])
+        app.closeWindow(w1.id)
+        app.closeWindow(w2.id)
+        #expect(app.windows.isEmpty)
+        #expect(app.reopenClosedWindow() == w2.id) // most recent first
+        #expect(app.reopenClosedWindow() == w1.id)
+        #expect(app.reopenClosedWindow() == nil)
+        #expect(app.windows == [w2, w1])
+    }
+
+    @Test func closedWindowsAreCapped() {
+        var app = AppLayout()
+        for _ in 0..<(AppLayout.closedWindowLimit + 3) {
+            let (w, _, _) = make("a")
+            app.windows.append(w)
+            app.closeWindow(w.id)
+        }
+        #expect(app.closedWindows.count == AppLayout.closedWindowLimit)
+    }
+
+    @Test func layoutWithOnlyClosedWindowsStillLoads() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = LayoutStore(url: dir.appendingPathComponent("layout.json"))
+        let (w, _, _) = make("a")
+        var app = AppLayout(windows: [w])
+        try store.save(app)
+        app.closeWindow(w.id)
+        try store.save(app)
+        #expect(store.load()?.closedWindows == [w])
+        // The save that dropped the window left the previous file next to it.
+        let prev = try JSONDecoder().decode(AppLayout.self, from: Data(contentsOf: store.backupURL))
+        #expect(prev.windows == [w])
+    }
+
+    @Test func layoutWithoutClosedWindowsKeyDecodes() throws {
+        let json = #"{"version":1,"windows":[]}"#
+        let app = try JSONDecoder().decode(AppLayout.self, from: Data(json.utf8))
+        #expect(app.closedWindows.isEmpty)
+    }
 }
 
 /// Throws random operations at a multi-window layout and checks invariants after each.
