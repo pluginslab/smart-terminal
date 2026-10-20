@@ -3,7 +3,7 @@ import SmartTerminalCore
 
 /// Asks tmux which pane the client running in a tab is showing, so Claude inside
 /// tmux is followed like Claude in the tab itself. At most one
-/// `tmux display-message` a second, off the main thread; `onAnswer` fires when
+/// `tmux list-clients` a second, off the main thread; `onAnswer` fires when
 /// the pane changes.
 @MainActor
 final class TmuxProbe {
@@ -24,9 +24,9 @@ final class TmuxProbe {
         guard !inFlight, Date().timeIntervalSince(lastAsked) > 0.9, let tmux = Shell.which("tmux") else { return }
         inFlight = true
         lastAsked = Date()
-        let args = socketArgs + ["display-message", "-p", "-c", clientTTY, TmuxPane.format]
+        let args = socketArgs + ["list-clients", "-F", TmuxPane.format]
         Task.detached(priority: .utility) {
-            let answer = Shell.run(tmux, args).flatMap(TmuxPane.parse)
+            let answer = Shell.run(tmux, args).flatMap { TmuxPane.parse($0, clientTTY: clientTTY) }
             await MainActor.run { [weak self] in self?.received(answer, from: clientPID) }
         }
     }

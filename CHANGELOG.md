@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.2] - 2026-10-20
+- Fix: with several tabs attached to different tmux sessions, they all followed the same pane (whichever tmux client was used last), so one Claude working made every tmux tab animate, and they all saved that one session for Reattach. Each tab now finds its own client in `tmux list-clients` by its tty. `display-message -c <tty>` was the culprit: without `-t` it describes tmux's most recently active client, whatever tty is named. Tabs saved with the wrong session correct themselves on the next poll.
+
 ## [0.8.1] - 2026-10-17
 - Closing a window no longer throws its tabs away. It's kept (the last 10 closed), and **Shell → Reopen Closed Window** (`⌘⇧T`) brings it back with its tabs, groups, names and saved Claude and tmux sessions. Before, closing the last window and then quitting saved an empty layout, so the next launch started from one fresh tab.
 - Quitting with no window open brings back the last window you closed at the next launch.

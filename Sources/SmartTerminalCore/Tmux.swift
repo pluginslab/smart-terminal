@@ -1,6 +1,6 @@
 import Foundation
 
-/// The pane a tmux client is showing, from `tmux display-message -p -c <client tty>`.
+/// The pane a tmux client is showing, from `tmux list-clients` (the row for that client's tty).
 public struct TmuxPane: Equatable, Sendable {
     public var session: String
     public var paneID: String
@@ -13,14 +13,20 @@ public struct TmuxPane: Equatable, Sendable {
         self.session = session; self.paneID = paneID; self.panePID = panePID; self.title = title
     }
 
-    /// Fields for `display-message -p`, tab-separated; parsed by `parse`.
-    public static let format = "#{session_name}\t#{pane_id}\t#{pane_pid}\t#{pane_title}"
+    /// Fields for `list-clients -F`, tab-separated, one line per client; parsed by `parse`.
+    /// Not `display-message -c <tty>`: without `-t` its formats describe tmux's most
+    /// recently active client, whichever tty is named, so every tab saw the same pane.
+    public static let format = "#{client_tty}\t#{session_name}\t#{pane_id}\t#{pane_pid}\t#{pane_title}"
 
-    public static func parse(_ output: String) -> TmuxPane? {
-        let line = output.split(separator: "\n", omittingEmptySubsequences: true).first.map(String.init) ?? ""
-        let f = line.split(separator: "\t", maxSplits: 3, omittingEmptySubsequences: false).map(String.init)
-        guard f.count >= 3, !f[0].isEmpty, let pid = Int32(f[2]), pid > 0 else { return nil }
-        return TmuxPane(session: f[0], paneID: f[1], panePID: pid, title: f.count > 3 ? f[3] : "")
+    /// The pane shown by the client on `clientTTY` (e.g. "/dev/ttys012").
+    public static func parse(_ output: String, clientTTY: String) -> TmuxPane? {
+        for line in output.split(separator: "\n", omittingEmptySubsequences: true) {
+            let f = line.split(separator: "\t", maxSplits: 4, omittingEmptySubsequences: false).map(String.init)
+            guard f.count >= 4, f[0] == clientTTY else { continue }
+            guard !f[1].isEmpty, let pid = Int32(f[3]), pid > 0 else { return nil }
+            return TmuxPane(session: f[1], paneID: f[2], panePID: pid, title: f.count > 4 ? f[4] : "")
+        }
+        return nil
     }
 }
 

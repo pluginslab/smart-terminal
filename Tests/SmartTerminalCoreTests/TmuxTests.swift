@@ -3,14 +3,18 @@ import Testing
 @testable import SmartTerminalCore
 
 @Suite struct TmuxTests {
-    @Test func parsesDisplayMessage() {
-        let pane = TmuxPane.parse("lucas-acme\t%5\t38553\t✳ Add Stripe webhook retries\n")
-        #expect(pane == TmuxPane(session: "lucas-acme", paneID: "%5", panePID: 38553, title: "✳ Add Stripe webhook retries"))
+    @Test func parsesListClients() {
+        let out = "/dev/ttys018\tlucas-xystra\t%9\t22293\t◐ Xystra build\n"
+            + "/dev/ttys012\tlucas-acme\t%5\t38553\t✳ Add Stripe webhook retries\n"
+        // The row for this tab's client, not the first (most recently active) one.
+        #expect(TmuxPane.parse(out, clientTTY: "/dev/ttys012")
+            == TmuxPane(session: "lucas-acme", paneID: "%5", panePID: 38553, title: "✳ Add Stripe webhook retries"))
+        #expect(TmuxPane.parse(out, clientTTY: "/dev/ttys001") == nil)
         // A title can contain tabs; it's the last field.
-        #expect(TmuxPane.parse("s\t%1\t42\ta\tb")?.title == "a\tb")
-        #expect(TmuxPane.parse("s\t%1\t42")?.title == "")
-        #expect(TmuxPane.parse("") == nil)
-        #expect(TmuxPane.parse("s\t%1\tnot-a-pid\tx") == nil)
+        #expect(TmuxPane.parse("t\ts\t%1\t42\ta\tb", clientTTY: "t")?.title == "a\tb")
+        #expect(TmuxPane.parse("t\ts\t%1\t42", clientTTY: "t")?.title == "")
+        #expect(TmuxPane.parse("", clientTTY: "t") == nil)
+        #expect(TmuxPane.parse("t\ts\t%1\tnot-a-pid\tx", clientTTY: "t") == nil)
     }
 
     @Test func socketArgsFromClientCommandLine() {

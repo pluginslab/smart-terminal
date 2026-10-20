@@ -51,7 +51,7 @@ Useful context if you are assessing risk.
 - Your login shell (`$SHELL`) in each tab.
 - `claude --resume <id> [original flags]`, typed into a tab's shell, only when you press
   **Resume** or during an import you started.
-- `tmux display-message -p -c <tab's tty>`, at most once a second while a tmux client is
+- `tmux list-clients -F …`, at most once a second while a tmux client is
   in front of a tab, to learn which pane it shows; `tmux has-session` once for a tab
   whose saved tmux session it offers to re-attach.
 - `tmux attach`, or `tmux new-session` + `tmux send-keys` (with the resume command)

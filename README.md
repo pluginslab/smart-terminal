@@ -199,7 +199,7 @@ anything:
   `waitingFor`, such as a permission prompt). The process group in the foreground of a
   tab's terminal *is* that pid, so detection is exact. The file is read about once a
   second, and only while a program other than the shell is in front.
-- **tmux**, when a tmux client is in front of a tab: `tmux display-message` says which
+- **tmux**, when a tmux client is in front of a tab: `tmux list-clients`, matched by the tab's tty, says which
   pane the client shows, and that pane's foreground process group is followed instead,
   with the title its program set. A wrapper such as `zsh -c 'claude …'` leads that
   group, so Claude is looked for among the leader's children too.
