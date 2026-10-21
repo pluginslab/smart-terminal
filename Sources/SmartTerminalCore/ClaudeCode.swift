@@ -190,7 +190,7 @@ public struct ClaudeUsage: Sendable {
 
     /// Cheap prefilter; only these lines are decoded.
     static let markers = ["\"assistant\"", "\"user\"", "\"turn_duration\"", "\"local_command\"",
-                          "\"queue-operation\"", "\"queued_command\""]
+                          "\"queue-operation\"", "\"queued_command\"", "\"compact_boundary\""]
 
     public mutating func ingest(line: some StringProtocol) {
         guard Self.markers.contains(where: { line.contains($0) }),
@@ -257,6 +257,12 @@ public struct ClaudeUsage: Sendable {
                 if let ms = obj["durationMs"] as? Double { lastTurnDuration = ms / 1000 }
             case "local_command":
                 if let text = obj["content"] as? String, let w = Self.window(inCommandOutput: text) { declaredWindow = w }
+            case "compact_boundary":
+                // /compact (or auto-compact) shrank the context; the next reply would only
+                // say so once you send another prompt. The peak stays: same model, same window.
+                if let meta = obj["compactMetadata"] as? [String: Any], let post = meta["postTokens"] as? Int, post > 0 {
+                    contextTokens = post
+                }
             default:
                 break
             }

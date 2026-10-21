@@ -59,6 +59,18 @@ import Testing
         #expect(u.model == "claude-opus-5-5")
     }
 
+    @Test func compactionShrinksContextRightAway() {
+        var u = ClaudeUsage()
+        u.ingest(line: #"{"type":"assistant","message":{"id":"m1","usage":{"input_tokens":2,"cache_read_input_tokens":374769}}}"#)
+        #expect(u.contextTokens == 374_771)
+        u.ingest(line: #"{"type":"system","subtype":"compact_boundary","compactMetadata":{"trigger":"manual","preTokens":374771,"postTokens":19748}}"#)
+        #expect(u.contextTokens == 19_748)
+        #expect(u.contextWindow == (1_000_000, .observed)) // still the model that went past 200k
+        // A subagent's compaction is not the main conversation's.
+        u.ingest(line: #"{"type":"system","subtype":"compact_boundary","isSidechain":true,"compactMetadata":{"postTokens":5}}"#)
+        #expect(u.contextTokens == 19_748)
+    }
+
     @Test func usageCountsOnlyTypedPrompts() {
         var u = ClaudeUsage()
         let lines = [

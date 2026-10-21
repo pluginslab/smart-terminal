@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.8.3] - 2026-10-21
+- Fix: after `/compact` (or auto-compaction) the sidebar's context ring kept the pre-compaction size until Claude's next reply. It now reads the transcript's `compact_boundary` entry and shows the compacted size straight away. A subagent's compaction doesn't move it.
+
 ## [0.8.2] - 2026-10-20
 - Fix: with several tabs attached to different tmux sessions, they all followed the same pane (whichever tmux client was used last), so one Claude working made every tmux tab animate, and they all saved that one session for Reattach. Each tab now finds its own client in `tmux list-clients` by its tty. `display-message -c <tty>` was the culprit: without `-t` it describes tmux's most recently active client, whatever tty is named. Tabs saved with the wrong session correct themselves on the next poll.
 
