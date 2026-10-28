@@ -5,7 +5,7 @@ struct WindowContentView: View {
     let windowID: UUID
     @Bindable var model: AppModel
 
-    @AppStorage(TabLayout.defaultsKey) private var tabLayout: TabLayout = .strip
+    @AppStorage(TabLayout.defaultsKey) private var tabLayout: TabLayout = .sidebar
 
     var body: some View {
         switch tabLayout {

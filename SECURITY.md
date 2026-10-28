@@ -57,6 +57,10 @@ Useful context if you are assessing risk.
 - `tmux attach`, or `tmux new-session` + `tmux send-keys` (with the resume command)
   + `tmux attach`, typed into a tab's shell, only when you press **Reattach** or
   **Resume in tmux**.
+- `git status --porcelain=v2 --branch` and `git diff --shortstat HEAD` in each tab's
+  folder, about every 4 seconds while the session list is on screen, with
+  `GIT_OPTIONAL_LOCKS=0` so they never take the index lock. Read-only; they show the
+  branch and the uncommitted diff in the tab's row.
 - During an import, and only for the tabs you checked: AppleScript that lists
   Terminal.app's tabs and types `/exit` into the Claude sessions being handed over,
   and `tmux detach-client` for tmux clients being moved.

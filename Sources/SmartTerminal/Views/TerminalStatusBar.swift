@@ -11,7 +11,10 @@ struct TerminalStatusBar: View {
     var body: some View {
         Group {
             if let tab, let agent = model.agents[tab.id] {
+                // One identity per tab: a tab switch shows the new values outright,
+                // instead of animating the ring from the previous tab's.
                 ClaudeStatusBar(agent: agent, needsYou: model.attention.contains(tab.id), title: tab.displayTitle)
+                    .id(tab.id)
             } else {
                 ShellStatusBar(cwd: tab?.cwd, info: tab.flatMap { model.titleBars[$0.id] })
             }

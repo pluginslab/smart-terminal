@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.9.0] - 2026-10-28
+- New default layout, in columns like Mail: groups on the left (*All Sessions*, each group with its tab count and an orange dot when a session in it needs you, *Ungrouped*), the group's sessions in the middle, the terminal on the right. The content runs up under a transparent title bar, with a header over each column at traffic-light height. The Chrome-style strip is still there: View → Tabs in Columns (`⌃⌘L`).
+- Each session row shows its git state: branch, ahead/behind, and the uncommitted diff as `+12 −4` (`?N` untracked, a check when clean). `git status --porcelain=v2 --branch` and `git diff --shortstat HEAD` run once per folder, every 4 s while the list is on screen, with `GIT_OPTIONAL_LOCKS=0` so they never take the index lock. Parsing lives in `SmartTerminalCore.GitStatus`, with tests.
+- The sidebar's Claude pane is replaced by a status bar under the terminal: Claude's status and running subagents on the left, model, context (ring and `232k / 1M`) and token total on the right; clicking it opens the session cards. Without Claude it shows folder, command and size, so it never appears or disappears and resizes the grid. The sidebar is now the clipboard history alone.
+- Rows and group entries in the columns are plain views with their own click handling, not `List` selection: `List`'s click handling fought the rows' drag and double-click handlers, so a click only selected when it landed just right.
+- The 0.8.4 ring fix carries over to the status bar (`.id(tab.id)`), which follows the active tab the same way the pane did.
+
+## [0.8.4] - 2026-10-21
+- Fix: switching tabs made the sidebar's context ring sweep from the previous tab's value to the new one. The Claude pane follows the active tab, so to SwiftUI a tab switch looked like the context changing. Each tab's cards now have their own identity (`.id(tab.id)`), so a switch shows the new tab's value straight away, while growth within a tab still animates.
+
 ## [0.8.3] - 2026-10-21
 - Fix: after `/compact` (or auto-compaction) the sidebar's context ring kept the pre-compaction size until Claude's next reply. It now reads the transcript's `compact_boundary` entry and shows the compacted size straight away. A subagent's compaction doesn't move it.
 

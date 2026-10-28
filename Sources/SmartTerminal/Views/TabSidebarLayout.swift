@@ -10,7 +10,7 @@ enum TabLayout: String {
     static let defaultsKey = "tabLayout"
 
     static var current: TabLayout {
-        UserDefaults.standard.string(forKey: defaultsKey).flatMap(TabLayout.init) ?? .strip
+        UserDefaults.standard.string(forKey: defaultsKey).flatMap(TabLayout.init) ?? .sidebar
     }
 }
 

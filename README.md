@@ -4,7 +4,7 @@
 
 # Smart Terminal
 
-**Terminal.app, plus Chrome-style tab groups, for people who run a lot of Claude Code.**
+**Terminal.app, with your tabs in a Mail-style sidebar of groups and sessions, for people who run a lot of Claude Code.**
 
 [![Release](https://img.shields.io/github/v/release/pluginslab/smart-terminal)](https://github.com/pluginslab/smart-terminal/releases/latest)
 [![CI](https://github.com/pluginslab/smart-terminal/actions/workflows/ci.yml/badge.svg)](https://github.com/pluginslab/smart-terminal/actions/workflows/ci.yml)
@@ -19,13 +19,15 @@ logs, two are SSH'd into servers, and five are running Claude Code. Every tab sa
 `zsh`. Somewhere a Claude session finished twenty minutes ago and has been waiting
 for you ever since.
 
-Smart Terminal keeps the Terminal.app you know (same fonts, colors and title bar) and
-adds what that setup needs. Tabs can be **renamed** and gathered into **named,
-colored, collapsible groups** that you drag around like Chrome's. Tabs running
-Claude Code **name themselves after the session**, show whether Claude is working or
-waiting, and **notify you** when one you can't see needs an answer.
+Smart Terminal keeps the Terminal.app you know (same fonts and colors) and adds what
+that setup needs. Your tabs sit in **columns, like Mail**: **named, colored groups** on
+the left, the group's **sessions** in the middle, each with its folder, **git branch and
+uncommitted diff**, and the terminal on the right. Tabs running Claude Code **name
+themselves after the session**, show whether Claude is working or waiting, and **notify
+you** when one you can't see needs an answer. A **status bar** under the terminal shows
+Claude's model, context and tokens.
 
-![Smart Terminal: tab groups (one collapsed), a Claude Code tab at work, and the sidebar's Claude pane with its subagents, context and tokens](assets/screenshot.png)
+![Smart Terminal: groups on the left, sessions with their git branch and diff in the middle, and a Claude Code session at work with its status bar](assets/screenshot.png)
 
 ## Install
 
@@ -44,17 +46,38 @@ open tabs over (see [below](#import-from-terminalapp)).
 
 ## Usage
 
+### Layout
+
+A window has three columns:
+
+- **Groups** on the left: *All Sessions*, then each group with its color and how many
+  tabs it has, then *Ungrouped*. An orange dot means a session in there needs you.
+  Double-click a group to name or recolor it, right-click for the rest, and drag
+  groups to reorder them. *New Group* at the bottom opens a tab in a new group.
+- **Sessions** in the middle: the tabs in that group, as rows. Each row shows the tab's
+  name and Claude status, then its folder with the **git branch** (`↑`/`↓` against its
+  upstream) and the **uncommitted diff** as `+12 −4` (`?3` for untracked files, a check
+  when clean), then Claude's last prompt. In *All Sessions* a stripe in the group's
+  color marks each row. Click to switch, double-click to rename, drag to reorder or
+  onto a group in the left column to move it there, or out onto the desktop for a new window.
+- **The terminal** on the right, with the session's name and folder above it and the
+  [status bar](#status-bar-claude-code) below.
+
+Prefer tabs along the top? **View → Tabs in Columns** (`⌃⌘L`) switches to a
+Chrome-style tab strip, with group chips you click to collapse. The shortcuts below
+work in both.
+
 ### Tabs and groups
 
 | Action | How |
 | --- | --- |
 | New tab (next to the current one, same group, same folder) | `⌘T` |
-| New tab in a group (at its end, in its last tab's folder) | the colored `+` after the group |
-| New tab at the end, ungrouped | `+` at the end of the strip, or double-click empty space |
+| New tab in a group (at its end, in its last tab's folder) | `+` above the session list with the group selected, or the colored `+` after the group in the strip |
+| New tab at the end, ungrouped | `+` with *All Sessions* or *Ungrouped* selected, or at the end of the strip |
 | Rename a tab | double-click it, or `⌘⇧I`. Enter saves, Esc cancels, empty restores the automatic name |
 | Put the tab in a new group, or edit its group | `⌥⌘G`, or right-click → *Add Tab to New Group* |
-| Collapse or expand a group | click its chip, or `⌥⌘C` |
-| Name, color, ungroup, close or move a group | double-click or right-click its chip |
+| Collapse or expand a group (strip) | click its chip, or `⌥⌘C` |
+| Name, color, ungroup, close or move a group | double-click or right-click it in the left column, or its chip in the strip |
 | Move a tab left or right **within its group** | `⌃←` `⌃→` (or `⌃⌥←` `⌃⌥→`, see [Limitations](#limitations)) |
 | Switch tabs | `⌘1`…`⌘8`, `⌘9` for the last, `⌃Tab` / `⌃⇧Tab`, `⌘⇧]` / `⌘⇧[` |
 | Move a tab or group to a new window | drag it onto the desktop, or right-click → *Move to New Window* |
@@ -63,7 +86,7 @@ open tabs over (see [below](#import-from-terminalapp)).
 | Resume every Claude and tmux session after a restart | *Shell → Resume All Sessions* |
 | Font size, clear, find | `⌘+` `⌘-` `⌘0`, `⌘K`, `⌘F` |
 
-**Dragging.** Where you drop a tab decides its group, the same way Chrome does:
+**Dragging in the strip.** Where you drop a tab decides its group, the same way Chrome does:
 
 - between two tabs of a group, it joins that group;
 - onto a group's chip, it goes to the end of that group;
@@ -98,7 +121,7 @@ with. If you exit Claude yourself, the tab forgets the session.
 
 **Claude inside tmux** works the same way. Smart Terminal asks tmux which pane the
 tab's client is showing and follows the Claude running there: the tab's name and
-status, notifications and the sidebar all work. After a restart the tab offers to get
+status, notifications and the status bar all work. After a restart the tab offers to get
 back into its tmux session:
 
 - **Reattach** if the tmux server still has the session. Claude never stopped, so
@@ -109,13 +132,18 @@ back into its tmux session:
 
 Detach (`prefix d`) yourself and the tab forgets the tmux session.
 
-### Sidebar: Claude Code
+### Status bar: Claude Code
 
-The sidebar's second pane (the asterisk at its top) shows the Claude Code session in
-the current tab, and follows you as you switch tabs:
+The bar under the terminal shows the Claude Code session in the current tab:
 
-- **Status:** the asterisk spins while Claude works, with a timer for the current turn.
-  It turns orange when Claude needs you, and says why (e.g. a permission prompt).
+- **Status** on the left: the asterisk spins while Claude works, with a timer for the
+  current turn. It turns orange when Claude needs you, and says why (e.g. a permission
+  prompt). Running subagents are counted next to it.
+- **Model, context and tokens** on the right: `Opus 5.5 · ◔ 232k / 1M · 10.3M tokens`.
+  Hover the tokens for the breakdown.
+
+**Click the bar** for the full session details:
+
 - **Context:** how full the context is, as a ring and a token count. Claude's replies
   don't record the context window, so it's taken from `/context` or `/model` output if
   you've run one, from a context already past 200k, or from the model the folder last
@@ -127,13 +155,16 @@ the current tab, and follows you as you switch tabs:
 - **Tokens this session:** output, input, cache reads and cache writes.
 - **Prompts** typed, how long the last turn took, when the session started, and the model.
 
+Without Claude, the bar shows the folder, the running command and the terminal size.
+It's always there, so Claude starting or quitting never resizes the terminal.
+
 It's all read from Claude Code's own session file and transcript. Each transcript is
 read once in full, in the background, and then followed as it grows.
 
 ### Sidebar: clipboard history
 
-`⌃⌘S`, or the sidebar button at the right end of the tab strip, opens a panel on the
-right. Its first tool is a clipboard history. Every copy lands there and flashes as it
+`⌃⌘S`, or the sidebar button at the top right of the window, opens a panel on the
+right with a clipboard history. Every copy lands there and flashes as it
 arrives: text (including `pbcopy` from a shell, a script or Claude Code), images
 (screenshots, *Copy Image*) and files copied in Finder, shown with a Quick Look preview. If the
 sidebar is closed, its button bounces and shows a dot instead.
@@ -155,7 +186,9 @@ Copies that password managers mark as concealed or transient (the
 
 ### The title bar
 
-The title bar follows Terminal.app's format and updates live, spinner included:
+The window title follows Terminal.app's format and updates live, spinner included. In
+the columns layout it isn't drawn (the column headers say the same), but it's what the
+Window menu and Mission Control show:
 
 ```
 API — acme-storefront — ◐ Add Stripe webhook retries — caffeinate ◂ claude — 132×38
@@ -212,6 +245,10 @@ The working/idle animation comes straight from the title Claude sets (`◐`/`◑
 busy, `✳` when idle). The working folder, command line and newest child process come
 from the kernel (`libproc`, `sysctl`), so no shell integration or rc-file changes are
 needed.
+
+The git line in each session row comes from `git status --porcelain=v2 --branch` and
+`git diff --shortstat HEAD`, run once per folder (tabs in the same repository share
+it) every few seconds while the session list is on screen.
 
 Import uses AppleScript to list Terminal.app's windows and tabs and their ttys, `ps`
 to find each tab's shell and foreground job, the Claude session file to recognise
