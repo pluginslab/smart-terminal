@@ -288,6 +288,13 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
         return NSHomeDirectory()
     }
 
+    /// The path with a leading home folder shortened to `~`, as a shell prompt shows it.
+    static func tildePath(_ path: String) -> String {
+        let home = homeDirectory
+        if path == home { return "~" }
+        return path.hasPrefix(home + "/") ? "~" + path.dropFirst(home.count) : path
+    }
+
     static func prettyFolder(_ path: String) -> String {
         if path == homeDirectory || path == "~" { return "~" }
         if path == "/" { return "/" }

@@ -119,6 +119,12 @@ st activate
 osascript -e "tell application \"System Events\" to set frontmost of (first process whose unix id is $PID) to true" >/dev/null 2>&1 || true
 sleep 0.8
 
+# DEMO_PREVIEW=<png>: the app's own snapshot instead, which needs no Screen Recording
+# permission but can't draw glass or the sidebar material. For checking the scene only.
+if [[ -n "${DEMO_PREVIEW:-}" ]]; then
+    st snapshot "$DEMO_PREVIEW"; sleep 2; ls -la "$DEMO_PREVIEW"; exit 0
+fi
+
 echo "==> capture"
 WID="$("$HELPER" windowid "$PID")"
 mkdir -p assets

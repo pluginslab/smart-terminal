@@ -41,7 +41,7 @@ struct TabSidebarLayout<Detail: View>: View {
                 .navigationSplitViewColumnWidth(min: 140, ideal: 170, max: 260)
         } content: {
             SessionList(windowID: windowID, model: model, category: resolved(category, in: window))
-                .navigationSplitViewColumnWidth(min: 180, ideal: 230, max: 400)
+                .navigationSplitViewColumnWidth(min: 220, ideal: 300, max: 440)
         } detail: {
             // The terminal wins over the lists when the window is narrow.
             VStack(spacing: 0) {
@@ -293,7 +293,7 @@ private struct DetailHeader: View {
             VStack(alignment: .leading, spacing: 1) {
                 if let tab {
                     Text(tab.displayTitle).font(.title3.weight(.bold)).lineLimit(1).truncationMode(.middle)
-                    if let cwd = tab.cwd.map({ $0.replacingOccurrences(of: NSHomeDirectory(), with: "~") }),
+                    if let cwd = tab.cwd.map(TerminalSession.tildePath),
                        cwd != tab.displayTitle {
                         Text(cwd)
                             .font(.subheadline).foregroundStyle(.secondary)

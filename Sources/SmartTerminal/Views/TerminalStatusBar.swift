@@ -37,7 +37,7 @@ private struct ShellStatusBar: View {
         HStack(spacing: 6) {
             if let cwd {
                 Image(systemName: "folder").foregroundStyle(.secondary)
-                Text(cwd.replacingOccurrences(of: NSHomeDirectory(), with: "~"))
+                Text(TerminalSession.tildePath(cwd))
                     .lineLimit(1).truncationMode(.head)
             }
             Spacer(minLength: 8)
