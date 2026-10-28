@@ -31,7 +31,11 @@ final class WindowController: NSWindowController, NSWindowDelegate {
             window.isOpaque = false
             window.backgroundColor = .clear
         }
-        window.contentView = NSHostingView(rootView: WindowContentView(windowID: windowID, model: model))
+        let host = NSHostingView(rootView: WindowContentView(windowID: windowID, model: model))
+        // No SwiftUI-made toolbar: it can't place items per split-view column, so the
+        // columns layout draws its own header under a transparent title bar instead.
+        host.sceneBridgingOptions = []
+        window.contentView = host
         window.setFrame(frame, display: false)
         if model.window(windowID)?.frame == nil {
             // Cascade from the current key window instead of stacking exactly on top.
@@ -43,6 +47,11 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         }
         super.init(window: window)
         window.delegate = self
+        applyLayoutChrome()
+        NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil,
+                                               queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.applyLayoutChrome() }
+        }
         observeTitle()
         storeFrame()
     }
@@ -66,7 +75,9 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         let info = model.titleBars[tab.id]
         let folder = tab.cwd.map(TerminalSession.prettyFolder)
         let program = info?.programTitle?.trimmingCharacters(in: .whitespaces)
-        var parts: [String?] = [group?.name, tab.customTitle]
+        // In columns mode the group is already on screen twice (sidebar and list header).
+        let columns = TabLayout.current == .sidebar
+        var parts: [String?] = [columns ? nil : group?.name, tab.customTitle]
         parts.append(folder)
         if let program, !program.isEmpty { parts.append(program) }
         else if tab.customTitle == nil, tab.autoTitle != folder { parts.append(tab.autoTitle) }
@@ -78,6 +89,19 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         if let cwd = tab.cwd, window?.representedURL?.path != cwd {
             window?.representedURL = URL(fileURLWithPath: cwd)
         }
+    }
+
+    /// Columns mode runs the content up under the title bar, as Mail does, so the
+    /// sidebar starts at the traffic lights and the column headers sit level with them.
+    private func applyLayoutChrome() {
+        guard let window else { return }
+        let columns = TabLayout.current == .sidebar
+        guard window.styleMask.contains(.fullSizeContentView) != columns else { return }
+        if columns { window.styleMask.insert(.fullSizeContentView) } else { window.styleMask.remove(.fullSizeContentView) }
+        // The title stays set (Window menu, Mission Control) but isn't drawn: the headers show it.
+        window.titlebarAppearsTransparent = columns
+        window.titleVisibility = columns ? .hidden : .visible
+        updateTitle()
     }
 
     private func storeFrame() {

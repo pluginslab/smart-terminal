@@ -5,14 +5,30 @@ struct WindowContentView: View {
     let windowID: UUID
     @Bindable var model: AppModel
 
+    @AppStorage(TabLayout.defaultsKey) private var tabLayout: TabLayout = .strip
+
     var body: some View {
+        switch tabLayout {
+        case .strip:
+            VStack(spacing: 0) {
+                // The divider is drawn on the strip's own background: as a row of its own it
+                // was a 1 pt gap that nothing painted, and in a translucent window the
+                // desktop showed through it.
+                TabStripView(windowID: windowID, model: model)
+                    .overlay(alignment: .bottom) { Divider() }
+                terminalArea
+            }
+            .frame(minWidth: 480, minHeight: 240)
+        case .sidebar:
+            TabSidebarLayout(windowID: windowID, model: model) { terminalArea }
+                .frame(minWidth: 720, minHeight: 240)
+        }
+    }
+
+    /// The resume bar, the terminal and the trailing panel: the same in both layouts.
+    @ViewBuilder private var terminalArea: some View {
         let window = model.window(windowID)
         VStack(spacing: 0) {
-            // The divider is drawn on the strip's own background: as a row of its own it
-            // was a 1 pt gap that nothing painted, and in a translucent window the
-            // desktop showed through it.
-            TabStripView(windowID: windowID, model: model)
-                .overlay(alignment: .bottom) { Divider() }
             if let tab = window?.activeTab, let recovery = model.recovery(tab.id) {
                 ResumeBar(recovery: recovery, command: recovery.command(cwd: tab.cwd),
                           resume: { model.resumeAgent(tab.id) }, dismiss: { model.dismissResume(tab.id) })
@@ -20,8 +36,11 @@ struct WindowContentView: View {
             // Always present (never inside an if/else) so SwiftUI keeps the
             // container alive and only swaps the terminal view inside it.
             HStack(spacing: 0) {
-                TerminalContainer(tab: window?.activeTab, model: model)
-                    .background(terminalBackground)
+                VStack(spacing: 0) {
+                    TerminalContainer(tab: window?.activeTab, model: model)
+                        .background(terminalBackground)
+                    TerminalStatusBar(tab: window?.activeTab, model: model)
+                }
                 if model.isSidebarOpen(windowID) {
                     SidebarPanel(windowID: windowID, model: model)
                         .transition(.move(edge: .trailing))
@@ -29,7 +48,6 @@ struct WindowContentView: View {
             }
             .animation(.snappy(duration: 0.25), value: model.isSidebarOpen(windowID))
         }
-        .frame(minWidth: 480, minHeight: 240)
     }
 
     /// The terminal paints its own (possibly translucent) background; underneath

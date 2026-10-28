@@ -84,7 +84,7 @@ struct TabStripView: View {
 
 /// Shows and hides the sidebar. While it is hidden, a new copy bounces the
 /// button and leaves a dot until the sidebar is opened (like Safari's Downloads button).
-private struct SidebarToggle: View {
+struct SidebarToggle: View {
     let windowID: UUID
     let model: AppModel
     @State private var unseen = false

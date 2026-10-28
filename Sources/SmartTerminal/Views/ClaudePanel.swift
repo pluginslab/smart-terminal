@@ -1,34 +1,6 @@
 import SwiftUI
 import SmartTerminalCore
 
-/// The sidebar's Claude pane: the Claude Code session in the window's active tab.
-/// Follows tab switches; everything comes from the session file and transcript
-/// the tab already watches.
-struct ClaudePanel: View {
-    let windowID: UUID
-    let model: AppModel
-
-    var body: some View {
-        let tab = model.window(windowID)?.activeTab
-        let agent = tab.flatMap { model.agents[$0.id] }
-        VStack(spacing: 0) {
-            if let tab, let agent {
-                ScrollView {
-                    ClaudeSessionCards(agent: agent, title: tab.displayTitle, needsYou: model.attention.contains(tab.id))
-                        .padding(10)
-                }
-            } else {
-                ContentUnavailableView {
-                    Label("No Claude Session", systemImage: "asterisk")
-                } description: {
-                    Text("Run claude in this tab to see its status, context and tokens here.")
-                }
-                .frame(maxHeight: .infinity)
-            }
-        }
-    }
-}
-
 // MARK: - Cards
 
 /// Status, context, tokens and facts for one session.

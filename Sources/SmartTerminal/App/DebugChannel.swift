@@ -61,6 +61,9 @@ final class DebugChannel {
             if let g = activeTab?.groupID { model.newTab(inGroup: g) }
         case "sidebar":
             if let w = keyWindowID { model.toggleSidebar(w) }
+        case "layout":
+            // strip | sidebar: the tab layout (View ▸ Tabs in Columns).
+            UserDefaults.standard.set(a1, forKey: TabLayout.defaultsKey)
         case "restoreClip":
             // Puts history entry N back on the clipboard, as clicking the row does.
             if let i = Int(a1), model.clipboard.entries.indices.contains(i) {
@@ -83,8 +86,12 @@ final class DebugChannel {
                     agent.usage = usage
                     agent.startedAt = Date().addingTimeInterval(-7_900)
                     if status == .waiting { agent.waitingFor = "permission prompt" }
-                    let r = ImageRenderer(content: ClaudeSessionCards(agent: agent, title: "Claude panel for the sidebar", needsYou: false)
-                        .padding(10).frame(width: 300).background(.background).environment(\.colorScheme, .dark))
+                    let r = ImageRenderer(content: VStack(spacing: 0) {
+                        ClaudeSessionCards(agent: agent, title: "Claude panel for the sidebar", needsYou: false)
+                            .padding(10).frame(width: 300)
+                        ClaudeStatusBar(agent: agent, needsYou: false)
+                            .frame(width: 760)
+                    }.background(.background).environment(\.colorScheme, .dark))
                     r.scale = 2
                     if let img = r.nsImage, let tiff = img.tiffRepresentation,
                        let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
@@ -102,9 +109,6 @@ final class DebugChannel {
             w.title = "Subagent"
             w.makeKeyAndOrderFront(nil)
             debugWindows.append(w)
-        case "pane":
-            // Switches the sidebar pane: pane clipboard|claude
-            UserDefaults.standard.set(a1, forKey: "sidebarPane")
         case "subagentPopover":
             // Opens (N = 0 is the newest) or closes (no N) a subagent's hover popover.
             let subs = activeTab.flatMap { model.agents[$0.id]?.usage?.subagents } ?? []

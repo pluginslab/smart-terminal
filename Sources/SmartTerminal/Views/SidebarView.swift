@@ -2,87 +2,35 @@ import AppKit
 import SwiftUI
 import QuickLookThumbnailing
 
-enum SidebarPane: String, CaseIterable {
-    case clipboard, claude
-
-    var title: String { self == .clipboard ? "Clipboard" : "Claude Code" }
-    var symbol: String { self == .clipboard ? "doc.on.clipboard" : "asterisk" }
-}
-
-/// The trailing panel's content: an icon bar to pick a pane, like Xcode's
-/// inspector tabs, above the pane itself.
+/// The trailing panel's content: the clipboard history. (Claude's session details
+/// moved to the status bar under the terminal.)
 struct SidebarView: View {
     let windowID: UUID
     let model: AppModel
-    @AppStorage("sidebarPane") private var pane: SidebarPane = .clipboard
-    /// A copy arrived while another pane was showing.
-    @State private var unseenClip = false
 
     var body: some View {
         VStack(spacing: 0) {
-            // One row: the pane's title (and its own controls) left, the pane icons right.
             HStack(alignment: .center, spacing: 6) {
-                Text(pane.title).font(.headline).lineLimit(1)
-                if pane == .clipboard, !model.clipboard.entries.isEmpty {
+                Text("Clipboard").font(.headline).lineLimit(1)
+                if !model.clipboard.entries.isEmpty {
                     Text("\(model.clipboard.entries.count)")
                         .font(.subheadline.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 4)
-                if pane == .clipboard, !model.clipboard.entries.isEmpty {
+                if !model.clipboard.entries.isEmpty {
                     Button("Clear") { withAnimation(.snappy) { model.clipboard.clear() } }
                         .buttonStyle(.borderless)
                         .controlSize(.small)
                         .help("Remove all entries")
                 }
-                HStack(spacing: 0) {
-                    ForEach(SidebarPane.allCases, id: \.self) { p in
-                        PaneButton(pane: p, selected: pane == p, dot: p == .clipboard && unseenClip) {
-                            pane = p
-                            if p == .clipboard { unseenClip = false }
-                        }
-                    }
-                }
             }
-            .padding(.leading, 14).padding(.trailing, 8)
+            .padding(.leading, 14).padding(.trailing, 10)
             .frame(height: 36)
             Divider()
-            switch pane {
-            case .clipboard: ClipboardPanel(windowID: windowID, model: model, history: model.clipboard)
-            case .claude: ClaudePanel(windowID: windowID, model: model)
-            }
+            ClipboardPanel(windowID: windowID, model: model, history: model.clipboard)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onChange(of: model.clipboard.flashCount) { _, _ in
-            if pane != .clipboard { withAnimation(.snappy) { unseenClip = true } }
-        }
-    }
-}
-
-private struct PaneButton: View {
-    let pane: SidebarPane
-    let selected: Bool
-    let dot: Bool
-    let action: () -> Void
-    @State private var hovering = false
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: pane.symbol)
-                .font(.system(size: 13, weight: pane == .claude ? .bold : .regular))
-                .foregroundStyle(selected ? Color.accentColor : .secondary)
-                .frame(width: 30, height: 24)
-                .background(RoundedRectangle(cornerRadius: 6).fill(hovering && !selected ? Color.primary.opacity(0.07) : .clear))
-                .overlay(alignment: .topTrailing) {
-                    if dot { Circle().fill(Color.accentColor).frame(width: 6, height: 6).offset(x: -4, y: 3) }
-                }
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onHover { hovering = $0 }
-        .help(pane.title)
-        .accessibilityLabel(pane.title)
-        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 

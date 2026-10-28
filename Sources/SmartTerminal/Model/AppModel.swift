@@ -59,6 +59,7 @@ final class AppModel {
 
     @ObservationIgnored let sessions = SessionRegistry()
     @ObservationIgnored let clipboard = ClipboardHistory()
+    @ObservationIgnored let git = GitStatusStore()
     @ObservationIgnored weak var windows: WindowManaging?
     @ObservationIgnored var notifier: Notifier?
     @ObservationIgnored private let store: LayoutStore

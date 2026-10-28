@@ -224,6 +224,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         if let id = keyWindowID { model.toggleSidebar(id) }
     }
 
+    @objc func toggleTabLayout(_ sender: Any?) {
+        UserDefaults.standard.set((TabLayout.current == .strip ? TabLayout.sidebar : .strip).rawValue, forKey: TabLayout.defaultsKey)
+    }
+
     @objc func clearScrollback(_ sender: Any?) {
         guard let t = activeTabID, let s = model.sessions.existing(t) else { return }
         s.view.getTerminal().resetToInitialState()
@@ -237,6 +241,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         case #selector(toggleSidebar(_:)):
             item.title = wid.map(model.isSidebarOpen) == true ? "Hide Sidebar" : "Show Sidebar"
             return wid != nil
+        case #selector(toggleTabLayout(_:)):
+            item.state = TabLayout.current == .sidebar ? .on : .off
+            return true
         case #selector(closeTab(_:)), #selector(closeWindow(_:)):
             return NSApp.keyWindow != nil
         case #selector(reopenClosedWindow(_:)):
