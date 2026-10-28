@@ -14,7 +14,10 @@ struct ClaudePanel: View {
         VStack(spacing: 0) {
             if let tab, let agent {
                 ScrollView {
+                    // One identity per tab: a tab switch shows the new values outright,
+                    // instead of animating the ring from the previous tab's.
                     ClaudeSessionCards(agent: agent, title: tab.displayTitle, needsYou: model.attention.contains(tab.id))
+                        .id(tab.id)
                         .padding(10)
                 }
             } else {
