@@ -167,6 +167,8 @@ read once in full, in the background, and then followed as it grows.
 Each tab can have its own browser, in a pane beside its terminal, so a page Claude
 opens stays with the session that opened it.
 
+![A Claude Code session on the left, and the page it opened in the same tab's browser pane on the right](assets/screenshot-browser.png)
+
 - **`open https://…`** in a tab shows the page there, including when Claude Code runs
   it (ask it to "open the PR"). Any other use of `open` goes to macOS as before.
 - **⌘-click a web link** in the terminal. Other links (mail, files, apps) still go to macOS.

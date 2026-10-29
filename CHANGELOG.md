@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.10.1] - 2026-10-29
+- Docs only: a screenshot of the browser pane in the README's Browser section, taken by `scripts/demo-screenshot.sh` with its new `DEMO_BROWSER=<url>` (and `DEMO_OUT=<png>`) option, which opens that page in the Claude tab's browser in a wider window. The app is unchanged from 0.10.0.
+
 ## [0.10.0] - 2026-10-29
 - New: a browser per tab, in a pane beside its terminal. Back, forward, reload or stop, an address bar (URL, host or search), open in the default browser, close, and the Web Inspector (hammer, `⌥⌘I`, or *Inspect Element*). WebKit, with each tab's page, history and pane width kept across tab switches; site data shared and persistent.
 - `open https://…` in a tab shows the page there, including from Claude Code's Bash tool. zsh shell integration in the VS Code style: `ZDOTDIR` points at startup files in Application Support that source yours unchanged and define `open`, which drops a single web URL in an inbox folder the app watches and passes anything else to `command open`. `ZDOTDIR` stays set for child shells, which is how Claude's tool shell (a fresh zsh it snapshots) gets it. Inside tmux the tab id is the server's, so none is sent and the page opens in the tab in front. A request older than a minute (left over from before a restart) is dropped.
