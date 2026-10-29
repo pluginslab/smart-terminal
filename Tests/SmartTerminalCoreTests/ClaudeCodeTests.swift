@@ -214,6 +214,21 @@ import Testing
         let snap = AgentSnapshot.make(record: rec, transcript: t, terminalTitle: (.idle, "osc title"))!
         #expect(snap.title == "AI title")
         #expect(snap.status == .busy) // the session file beats the title glyph
+        // …unless the file is frozen: parked into a job, or "busy" untouched for 10 min.
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let parked = ClaudeSessionRecord(pid: 1, sessionId: "s", cwd: nil, status: "busy", name: nil, nameSource: nil,
+                                         statusUpdatedAt: now.timeIntervalSince1970 * 1000, parkedJobId: "cde46fbe")
+        #expect(AgentSnapshot.make(record: parked, transcript: nil, terminalTitle: (.idle, "x"), now: now)?.status == .idle)
+        #expect(AgentSnapshot.make(record: parked, transcript: nil, terminalTitle: (.busy, "x"), now: now)?.status == .busy)
+        #expect(AgentSnapshot.make(record: parked, transcript: nil, terminalTitle: nil, now: now)?.status == .busy)
+        func busy(updatedSecondsAgo s: Double, status: String = "busy") -> ClaudeSessionRecord {
+            ClaudeSessionRecord(pid: 1, sessionId: "s", cwd: nil, status: status, name: nil, nameSource: nil,
+                                statusUpdatedAt: (now.timeIntervalSince1970 - s) * 1000)
+        }
+        #expect(AgentSnapshot.make(record: busy(updatedSecondsAgo: 30), transcript: nil, terminalTitle: (.idle, "x"), now: now)?.status == .busy)
+        #expect(AgentSnapshot.make(record: busy(updatedSecondsAgo: 3600), transcript: nil, terminalTitle: (.idle, "x"), now: now)?.status == .idle)
+        // A long `!` command ("shell") is real work, however old.
+        #expect(AgentSnapshot.make(record: busy(updatedSecondsAgo: 3600, status: "shell"), transcript: nil, terminalTitle: (.idle, "x"), now: now)?.status == .busy)
         t.customTitle = "Renamed"
         #expect(AgentSnapshot.make(record: rec, transcript: t, terminalTitle: nil)?.title == "Renamed")
         // Nothing but the terminal title (before the transcript exists).

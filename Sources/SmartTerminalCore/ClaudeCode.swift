@@ -46,12 +46,27 @@ public struct ClaudeSessionRecord: Decodable, Equatable, Sendable {
     public let waitingFor: String?
     /// Epoch milliseconds.
     public let startedAt: Double?
+    /// When `status` last changed, epoch milliseconds.
+    public let statusUpdatedAt: Double?
+    /// Set once Claude has parked the session into a background job. From then on it
+    /// stops updating this file, so `status` is frozen at whatever it was.
+    public let parkedJobId: String?
 
     public init(pid: Int32, sessionId: String, cwd: String?, status: String?, name: String?,
-                nameSource: String?, waitingFor: String? = nil, startedAt: Double? = nil) {
+                nameSource: String?, waitingFor: String? = nil, startedAt: Double? = nil,
+                statusUpdatedAt: Double? = nil, parkedJobId: String? = nil) {
         self.pid = pid; self.sessionId = sessionId; self.cwd = cwd
         self.status = status; self.name = name; self.nameSource = nameSource; self.waitingFor = waitingFor
-        self.startedAt = startedAt
+        self.startedAt = startedAt; self.statusUpdatedAt = statusUpdatedAt; self.parkedJobId = parkedJobId
+    }
+
+    /// The file no longer tracks the process: the session was parked, or its status
+    /// hasn't changed in 10 minutes. A real working turn keeps the title spinning,
+    /// so this only matters where the title disagrees.
+    public func isStale(now: Date) -> Bool {
+        if parkedJobId != nil { return true }
+        guard let statusUpdatedAt else { return false }
+        return now.timeIntervalSince1970 - statusUpdatedAt / 1000 > 600
     }
 
     public var startDate: Date? { startedAt.map { Date(timeIntervalSince1970: $0 / 1000) } }
@@ -392,8 +407,14 @@ public struct AgentSnapshot: Equatable, Sendable {
     /// Priority: /rename > AI title > agent name > non-derived session name > terminal title.
     public static func make(record: ClaudeSessionRecord?, transcript: ClaudeTranscriptState?,
                             terminalTitle: (status: AgentStatus, title: String)?,
-                            usage: ClaudeUsage? = nil, arguments: [String] = []) -> AgentSnapshot? {
-        guard let status = record?.agentStatus ?? terminalTitle?.status else { return nil }
+                            usage: ClaudeUsage? = nil, arguments: [String] = [],
+                            now: Date = Date()) -> AgentSnapshot? {
+        guard var status = record?.agentStatus ?? terminalTitle?.status else { return nil }
+        // The file wins (only it can say "waiting"), except a frozen "busy": Claude's
+        // own title shows ✳ while the file stopped updating, so the tab spun forever.
+        if record?.status == "busy", terminalTitle?.status == .idle, record?.isStale(now: now) == true {
+            status = .idle
+        }
         let candidates: [String?] = [transcript?.customTitle, transcript?.aiTitle, transcript?.agentName,
                                      record?.meaningfulName, terminalTitle?.title]
         let title = candidates.lazy.compactMap { $0 }.first { !$0.isEmpty && $0 != "Claude Code" }

@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.3] - 2026-10-29
+- Fix: a tab could spin its Claude asterisk forever while Claude sat idle. Claude Code can park a session into a background job (`parkedJobId` in `~/.claude/sessions/<pid>.json`), and from then on it stops updating that file, so its `status` stays frozen at `busy`. The file always beat the title glyph, so the frozen `busy` won over Claude's own live `✳`. Now a `busy` file gives way to an idle title when the file is parked or its status hasn't changed for 10 minutes. A working turn keeps the title spinning, `waiting` still comes only from the file, and a long `!` command (`shell`) still counts as work.
+
 ## [0.9.2] - 2026-10-29
 - The groups column starts right under the traffic lights again. It had the session list's header height as top padding, meant to line *All Sessions* up with the first session row, which left an empty band above it. Only the session list keeps a gap below its header.
 
