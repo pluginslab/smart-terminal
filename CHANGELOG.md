@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.0] - 2026-10-29
+- New: a browser per tab, in a pane beside its terminal. Back, forward, reload or stop, an address bar (URL, host or search), open in the default browser, close, and the Web Inspector (hammer, `⌥⌘I`, or *Inspect Element*). WebKit, with each tab's page, history and pane width kept across tab switches; site data shared and persistent.
+- `open https://…` in a tab shows the page there, including from Claude Code's Bash tool. zsh shell integration in the VS Code style: `ZDOTDIR` points at startup files in Application Support that source yours unchanged and define `open`, which drops a single web URL in an inbox folder the app watches and passes anything else to `command open`. `ZDOTDIR` stays set for child shells, which is how Claude's tool shell (a fresh zsh it snapshots) gets it. Inside tmux the tab id is the server's, so none is sent and the page opens in the tab in front. A request older than a minute (left over from before a restart) is dropped.
+- ⌘-clicking a web link in the terminal opens it in the tab's browser (`requestOpenLink`); other links still go to macOS.
+- A globe next to the sidebar button (and View → Show Browser, `⇧⌘B`) shows or hides the tab's browser; with none yet, an empty one opens with the address field focused. Hiding keeps the page; the pane's × closes it.
+- Links that open a new window (`target="_blank"`, `window.open`) load in the same pane, so they join its history.
+- Address and inbox parsing in `SmartTerminalCore` (`BrowserAddress`, `BrowserRequest`), with tests.
+
 ## [0.9.4] - 2026-10-29
 - The groups sidebar runs the full height of the window, with the traffic lights inside it, as in Mail. macOS only draws a sidebar that way when the window has a toolbar, so columns mode now has one, holding a single item: the standard sidebar toggle at the sidebar's top right, which collapses the groups column. With the column collapsed, the session header moves right to clear the traffic lights and the toggle. It reads that from where the column sits, because the toolbar's toggle doesn't update SwiftUI's column visibility.
 - README screenshot retaken.

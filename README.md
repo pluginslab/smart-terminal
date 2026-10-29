@@ -162,6 +162,28 @@ It's always there, so Claude starting or quitting never resizes the terminal.
 It's all read from Claude Code's own session file and transcript. Each transcript is
 read once in full, in the background, and then followed as it grows.
 
+### Browser
+
+Each tab can have its own browser, in a pane beside its terminal, so a page Claude
+opens stays with the session that opened it.
+
+- **`open https://…`** in a tab shows the page there, including when Claude Code runs
+  it (ask it to "open the PR"). Any other use of `open` goes to macOS as before.
+- **⌘-click a web link** in the terminal. Other links (mail, files, apps) still go to macOS.
+- **The globe** in the window's top right, or `⇧⌘B`, shows or hides the tab's browser,
+  opening an empty one ready for an address if it has none. Hiding keeps the page.
+
+The pane has back and forward (`⌘[` `⌘]`, or swipe), reload (`⌘R`), an address bar
+that takes a URL, a host such as `localhost:3000`, or words to search for, the **Web
+Inspector** (the hammer, `⌥⌘I`, or right-click → *Inspect Element*), and a button to
+open the page in your default browser. Drag its left edge to resize it. Each tab keeps
+its own page, history and width; logins are shared between tabs and kept across
+launches. It uses WebKit, Safari's engine, so the pane also shows up in Safari's
+**Develop** menu.
+
+`open` comes from zsh shell integration (see [How it works](#how-it-works)). Inside
+tmux, the page opens in the tab you're looking at.
+
 ### Sidebar: clipboard history
 
 `⌃⌘S`, or the sidebar button at the top right of the window, opens a panel on the
@@ -244,8 +266,15 @@ anything:
 
 The working/idle animation comes straight from the title Claude sets (`◐`/`◑` while
 busy, `✳` when idle). The working folder, command line and newest child process come
-from the kernel (`libproc`, `sysctl`), so no shell integration or rc-file changes are
-needed.
+from the kernel (`libproc`, `sysctl`), so none of that needs shell integration or
+rc-file changes.
+
+The browser's `open` is the one piece of shell integration, for zsh only, and still
+without touching your files. Like VS Code's terminal, each tab's zsh starts with
+`ZDOTDIR` pointing at a small folder of startup files that source your own, then
+define `open`. For a single web URL it drops the URL in an inbox folder the app
+watches; anything else goes to `command open`. `ZDOTDIR` stays set for child shells,
+which is how Claude Code's Bash tool, a fresh zsh, gets it too.
 
 The git line in each session row comes from `git status --porcelain=v2 --branch` and
 `git diff --shortstat HEAD`, run once per folder (tabs in the same repository share
@@ -257,8 +286,9 @@ Claude, and `tmux list-clients` to map a tty to a tmux session.
 
 ### Privacy
 
-Everything stays on your Mac. **Smart Terminal makes no network requests.**
-Notifications are local, and links open only when you click them. The clipboard
+Everything stays on your Mac. **Smart Terminal makes no network requests of its own.**
+The browser pane loads the pages you open in it, and nothing else. Notifications are
+local, and links open only when you click them. The clipboard
 history is kept in memory. An image is written to a temporary file only when you paste
 it into a tab. What it reads,
 writes and runs is listed in [SECURITY.md](SECURITY.md).

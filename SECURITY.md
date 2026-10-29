@@ -61,12 +61,23 @@ Useful context if you are assessing risk.
   folder, about every 4 seconds while the session list is on screen, with
   `GIT_OPTIONAL_LOCKS=0` so they never take the index lock. Read-only; they show the
   branch and the uncommitted diff in the tab's row.
+- zsh, in each tab, with `ZDOTDIR` pointing at `~/Library/Application Support/SmartTerminal/zsh/`.
+  Those four startup files (rewritten at every launch) source your own `.zshenv`,
+  `.zprofile`, `.zshrc` and `.zlogin` unchanged, then define an `open` function. For a
+  single http(s) URL it writes `<tab id> <url>` to a file in `browser-inbox/` next to
+  them, which the app reads and deletes; every other use runs `command open`. Nothing
+  in your home folder is changed. Other shells get none of this.
 - During an import, and only for the tabs you checked: AppleScript that lists
   Terminal.app's tabs and types `/exit` into the Claude sessions being handed over,
   and `tmux detach-client` for tmux clients being moved.
 
+**Network:** the app itself makes no network requests. The browser pane loads the pages
+you open in it (by `open <url>` in a tab, ⌘-clicking a link, or the address bar), with
+WebKit, the engine Safari uses. Its cookies and site data are kept in the app's own
+WebKit data store, shared by its tabs.
+
 **It never:**
-- makes network requests. Notifications are local, and links open only when you click them;
+- loads a page you didn't ask for. Notifications are local, and links open only when you click them;
 - modifies Claude Code's files;
 - sends anything to a Terminal.app tab you did not select in the import sheet.
 
