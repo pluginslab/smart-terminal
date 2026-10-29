@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.2] - 2026-10-29
+- The groups column starts right under the traffic lights again. It had the session list's header height as top padding, meant to line *All Sessions* up with the first session row, which left an empty band above it. Only the session list keeps a gap below its header.
+
 ## [0.9.1] - 2026-10-29
 - Moving a tab within its group is now `⌃⌥←` / `⌃⌥→` only. Plain `⌃←` / `⌃→` are macOS's "Move left/right a space", so the app either never saw them or, with those turned off to let it, took Spaces switching away. They were the menu's shortcut, with `⌃⌥` as a hidden alias; now `⌃⌥` is the one shown and `⌃` is free for Mission Control.
 

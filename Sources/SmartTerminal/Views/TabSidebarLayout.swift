@@ -157,9 +157,9 @@ private struct CategoryList: View {
                                 delegate: StripDropDelegate(windowID: windowID, model: model) { _ in .end })
                 }
             }
-            .padding(.horizontal, 10).padding(.bottom, 6)
-            // Below the title bar's 28 pt: start level with the first session row.
-            .padding(.top, TabSidebarMetrics.headerHeight - 28)
+            // Straight under the traffic lights, as Mail's sidebar starts. (Only the
+            // session list needs the gap below its header.)
+            .padding(.horizontal, 10).padding(.top, 8).padding(.bottom, 6)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             HStack {
