@@ -82,7 +82,13 @@ private struct BrowserNavigationBar: View {
                 }
             }
         }
-        .onAppear { address = shown }
+        .onAppear {
+            address = shown
+            if browser.wantsAddressFocus {
+                browser.wantsAddressFocus = false
+                DispatchQueue.main.async { editing = true }
+            }
+        }
         // Follows the page (links, redirects, back/forward), but never while you type.
         .onChange(of: browser.url) { _, _ in if !editing { address = shown } }
         .help(browser.title)

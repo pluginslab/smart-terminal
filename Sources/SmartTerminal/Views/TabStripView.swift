@@ -75,6 +75,16 @@ struct TabStripView: View {
                 }
             }
             // Beside the scroll area, not over it, so it needs no background of its own.
+            if let tab = window?.activeTab {
+                let browsing = model.browsers.visibleBrowser(for: tab.id) != nil
+                Button { model.browsers.toggle(tab.id) } label: {
+                    Image(systemName: "globe").font(.system(size: 13))
+                        .foregroundStyle(browsing ? Color.accentColor : .secondary)
+                        .frame(width: 28, height: 24)
+                }
+                .buttonStyle(.plain)
+                .help(browsing ? "Hide Browser (⇧⌘B)" : "Show Browser (⇧⌘B)")
+            }
             SidebarToggle(windowID: windowID, model: model)
         }
         .frame(height: StripMetrics.height)

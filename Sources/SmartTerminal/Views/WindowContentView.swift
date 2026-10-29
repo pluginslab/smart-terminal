@@ -42,7 +42,7 @@ struct WindowContentView: View {
                     TerminalStatusBar(tab: window?.activeTab, model: model)
                 }
                 .frame(minWidth: 360)
-                if let tab = window?.activeTab, let browser = model.browsers.browser(for: tab.id) {
+                if let tab = window?.activeTab, let browser = model.browsers.visibleBrowser(for: tab.id) {
                     BrowserPane(tabID: tab.id, browser: browser, model: model)
                         .id(tab.id)
                         .transition(.move(edge: .trailing))
@@ -53,6 +53,7 @@ struct WindowContentView: View {
                 }
             }
             .animation(.snappy(duration: 0.25), value: model.isSidebarOpen(windowID))
+            .animation(.snappy(duration: 0.25), value: model.browsers.visibleBrowser(for: window?.activeTabID) != nil)
         }
     }
 

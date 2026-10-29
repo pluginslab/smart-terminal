@@ -224,6 +224,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         if let id = keyWindowID { model.toggleSidebar(id) }
     }
 
+    @objc func toggleBrowser(_ sender: Any?) {
+        if let t = activeTabID { model.browsers.toggle(t) }
+    }
+
     @objc func toggleTabLayout(_ sender: Any?) {
         UserDefaults.standard.set((TabLayout.current == .strip ? TabLayout.sidebar : .strip).rawValue, forKey: TabLayout.defaultsKey)
     }
@@ -241,6 +245,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         case #selector(toggleSidebar(_:)):
             item.title = wid.map(model.isSidebarOpen) == true ? "Hide Sidebar" : "Show Sidebar"
             return wid != nil
+        case #selector(toggleBrowser(_:)):
+            item.title = model.browsers.visibleBrowser(for: activeTabID) != nil ? "Hide Browser" : "Show Browser"
+            return activeTabID != nil
         case #selector(toggleTabLayout(_:)):
             item.state = TabLayout.current == .sidebar ? .on : .off
             return true

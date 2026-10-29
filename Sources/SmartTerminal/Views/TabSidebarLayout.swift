@@ -304,6 +304,11 @@ private struct DetailHeader: View {
             Spacer(minLength: 8)
             let open = model.isSidebarOpen(windowID)
             GlassGroup {
+                if let tab {
+                    let browsing = model.browsers.visibleBrowser(for: tab.id) != nil
+                    HeaderButton(symbol: "globe", help: browsing ? "Hide Browser (⇧⌘B)" : "Show Browser (⇧⌘B)",
+                                 highlighted: browsing) { model.browsers.toggle(tab.id) }
+                }
                 HeaderButton(symbol: "sidebar.right", help: open ? "Hide Sidebar (⌃⌘S)" : "Show Sidebar (⌃⌘S)",
                              highlighted: open) { model.toggleSidebar(windowID) }
             }
