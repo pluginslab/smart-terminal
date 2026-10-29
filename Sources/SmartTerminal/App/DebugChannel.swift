@@ -61,6 +61,9 @@ final class DebugChannel {
             if let g = activeTab?.groupID { model.newTab(inGroup: g) }
         case "sidebar":
             if let w = keyWindowID { model.toggleSidebar(w) }
+        case "inspect":
+            // The active tab's browser opens its Web Inspector.
+            model.browsers.browser(for: activeTab?.id)?.showInspector()
         case "openURL":
             // As the shell's `open` would: openURL <url> [tab id]; no id means the active tab.
             if let url = URL(string: a1) { model.openInBrowser(url, tabID: UUID(uuidString: a2) ?? activeTab?.id) }

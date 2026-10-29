@@ -62,6 +62,9 @@ private struct BrowserNavigationBar: View {
                 .focused($editing)
                 .onSubmit { browser.go(address); editing = false }
                 .onExitCommand { address = shown; editing = false }
+            NavButton(symbol: "hammer", help: "Web Inspector (⌥⌘I)", enabled: browser.url != nil,
+                      action: browser.showInspector)
+                .keyboardShortcut("i", modifiers: [.command, .option])
             NavButton(symbol: "safari", help: "Open in Default Browser", enabled: browser.url != nil,
                       action: browser.openInDefaultBrowser)
             NavButton(symbol: "xmark.circle.fill", help: "Close Browser", action: close)

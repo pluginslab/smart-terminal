@@ -22,7 +22,11 @@ final class BrowserState: NSObject, WKUIDelegate {
     override init() {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default() // logins and cookies shared by every tab, kept across launches
+        // Web Inspector in the app: "Inspect Element" in the page's context menu and the
+        // dev-tools button. A private WebKit preference, set the way Safari's own is.
+        config.preferences.setValue(true, forKey: "developerExtrasEnabled")
         webView = WKWebView(frame: .zero, configuration: config)
+        webView.isInspectable = true // also listed in Safari's Develop menu
         webView.allowsBackForwardNavigationGestures = true
         webView.allowsMagnification = true
         super.init()
@@ -57,6 +61,12 @@ final class BrowserState: NSObject, WKUIDelegate {
     func forward() { webView.goForward() }
     func reloadOrStop() {
         if isLoading { webView.stopLoading() } else { webView.reload() }
+    }
+
+    /// Opens the Web Inspector for this page (WebKit's `_inspector`, the object behind
+    /// the context menu's Inspect Element).
+    func showInspector() {
+        (webView.value(forKey: "_inspector") as? NSObject)?.perform(NSSelectorFromString("show"))
     }
 
     func openInDefaultBrowser() {
