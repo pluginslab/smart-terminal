@@ -87,11 +87,9 @@ enum MainMenu {
             item("Collapse or Expand Group", #selector(AppDelegate.toggleActiveGroup(_:)), "c", [.command, .option]),
             item("Remove Tab from Group", #selector(AppDelegate.removeActiveTabFromGroup(_:))),
             .separator(),
-            item("Move Tab Left in Group", #selector(AppDelegate.shiftTabLeft(_:)), left, .control),
-            item("Move Tab Right in Group", #selector(AppDelegate.shiftTabRight(_:)), right, .control),
-            // ⌃←/⌃→ are taken by Mission Control ("Move left/right a space") by default.
-            item("Move Tab Left in Group", #selector(AppDelegate.shiftTabLeft(_:)), left, [.control, .option]).hiddenAlternate(),
-            item("Move Tab Right in Group", #selector(AppDelegate.shiftTabRight(_:)), right, [.control, .option]).hiddenAlternate(),
+            // ⌃⌥, not ⌃: ⌃←/⌃→ belong to Mission Control ("Move left/right a space").
+            item("Move Tab Left in Group", #selector(AppDelegate.shiftTabLeft(_:)), left, [.control, .option]),
+            item("Move Tab Right in Group", #selector(AppDelegate.shiftTabRight(_:)), right, [.control, .option]),
             item("Move Tab to New Window", #selector(AppDelegate.moveTabToNewWindow(_:))),
             .separator(),
             item("Show Next Tab", #selector(AppDelegate.selectNextTab(_:)), "]", [.command, .shift]),

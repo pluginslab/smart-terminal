@@ -78,7 +78,7 @@ work in both.
 | Put the tab in a new group, or edit its group | `⌥⌘G`, or right-click → *Add Tab to New Group* |
 | Collapse or expand a group (strip) | click its chip, or `⌥⌘C` |
 | Name, color, ungroup, close or move a group | double-click or right-click it in the left column, or its chip in the strip |
-| Move a tab left or right **within its group** | `⌃←` `⌃→` (or `⌃⌥←` `⌃⌥→`, see [Limitations](#limitations)) |
+| Move a tab left or right **within its group** | `⌃⌥←` `⌃⌥→` |
 | Switch tabs | `⌘1`…`⌘8`, `⌘9` for the last, `⌃Tab` / `⌃⇧Tab`, `⌘⇧]` / `⌘⇧[` |
 | Move a tab or group to a new window | drag it onto the desktop, or right-click → *Move to New Window* |
 | New window, close tab, close window | `⌘N`, `⌘W`, `⌘⇧W` |
@@ -290,9 +290,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). The design notes and the build log are i
 
 ## Limitations
 
-- **`⌃←` `⌃→` are taken by macOS** for switching Spaces by default. Turn off *Move
-  left/right a space* in System Settings → Keyboard → Keyboard Shortcuts → Mission
-  Control, or use `⌃⌥←` `⌃⌥→`.
 - **No automatic updates yet.** Watch the repository's releases.
 - **No split panes**, and processes don't survive quitting the app. Only the layout
   and Claude sessions (via resume) come back.

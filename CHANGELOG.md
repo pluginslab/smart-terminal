@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.9.1] - 2026-10-29
+- Moving a tab within its group is now `⌃⌥←` / `⌃⌥→` only. Plain `⌃←` / `⌃→` are macOS's "Move left/right a space", so the app either never saw them or, with those turned off to let it, took Spaces switching away. They were the menu's shortcut, with `⌃⌥` as a hidden alias; now `⌃⌥` is the one shown and `⌃` is free for Mission Control.
+
 ## [0.9.0] - 2026-10-28
 - New default layout, in columns like Mail: groups on the left (*All Sessions*, each group with its tab count and an orange dot when a session in it needs you, *Ungrouped*), the group's sessions in the middle, the terminal on the right. The content runs up under a transparent title bar, with a header over each column at traffic-light height. The Chrome-style strip is still there: View → Tabs in Columns (`⌃⌘L`).
 - Each session row shows its git state: branch, ahead/behind, and the uncommitted diff as `+12 −4` (`?N` untracked, a check when clean). `git status --porcelain=v2 --branch` and `git diff --shortstat HEAD` run once per folder, every 4 s while the list is on screen, with `GIT_OPTIONAL_LOCKS=0` so they never take the index lock. Parsing lives in `SmartTerminalCore.GitStatus`, with tests.
