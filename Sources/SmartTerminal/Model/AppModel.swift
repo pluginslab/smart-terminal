@@ -60,6 +60,8 @@ final class AppModel {
     @ObservationIgnored let sessions = SessionRegistry()
     @ObservationIgnored let clipboard = ClipboardHistory()
     @ObservationIgnored let git = GitStatusStore()
+    @ObservationIgnored let browsers = BrowserStore()
+    @ObservationIgnored private var browserInbox: BrowserInbox?
     @ObservationIgnored weak var windows: WindowManaging?
     @ObservationIgnored var notifier: Notifier?
     @ObservationIgnored private let store: LayoutStore
@@ -74,6 +76,22 @@ final class AppModel {
             return self.window(wid)?.activeTab?.displayTitle
         }
         clipboard.start()
+        ShellIntegration.install() // before any tab's shell starts, and before the inbox is watched
+        browserInbox = BrowserInbox { [weak self] request in self?.openInBrowser(request.url, tabID: request.tabID) }
+    }
+
+    // MARK: - Browser
+
+    /// Shows a page in a tab's browser pane: the tab that asked (⌘-click, or `open`
+    /// in its shell), else the key window's active tab. A request from a tab that no
+    /// longer exists, or with no window open, goes to the default browser.
+    func openInBrowser(_ url: URL, tabID: UUID?) {
+        let keyTab = (NSApp.keyWindow as? TerminalWindow).flatMap { window($0.windowID)?.activeTabID }
+        guard let target = tabID.flatMap({ windowID(containingTab: $0) != nil ? $0 : nil }) ?? keyTab else {
+            NSWorkspace.shared.open(url)
+            return
+        }
+        browsers.open(url, in: target)
     }
 
     // MARK: - Sidebar
@@ -200,6 +218,7 @@ final class AppModel {
     func closeTab(_ tabID: UUID) {
         guard let wid = windowID(containingTab: tabID) else { return }
         sessions.terminate(tabID)
+        browsers.close(tabID)
         clearIndicators(tabID)
         agents[tabID] = nil
         liveTmux[tabID] = nil

@@ -6,6 +6,8 @@ import SmartTerminalCore
 final class SmartTerminalView: LocalProcessTerminalView {
     var onBell: (() -> Void)?
     var onOutput: (() -> Void)?
+    /// A web link was ⌘-clicked. Returns whether it was handled; if not, macOS opens it.
+    var onOpenWebLink: ((URL) -> Bool)?
 
     override func bell(source: Terminal) {
         onBell?()
@@ -17,6 +19,12 @@ final class SmartTerminalView: LocalProcessTerminalView {
         super.viewDidMoveToWindow()
         let bg = nativeBackgroundColor
         nativeBackgroundColor = bg
+    }
+
+    /// ⌘-click on a link: web pages go to the tab's browser pane, the rest to macOS.
+    override func requestOpenLink(source: TerminalView, link: String, params: [String: String]) {
+        if BrowserAddress.isWeb(link), let url = URL(string: link), onOpenWebLink?(url) == true { return }
+        super.requestOpenLink(source: source, link: link, params: params)
     }
 
     private var lastOutputSignal = Date.distantPast
@@ -109,7 +117,7 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
             ?? Self.homeDirectory
         currentDirectory = dir
         let shellName = (shellPath as NSString).lastPathComponent
-        view.startProcess(executable: shellPath, args: [], environment: Self.environment(shell: shellPath),
+        view.startProcess(executable: shellPath, args: [], environment: Self.environment(shell: shellPath, tabID: tabID),
                           execName: "-" + shellName, // leading dash = login shell, like Terminal.app
                           currentDirectory: dir)
         isRunning = true
@@ -261,7 +269,7 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
         return ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
     }
 
-    static func environment(shell: String) -> [String] {
+    static func environment(shell: String, tabID: UUID) -> [String] {
         let inherited = ProcessInfo.processInfo.environment
         var env: [String: String] = [:]
         // CLAUDE_CONFIG_DIR: the app watches Claude's files there, so the shells' `claude` must use it too.
@@ -278,6 +286,7 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
         env["LANG"] = inherited["LANG"] ?? "en_US.UTF-8"
         env["TERM_PROGRAM"] = "SmartTerminal"
         env["TERM_PROGRAM_VERSION"] = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
+        env.merge(ShellIntegration.environment(shell: shell, tabID: tabID, inherited: inherited)) { _, new in new }
         return env.map { "\($0.key)=\($0.value)" }
     }
 

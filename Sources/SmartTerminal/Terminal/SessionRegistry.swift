@@ -35,6 +35,10 @@ final class SessionRegistry {
                 programTitle: s.shellTitle, command: s.commandLine, cols: s.gridSize.cols, rows: s.gridSize.rows))
         }
         s.onBell = { [weak self] s in self?.model?.markAttention(s.tabID) }
+        s.view.onOpenWebLink = { [weak self] url in
+            self?.model?.openInBrowser(url, tabID: tabID)
+            return self?.model != nil
+        }
         s.onOutput = { [weak self] s in self?.model?.markActivity(s.tabID) }
         s.onExit = { [weak self] s, code in self?.sessionExited(s, code: code) }
         sessions[tabID] = s
