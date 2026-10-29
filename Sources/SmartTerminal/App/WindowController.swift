@@ -8,7 +8,7 @@ final class TerminalWindow: NSWindow {
 
 /// One per layout window. Keeps the NSWindow title and frame in sync with the model.
 @MainActor
-final class WindowController: NSWindowController, NSWindowDelegate {
+final class WindowController: NSWindowController, NSWindowDelegate, NSToolbarDelegate {
     let windowID: UUID
     private let model: AppModel
     /// Set when the model closes the window (moved-out last tab); skips cleanup.
@@ -101,8 +101,31 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         // The title stays set (Window menu, Mission Control) but isn't drawn: the headers show it.
         window.titlebarAppearsTransparent = columns
         window.titleVisibility = columns ? .hidden : .visible
+        // A toolbar: with one, macOS runs the sidebar's glass up to the window's top so
+        // the traffic lights sit inside it, as in Mail. Its only item is the sidebar
+        // toggle; the column headers draw their own buttons.
+        if columns {
+            let toolbar = NSToolbar(identifier: "columns")
+            toolbar.displayMode = .iconOnly
+            toolbar.delegate = self
+            window.toolbar = toolbar
+            window.toolbarStyle = .unified
+        } else {
+            window.toolbar = nil
+        }
         updateTitle()
     }
+
+    // MARK: - NSToolbarDelegate
+
+    /// The toggle sits at the sidebar's right edge, before the divider it tracks;
+    /// with the sidebar collapsed, macOS keeps it next to the traffic lights.
+    private static let toolbarItems: [NSToolbarItem.Identifier] = [.flexibleSpace, .toggleSidebar, .sidebarTrackingSeparator]
+
+    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { Self.toolbarItems }
+    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { Self.toolbarItems }
+    func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier id: NSToolbarItem.Identifier,
+                 willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? { NSToolbarItem(itemIdentifier: id) }
 
     private func storeFrame() {
         guard let f = window?.frame else { return }

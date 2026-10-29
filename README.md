@@ -53,7 +53,8 @@ A window has three columns:
 - **Groups** on the left: *All Sessions*, then each group with its color and how many
   tabs it has, then *Ungrouped*. An orange dot means a session in there needs you.
   Double-click a group to name or recolor it, right-click for the rest, and drag
-  groups to reorder them. *New Group* at the bottom opens a tab in a new group.
+  groups to reorder them. *New Group* at the bottom opens a tab in a new group. The
+  button at its top right, next to the traffic lights, collapses the column.
 - **Sessions** in the middle: the tabs in that group, as rows. Each row shows the tab's
   name and Claude status, then its folder with the **git branch** (`↑`/`↓` against its
   upstream) and the **uncommitted diff** as `+12 −4` (`?3` for untracked files, a check

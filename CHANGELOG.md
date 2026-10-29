@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.9.4] - 2026-10-29
+- The groups sidebar runs the full height of the window, with the traffic lights inside it, as in Mail. macOS only draws a sidebar that way when the window has a toolbar, so columns mode now has one, holding a single item: the standard sidebar toggle at the sidebar's top right, which collapses the groups column. With the column collapsed, the session header moves right to clear the traffic lights and the toggle. It reads that from where the column sits, because the toolbar's toggle doesn't update SwiftUI's column visibility.
+- README screenshot retaken.
+
 ## [0.9.3] - 2026-10-29
 - Fix: a tab could spin its Claude asterisk forever while Claude sat idle. Claude Code can park a session into a background job (`parkedJobId` in `~/.claude/sessions/<pid>.json`), and from then on it stops updating that file, so its `status` stays frozen at `busy`. The file always beat the title glyph, so the frozen `busy` won over Claude's own live `✳`. Now a `busy` file gives way to an idle title when the file is parked or its status hasn't changed for 10 minutes. A working turn keeps the title spinning, `waiting` still comes only from the file, and a long `!` command (`shell`) still counts as work.
 

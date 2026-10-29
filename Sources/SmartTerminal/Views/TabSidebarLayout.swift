@@ -392,6 +392,10 @@ private struct SessionList: View {
     let windowID: UUID
     let model: AppModel
     let category: TabCategory
+    /// The column starts at the window's left edge: the groups column is collapsed and
+    /// the traffic lights and sidebar toggle sit over this header. Read from where the
+    /// column is, not from a visibility binding, which the toolbar's toggle doesn't update.
+    @State private var sidebarCollapsed = false
 
     var body: some View {
         let window = model.window(windowID)
@@ -419,6 +423,7 @@ private struct SessionList: View {
         }
         // Up under the transparent title bar, so the header sits level with the traffic lights.
         .ignoresSafeArea(.container, edges: .top)
+        .onGeometryChange(for: Bool.self) { $0.frame(in: .global).minX < 40 } action: { sidebarCollapsed = $0 }
     }
 
     /// Mail's list header: big title, a count below it, and grouped glass buttons.
@@ -434,7 +439,9 @@ private struct SessionList: View {
                 HeaderButton(symbol: "plus", help: "New Tab Here (⌘T)", action: newTab)
             }
         }
-        .padding(.leading, 20).padding(.trailing, 10)
+        // Collapsed sidebar: the traffic lights and the toggle sit where the title would.
+        .padding(.leading, sidebarCollapsed ? 150 : 20).padding(.trailing, 10)
+        .animation(.snappy(duration: 0.25), value: sidebarCollapsed)
         .padding(.top, 10)
         .frame(height: TabSidebarMetrics.headerHeight, alignment: .top)
     }

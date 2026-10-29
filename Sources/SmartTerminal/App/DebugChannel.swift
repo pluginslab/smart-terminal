@@ -61,6 +61,11 @@ final class DebugChannel {
             if let g = activeTab?.groupID { model.newTab(inGroup: g) }
         case "sidebar":
             if let w = keyWindowID { model.toggleSidebar(w) }
+        case "toggleGroups":
+            // The toolbar's sidebar toggle, without a click.
+            // Up the dev window's own responder chain, whichever app has focus.
+            let win = NSApp.windows.first { $0 is TerminalWindow }
+            _ = win?.firstResponder?.tryToPerform(#selector(NSSplitViewController.toggleSidebar(_:)), with: nil)
         case "layout":
             // strip | sidebar: the tab layout (View ▸ Tabs in Columns).
             UserDefaults.standard.set(a1, forKey: TabLayout.defaultsKey)
