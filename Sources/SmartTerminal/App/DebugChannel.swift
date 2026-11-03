@@ -61,6 +61,11 @@ final class DebugChannel {
             if let g = activeTab?.groupID { model.newTab(inGroup: g) }
         case "sidebar":
             if let w = keyWindowID { model.toggleSidebar(w) }
+        case "userAgent":
+            // Writes the active tab's browser user agent to a file: userAgent <path>
+            model.browsers.browser(for: activeTab?.id)?.webView.evaluateJavaScript("navigator.userAgent") { ua, _ in
+                try? (ua as? String ?? "").write(toFile: a1, atomically: true, encoding: .utf8)
+            }
         case "inspect":
             // The active tab's browser opens its Web Inspector.
             model.browsers.browser(for: activeTab?.id)?.showInspector()

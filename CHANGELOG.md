@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.10.2] - 2026-11-03
+- Fix: Slack (and other sites that sniff for a supported browser) turned the browser pane away with "your browser is not supported". A bare `WKWebView` sends Safari's user agent without its `Version/… Safari/…` tail. It now adds that (`applicationNameForUserAgent`), with the version of the Safari installed on the Mac.
+- Fix: a Smart Terminal started from one of its own tabs (`open -a`, a dev build, `scripts/dev-run.sh`) filled its shells with "job table full or recursion limit exceeded". It inherited that tab's `ZDOTDIR`, took the shim folder for the user's own, and the startup files sourced each other until zsh gave up. The app now passes on the folder the shim stood in for, never a shim (it marks its folder with `.smart-terminal-shim`, and recognises 0.10.0's by their header), and `.zshenv` falls back to `$HOME` if it is ever pointed at one.
+
 ## [0.10.1] - 2026-10-29
 - Docs only: a screenshot of the browser pane in the README's Browser section, taken by `scripts/demo-screenshot.sh` with its new `DEMO_BROWSER=<url>` (and `DEMO_OUT=<png>`) option, which opens that page in the Claude tab's browser in a wider window. The app is unchanged from 0.10.0.
 

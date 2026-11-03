@@ -26,10 +26,28 @@ enum ShellIntegration {
         var env = ["ZDOTDIR": zshDir.path,
                    "SMART_TERMINAL_TAB": tabID.uuidString,
                    "SMART_TERMINAL_INBOX": inboxDir.path]
-        // Your own ZDOTDIR, if you have one, is where your files are read from.
-        if let own = inherited["ZDOTDIR"], own != zshDir.path { env["SMART_TERMINAL_USER_ZDOTDIR"] = own }
+        // Your own ZDOTDIR, if you have one, is where your files are read from. Started
+        // from a Smart Terminal tab, the app inherits that tab's shim folder as ZDOTDIR:
+        // take the folder it was standing in for, never a shim (they'd source each other
+        // until zsh gives up).
+        let own = [inherited["SMART_TERMINAL_USER_ZDOTDIR"], inherited["ZDOTDIR"]]
+            .compactMap { $0 }.first { !$0.isEmpty && !isShim($0) }
+        if let own { env["SMART_TERMINAL_USER_ZDOTDIR"] = own }
         return env
     }
+
+    /// Ours, or any Smart Terminal's (another copy of the app, a dev build).
+    static func isShim(_ path: String) -> Bool {
+        if path == zshDir.path { return true }
+        let dir = URL(fileURLWithPath: path, isDirectory: true)
+        if FileManager.default.fileExists(atPath: dir.appendingPathComponent(marker).path) { return true }
+        // Shims written before the marker existed (0.10.0).
+        let zshenv = try? String(contentsOf: dir.appendingPathComponent(".zshenv"), encoding: .utf8)
+        return zshenv?.contains("Smart Terminal shell integration") == true
+    }
+
+    /// Marks a folder as a Smart Terminal shim, for the checks above and in .zshenv.
+    static let marker = ".smart-terminal-shim"
 
     /// Writes the startup files (every launch, so an update replaces them) and the inbox.
     static func install() {
@@ -40,6 +58,7 @@ enum ShellIntegration {
             let body = name == ".zshenv" ? zshenv : wrapper(name)
             try? body.write(to: zshDir.appendingPathComponent(name), atomically: true, encoding: .utf8)
         }
+        try? "".write(to: zshDir.appendingPathComponent(marker), atomically: true, encoding: .utf8)
     }
 
     /// Runs first, in every zsh: remember both folders, load yours, define `open`.
@@ -48,6 +67,9 @@ enum ShellIntegration {
     # an `open` that shows web pages in the tab's browser pane. Rewritten at launch.
     _st_zdotdir=$ZDOTDIR
     : ${SMART_TERMINAL_USER_ZDOTDIR:=$HOME}
+    # Never a shim folder, ours or another Smart Terminal's: they would source each other.
+    [[ $SMART_TERMINAL_USER_ZDOTDIR == $_st_zdotdir || -e $SMART_TERMINAL_USER_ZDOTDIR/.smart-terminal-shim ]] &&
+      SMART_TERMINAL_USER_ZDOTDIR=$HOME
     export SMART_TERMINAL_USER_ZDOTDIR
     ZDOTDIR=$SMART_TERMINAL_USER_ZDOTDIR
     [[ -r $ZDOTDIR/.zshenv ]] && source $ZDOTDIR/.zshenv

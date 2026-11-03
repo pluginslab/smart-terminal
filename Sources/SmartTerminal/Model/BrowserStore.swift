@@ -25,6 +25,9 @@ final class BrowserState: NSObject, WKUIDelegate {
         // Web Inspector in the app: "Inspect Element" in the page's context menu and the
         // dev-tools button. A private WebKit preference, set the way Safari's own is.
         config.preferences.setValue(true, forKey: "developerExtrasEnabled")
+        // WebKit alone leaves out Safari's "Version/… Safari/…" tail, and sites that sniff
+        // for a supported browser (Slack) turn it away. Identify as the Safari on this Mac.
+        config.applicationNameForUserAgent = Self.safariUserAgentSuffix
         webView = WKWebView(frame: .zero, configuration: config)
         webView.isInspectable = true // also listed in Safari's Develop menu
         webView.allowsBackForwardNavigationGestures = true
@@ -41,6 +44,13 @@ final class BrowserState: NSObject, WKUIDelegate {
             webView.observe(\.canGoForward) { [weak self] w, _ in MainActor.assumeIsolated { self?.canGoForward = w.canGoForward } },
         ]
     }
+
+    /// "Version/26.5.2 Safari/605.1.15", from the Safari installed here.
+    static let safariUserAgentSuffix: String = {
+        let safari = Bundle(path: "/Applications/Safari.app")?.infoDictionary
+        let version = safari?["CFBundleShortVersionString"] as? String ?? "26.0"
+        return "Version/\(version) Safari/605.1.15"
+    }()
 
     func load(_ url: URL) { webView.load(URLRequest(url: url)) }
 
