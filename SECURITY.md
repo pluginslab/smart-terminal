@@ -67,14 +67,43 @@ Useful context if you are assessing risk.
   single http(s) URL it writes `<tab id> <url>` to a file in `browser-inbox/` next to
   them, which the app reads and deletes; every other use runs `command open`. Nothing
   in your home folder is changed. Other shells get none of this.
+- Chromium (CEF, bundled in `Contents/Frameworks/`), only once something opens a page
+  in it: an agent tool asking for a browser, or a pane you open with View ▸ Browser
+  Engine set to Chromium. Its renderer, GPU and utility processes run from the five
+  `SmartTerminal Helper` apps. Its data is in
+  `~/Library/Application Support/SmartTerminal/Chromium/` (your Chromium panes'
+  logins); agents' profiles are in memory only and go with their browser.
 - During an import, and only for the tabs you checked: AppleScript that lists
   Terminal.app's tabs and types `/exit` into the Claude sessions being handed over,
   and `tmux detach-client` for tmux clients being moved.
 
+**The agent browser gate.** At launch the app listens on `127.0.0.1` (a random port,
+never another interface) and writes `chromium-gate.json` to its support folder,
+readable by you alone (mode 0600), with that port and a random control token. Each
+shell in a tab gets `SMART_TERMINAL_GATE` (that file's path) and `SMART_TERMINAL_TAB`.
+With the token, a tool can ask for a browser in a tab; it gets a DevTools WebSocket
+address carrying a second random token, for that browser only. What that connection
+can do:
+- only its own pages: an in-memory Chromium profile of its own, no other target
+  listed, announced or attachable, your pages included;
+- cookies, permissions and downloads only in that profile, whatever context it names;
+- an allowlist of browser-wide commands; the rest are refused (new browser contexts,
+  the browser target, closing or crashing the browser, browser-wide tracing);
+- new pages open in the tab's pane, never as a window of Chromium's own;
+- when it disconnects, what it set up (auto-attach, discovery, paused pages, sessions)
+  is undone.
+
+Chromium itself has **no debugging port**: the app talks to it over a pipe on file
+descriptors 3 and 4, which it claims at launch, close-on-exec, so no shell or tool in
+a tab inherits them. Anyone who can read your files can read the token, as with any
+local credential: the gate keeps agents apart from each other and from your pages, it
+doesn't keep out programs running as you.
+
 **Network:** the app itself makes no network requests. The browser pane loads the pages
 you open in it (by `open <url>` in a tab, ⌘-clicking a link, or the address bar), with
-WebKit, the engine Safari uses. Its cookies and site data are kept in the app's own
-WebKit data store, shared by its tabs.
+WebKit, the engine Safari uses, or Chromium if you chose it. Its cookies and site data
+are kept in the app's own data store, shared by its tabs. An agent's pane loads what
+its agent asks for.
 
 **It never:**
 - loads a page you didn't ask for. Notifications are local, and links open only when you click them;

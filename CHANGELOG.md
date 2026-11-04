@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.11.0] - 2026-11-04
+- New: agents get a browser in their tab. [devtools-fleet-mcp](https://github.com/pluginslab/devtools-fleet-mcp) run in a tab (0.2.0 and later) uses the tab's pane instead of launching Chrome, with chrome-devtools-mcp's tools unchanged: navigation, snapshots, input, screenshots, console, network, performance traces, Lighthouse. The pane runs Chromium (CEF 156, via a vendored [CefSwift](https://github.com/Rajaniraiyn/CefSwift)) as a native view, started on first use. It shows an **Agent** badge and, with several pages, a page menu; pages off screen keep rendering.
+- The agent browser gate: a local endpoint (127.0.0.1, token in a 0600 `chromium-gate.json`, path in `SMART_TERMINAL_GATE`) that hands a tool a browser in a tab. Each connection runs through a filter on the DevTools protocol: its own in-memory profile and targets only, cookies through its own pages, an allowlist of browser-wide commands, new pages opened in the pane, everything a client set up undone when it goes. Chromium has no debugging port: the app reaches it over a pipe. Details in SECURITY.md.
+- View ▸ Browser Engine: WebKit (default) or Chromium for the panes you open.
+- New: **Copy Claude Session ID** and **Copy Claude Session Reference** in a tab's context menu. The reference is a line to paste into another session's prompt: the session's title, ID and transcript path, so Claude reads that session instead of searching for it.
+- Fix: a page calling `window.close()` could have closed the window it sat in. Embedded browsers now leave windows alone; the page leaves the pane.
+- The app is larger: about 610 MB, almost all of it Chromium for both architectures.
+
 ## [0.10.2] - 2026-11-03
 - Fix: Slack (and other sites that sniff for a supported browser) turned the browser pane away with "your browser is not supported". A bare `WKWebView` sends Safari's user agent without its `Version/… Safari/…` tail. It now adds that (`applicationNameForUserAgent`), with the version of the Safari installed on the Mac.
 - Fix: a Smart Terminal started from one of its own tabs (`open -a`, a dev build, `scripts/dev-run.sh`) filled its shells with "job table full or recursion limit exceeded". It inherited that tab's `ZDOTDIR`, took the shim folder for the user's own, and the startup files sourced each other until zsh gave up. The app now passes on the folder the shim stood in for, never a shim (it marks its folder with `.smart-terminal-shim`, and recognises 0.10.0's by their header), and `.zshenv` falls back to `$HOME` if it is ever pointed at one.

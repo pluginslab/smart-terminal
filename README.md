@@ -186,6 +186,29 @@ launches. It uses WebKit, Safari's engine, so the pane also shows up in Safari's
 `open` comes from zsh shell integration (see [How it works](#how-it-works)). Inside
 tmux, the page opens in the tab you're looking at.
 
+#### Agents drive a Chromium in the pane
+
+An agent can use the pane too, with Google's full DevTools toolset. Run
+[devtools-fleet-mcp](https://github.com/pluginslab/devtools-fleet-mcp) (a Claude Code
+plugin around [chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp))
+in a Smart Terminal tab and its browser *is* that tab's pane: navigation, snapshots,
+clicks, screenshots, console and network, performance traces, Lighthouse. You watch the
+agent work beside the session it belongs to, and can take over to log in or solve a
+captcha. The pane shows an orange **Agent** badge, and a menu of the agent's pages
+when it has more than one.
+
+- The pane runs **Chromium** for this, inside the app, as a native view: nothing is
+  streamed. It starts the first time an agent asks; until then the app doesn't load it.
+- **Each agent sees its own pages only.** It gets a fresh in-memory profile and a
+  DevTools connection that passes through a gate in the app: none of your pages,
+  cookies or logins, and none of another agent's. Saved logins from devtools-fleet
+  load into that profile.
+- Several agents can share a tab; the pane shows the newest, and the others keep
+  running out of sight. Pages in a tab you're not looking at keep rendering.
+
+**View ▸ Browser Engine** sets which engine the panes *you* open use: WebKit (the
+default) or Chromium. Agent panes are always Chromium.
+
 ### Sidebar: clipboard history
 
 `⌃⌘S`, or the sidebar button at the top right of the window, opens a panel on the
