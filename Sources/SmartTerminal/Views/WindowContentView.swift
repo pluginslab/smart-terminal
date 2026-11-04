@@ -28,7 +28,14 @@ struct WindowContentView: View {
     /// The resume bar, the terminal and the trailing panel: the same in both layouts.
     @ViewBuilder private var terminalArea: some View {
         let window = model.window(windowID)
+        let shownTab = window?.activeTabID
         VStack(spacing: 0) {
+            // A tab you open picks its saved Claude session (or tmux) back up by
+            // itself, one at a time as you get to them, instead of all at once.
+            Color.clear.frame(height: 0)
+                .task(id: shownTab) {
+                    if let shownTab, AppModel.resumesOnOpen { model.resumeAgent(shownTab) }
+                }
             if let tab = window?.activeTab, let recovery = model.recovery(tab.id) {
                 ResumeBar(recovery: recovery, command: recovery.command(cwd: tab.cwd),
                           resume: { model.resumeAgent(tab.id) }, dismiss: { model.dismissResume(tab.id) })

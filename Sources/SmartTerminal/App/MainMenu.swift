@@ -41,6 +41,7 @@ enum MainMenu {
             item("New Window", #selector(AppDelegate.newWindow(_:)), "n"),
             item("Reopen Closed Window", #selector(AppDelegate.reopenClosedWindow(_:)), "t", [.command, .shift]),
             item("Resume All Sessions", #selector(AppDelegate.resumeAllSessions(_:))),
+            item("Resume Sessions When Opened", #selector(AppDelegate.toggleResumeOnOpen(_:))),
             .separator(),
             item("Import Tabs from Terminal.app…", #selector(AppDelegate.importFromTerminal(_:))),
             .separator(),

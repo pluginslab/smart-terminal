@@ -508,6 +508,13 @@ final class AppModel {
 
     func resumeAll() { recoverableTabs.forEach(resumeAgent) }
 
+    /// Shell ▸ Resume Sessions When Opened (on by default): a tab with a saved session
+    /// resumes when you first look at it. Off, it waits for its Resume bar.
+    static var resumesOnOpen: Bool {
+        get { UserDefaults.standard.object(forKey: "resumeOnOpen") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "resumeOnOpen") }
+    }
+
     func dismissResume(_ tabID: UUID) {
         guard let wid = windowID(containingTab: tabID) else { return }
         update(wid) { $0.updateTab(tabID) { $0.agentSession = nil; $0.tmuxSession = nil } }

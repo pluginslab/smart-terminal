@@ -212,6 +212,7 @@ final class AgentBrowser {
         guard let browser, let page = Optional(browser.addPage(select: select)),
               let engine = page.engine as? ChromiumPage,
               let info = await engine.open(url) else { return nil }
+        engine.keepDesktopWidth(targetID: info.targetID)
         pages[info.targetID] = page
         return info
     }

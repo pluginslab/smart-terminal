@@ -175,6 +175,33 @@ final class ChromiumPage: PageEngine, CefBrowserDelegate {
         return await ChromiumTargets.shared.wait { $0.targetID == id && $0.type == "page" }
     }
 
+    // MARK: Desktop-sized pages for agents
+
+    /// An agent's page is laid out at least this wide whatever the pane's width: a
+    /// narrow pane must not hand the agent a phone layout (what fleet's 1366x900 window
+    /// is there to avoid). Chromium's own page zoom does it: zoomed out until the
+    /// pane holds 1366 CSS pixels. Input stays Chromium's, so clicks land right for
+    /// the agent and for you (DevTools' scaled device metrics moved the agent's clicks).
+    static let agentPageWidth = 1366.0
+    private var keepsDesktopWidth = false
+    private var appliedZoom: Double?
+
+    func keepDesktopWidth(targetID: String) {
+        keepsDesktopWidth = true
+        appliedZoom = nil
+        paneResized(host.bounds.size)
+    }
+
+    fileprivate func paneResized(_ size: NSSize) {
+        guard keepsDesktopWidth, let browser, size.width > 50 else { return }
+        let factor = min(1, size.width / Self.agentPageWidth)
+        let level = log(factor) / log(1.2) // Chromium's zoom levels: factor 1.2^level
+        // Zoom is kept per site: a navigation can reset it, so re-apply when it differs.
+        guard appliedZoom.map({ abs($0 - level) > 0.01 }) ?? true || abs(browser.zoomLevel - level) > 0.01 else { return }
+        appliedZoom = level
+        browser.zoomLevel = level
+    }
+
     func load(_ url: URL) {
         if let browser { browser.load(url) } else { pendingURL = url; createBrowserIfNeeded() }
         state.url = url
@@ -234,10 +261,12 @@ final class ChromiumPage: PageEngine, CefBrowserDelegate {
 
     func browser(_ b: CefBrowser, didChangeTitle title: String) { state.title = title; report() }
     func browser(_ b: CefBrowser, didChangeURL url: URL?) {
+        if keepsDesktopWidth { appliedZoom = nil; paneResized(host.bounds.size) }
         state.url = url
         report()
     }
     func browser(_ b: CefBrowser, didChangeLoading isLoading: Bool, canGoBack: Bool, canGoForward: Bool) {
+        if keepsDesktopWidth { appliedZoom = nil; paneResized(host.bounds.size) }
         state.isLoading = isLoading
         state.canGoBack = canGoBack
         state.canGoForward = canGoForward
@@ -288,6 +317,7 @@ final class ChromiumHostView: NSView {
     override func layout() {
         super.layout()
         subviews.forEach { $0.frame = bounds }
+        page?.paneResized(bounds.size)
     }
 }
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.11.1] - 2026-11-04
+- Agents' pages get a desktop layout in a narrow pane. They took the pane's width (about 560 px), so sites handed agents their phone layout. An agent's page is now zoomed out with Chromium's own page zoom until the pane holds 1366 CSS pixels, applied again after each navigation. Input stays Chromium's, so clicks land right for the agent and for you. Your own panes aren't zoomed.
+- Restored sessions resume when you open their tab, one at a time as you get to them, instead of all at once through Resume All (30 Claude sessions starting together pinned the CPU). The tab in front of each window resumes at launch; the others wait with their Resume bar until you look at them. Shell ▸ Resume Sessions When Opened turns it off; Resume All Sessions still starts every one.
+
 ## [0.11.0] - 2026-11-04
 - New: agents get a browser in their tab. [devtools-fleet-mcp](https://github.com/pluginslab/devtools-fleet-mcp) run in a tab (0.2.0 and later) uses the tab's pane instead of launching Chrome, with chrome-devtools-mcp's tools unchanged: navigation, snapshots, input, screenshots, console, network, performance traces, Lighthouse. The pane runs Chromium (CEF 156, via a vendored [CefSwift](https://github.com/Rajaniraiyn/CefSwift)) as a native view, started on first use. It shows an **Agent** badge and, with several pages, a page menu; pages off screen keep rendering.
 - The agent browser gate: a local endpoint (127.0.0.1, token in a 0600 `chromium-gate.json`, path in `SMART_TERMINAL_GATE`) that hands a tool a browser in a tab. Each connection runs through a filter on the DevTools protocol: its own in-memory profile and targets only, cookies through its own pages, an allowlist of browser-wide commands, new pages opened in the pane, everything a client set up undone when it goes. Chromium has no debugging port: the app reaches it over a pipe. Details in SECURITY.md.
