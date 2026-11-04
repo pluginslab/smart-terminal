@@ -195,6 +195,12 @@ struct TabContextMenu: View {
         if tab.groupID != nil {
             Button("Remove from Group") { model.removeFromGroup(tab.id) }
         }
+        if let ref = ClaudeSessionReference(tab: tab, agent: model.agents[tab.id]) {
+            Divider()
+            Button("Copy Claude Session ID") { ref.copy(ref.sessionID) }
+            Button("Copy Claude Session Reference") { ref.copy(ref.prompt) }
+                .help("Title, session ID and transcript path, to paste into another session's prompt")
+        }
         Divider()
         Button("Move Tab to New Window") { model.moveTabToNewWindow(tab.id) }
             .disabled((window?.tabs.count ?? 0) < 2)
@@ -202,6 +208,43 @@ struct TabContextMenu: View {
         Button("Close Tab") { model.requestCloseTab(tab.id) }
         Button("Close Other Tabs") { model.closeOtherTabs(keeping: tab.id) }
             .disabled((window?.tabs.count ?? 0) < 2)
+    }
+}
+
+/// The Claude session in a tab, running or saved for resume, in the forms another
+/// session can use: the bare ID, or a line with the transcript path to read.
+@MainActor
+struct ClaudeSessionReference {
+    let sessionID: String
+    let title: String?
+    let transcriptPath: String?
+
+    init?(tab: TerminalTab, agent: AgentSnapshot?) {
+        guard let id = agent?.sessionID ?? tab.agentSession?.sessionID else { return nil }
+        sessionID = id
+        title = agent?.title ?? tab.agentSession?.title
+        transcriptPath = agent?.transcriptPath ?? Self.findTranscript(id)
+    }
+
+    /// A saved (not running) session: its transcript is in one of Claude's project folders.
+    private static func findTranscript(_ id: String) -> String? {
+        let projects = URL(fileURLWithPath: TerminalSession.homeDirectory).appendingPathComponent(".claude/projects")
+        let dirs = (try? FileManager.default.contentsOfDirectory(at: projects, includingPropertiesForKeys: nil)) ?? []
+        return dirs.lazy.map { $0.appendingPathComponent("\(id).jsonl").path }
+            .first { FileManager.default.fileExists(atPath: $0) }
+    }
+
+    var prompt: String {
+        var line = "Claude Code session"
+        if let title, !title.isEmpty { line += " “\(title)”" }
+        line += " (session ID \(sessionID))"
+        if let transcriptPath { line += ", transcript: \(TerminalSession.tildePath(transcriptPath))" }
+        return line
+    }
+
+    func copy(_ text: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
     }
 }
 

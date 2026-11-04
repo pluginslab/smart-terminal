@@ -267,6 +267,12 @@ final class DebugChannel {
                 out.insert("notifications=\(settings.authorizationStatus.rawValue) (2=authorized, 1=denied, 0=not asked) alerts=\(settings.alertSetting.rawValue)", at: 0)
                 try? out.joined(separator: "\n").write(toFile: path, atomically: true, encoding: .utf8)
             }
+        case "sessionRefs":
+            // what "Copy Claude Session Reference" puts on the clipboard, per tab
+            let lines = model.layout.windows.flatMap(\.tabs).compactMap { tab in
+                ClaudeSessionReference(tab: tab, agent: model.agents[tab.id]).map { "\(tab.displayTitle): \($0.prompt)" }
+            }
+            try? lines.joined(separator: "\n").write(toFile: a1, atomically: true, encoding: .utf8)
         case "importScan":
             // Dry run: what an import would do, without touching anything.
             let text: String
