@@ -20,12 +20,15 @@ enum ShellIntegration {
     static let zshDir = supportDir.appendingPathComponent("zsh", isDirectory: true)
     static let inboxDir = supportDir.appendingPathComponent("browser-inbox", isDirectory: true)
 
-    /// Environment for a tab's shell. Only zsh is integrated; other shells get nothing.
+    /// Environment for a tab's shell. Only zsh gets `open`; every shell learns its tab.
     static func environment(shell: String, tabID: UUID, inherited: [String: String]) -> [String: String] {
-        guard (shell as NSString).lastPathComponent == "zsh" else { return [:] }
-        var env = ["ZDOTDIR": zshDir.path,
-                   "SMART_TERMINAL_TAB": tabID.uuidString,
-                   "SMART_TERMINAL_INBOX": inboxDir.path]
+        // Any shell: which tab it's in, and where agent tools ask for a browser in it
+        // (ChromiumGate; the file is readable by you alone and holds the token).
+        let common = ["SMART_TERMINAL_TAB": tabID.uuidString,
+                      "SMART_TERMINAL_GATE": ChromiumGate.infoFile.path]
+        guard (shell as NSString).lastPathComponent == "zsh" else { return common }
+        var env = common.merging(["ZDOTDIR": zshDir.path,
+                                  "SMART_TERMINAL_INBOX": inboxDir.path]) { a, _ in a }
         // Your own ZDOTDIR, if you have one, is where your files are read from. Started
         // from a Smart Terminal tab, the app inherits that tab's shim folder as ZDOTDIR:
         // take the folder it was standing in for, never a shim (they'd source each other

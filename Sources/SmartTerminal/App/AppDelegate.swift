@@ -16,6 +16,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         model.notifier = Notifier(model: model)
         NSApp.mainMenu = MainMenu.build(target: self)
         model.restoreOrCreate()
+        // Agent tools find it through chromium-gate.json; Chromium starts on their first request.
+        ChromiumGate.shared.model = model
+        ChromiumGate.shared.start()
         #if DEBUG
         debug = DebugChannel(model: model, app: self)
         #endif
@@ -40,6 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         isTerminating = true
         model.saveNow()
         model.sessions.terminateAll()
+        ChromiumGate.shared.stop()
         ChromiumRuntime.shutdown()
         return .terminateNow
     }

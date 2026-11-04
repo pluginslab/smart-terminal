@@ -17,7 +17,12 @@ struct BrowserPane: View {
     var body: some View {
         VStack(spacing: 0) {
             BrowserNavigationBar(browser: browser) { model.browsers.close(tabID) }
-            PageContainer(page: browser.engine.view)
+            if let page = browser.current {
+                PageContainer(page: page.engine.view).id(page.id)
+            } else {
+                ContentUnavailableView("No pages", systemImage: "macwindow",
+                                       description: Text("The agent closed its last page."))
+            }
         }
         // Gives way before the terminal does: down to its minimum, then they share.
         .frame(minWidth: Self.minWidth, idealWidth: width, maxWidth: width)
@@ -61,6 +66,8 @@ private struct BrowserNavigationBar: View {
                 .focused($editing)
                 .onSubmit { browser.go(address); editing = false }
                 .onExitCommand { address = shown; editing = false }
+            if browser.pages.count > 1 { PageMenu(browser: browser) }
+            if case .agent = browser.owner { AgentBadge() }
             NavButton(symbol: "hammer", help: "Web Inspector (⌥⌘I)", enabled: browser.url != nil,
                       action: browser.showInspector)
                 .keyboardShortcut("i", modifiers: [.command, .option])
@@ -100,6 +107,38 @@ private struct BrowserNavigationBar: View {
     private var shown: String { browser.url?.absoluteString ?? "" }
 }
 
+/// An agent's pages: which one the pane shows. The agent keeps working in all of them.
+private struct PageMenu: View {
+    let browser: BrowserState
+
+    var body: some View {
+        Menu {
+            ForEach(browser.pages) { page in
+                Toggle(isOn: Binding(get: { browser.current?.id == page.id }, set: { _ in browser.select(page) })) {
+                    Text(page.state.title.isEmpty ? (page.state.url?.absoluteString ?? "New page") : page.state.title)
+                }
+            }
+        } label: {
+            Label("\(browser.pages.count)", systemImage: "square.on.square").font(.callout).monospacedDigit()
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .help("\(browser.pages.count) pages")
+    }
+}
+
+/// The pane is an agent's: it drives these pages through the DevTools protocol.
+private struct AgentBadge: View {
+    var body: some View {
+        Label("Agent", systemImage: "sparkles")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(ClaudeGlyph.claudeOrange)
+            .padding(.horizontal, 7).padding(.vertical, 3)
+            .background(Capsule().fill(ClaudeGlyph.claudeOrange.opacity(0.14)))
+            .help("An agent drives this browser. Its pages run in a profile of their own; it sees none of yours.")
+    }
+}
+
 private struct NavButton: View {
     let symbol: String
     let help: String
@@ -129,6 +168,12 @@ struct PageContainer: NSViewRepresentable {
     let page: NSView
 
     func makeNSView(context: Context) -> NSView { NSView() }
+
+    /// The pane goes (tab switch, hidden): Chromium pages wait in the parking window,
+    /// still running, rather than leave every window.
+    static func dismantleNSView(_ container: NSView, coordinator: ()) {
+        for case let host as ChromiumHostView in container.subviews { ParkingWindow.shared.park(host) }
+    }
 
     func updateNSView(_ container: NSView, context: Context) {
         guard page.superview !== container else { return }

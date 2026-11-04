@@ -1,4 +1,5 @@
 import AppKit
+import CefKit
 import Observation
 import SmartTerminalCore
 
@@ -38,7 +39,8 @@ final class BrowserStore {
     @discardableResult
     func open(_ url: URL, in tabID: UUID, engine: BrowserEngine = .preferred) -> BrowserState {
         // A pane in the other engine is replaced: a page can't move between engines.
-        if let existing = browsers[tabID], existing.engineKind != engine { close(tabID) }
+        // An agent's pane stays the agent's: your page opens in a pane of your own.
+        if let existing = browsers[tabID], existing.engineKind != engine || existing.owner != .user { close(tabID) }
         let b = browsers[tabID] ?? BrowserState(engine: engine)
         browsers[tabID] = b
         hidden.remove(tabID)
@@ -47,6 +49,25 @@ final class BrowserStore {
     }
 
     func close(_ tabID: UUID) {
+        hidden.remove(tabID)
+        guard let b = browsers.removeValue(forKey: tabID) else { return }
+        b.close()
+        // Closing an agent's pane ends its browser: the agent's next call says so.
+        if case .agent = b.owner { ChromiumGate.shared.tabClosed(tabID) }
+    }
+
+    /// An agent's pane in the tab, in its own Chromium profile. Replaces whatever pane
+    /// the tab had; shows it unless you hid the tab's browser.
+    func openAgent(id: String, in tabID: UUID, profile: CefProfile) -> BrowserState {
+        if let existing = browsers.removeValue(forKey: tabID) { existing.close() }
+        let b = BrowserState(engine: .chromium, owner: .agent(id: id), profile: profile)
+        browsers[tabID] = b
+        hidden.remove(tabID)
+        return b
+    }
+
+    func closeAgent(_ browser: BrowserState, in tabID: UUID) {
+        guard browsers[tabID] === browser else { return }
         hidden.remove(tabID)
         browsers.removeValue(forKey: tabID)?.close()
     }

@@ -18,7 +18,7 @@ enum ChromiumRuntime {
 
     static var isRunning: Bool { CefRuntime.shared.isInitialized }
 
-    /// The DevTools HTTP endpoint (`/json/version`, `/json/list`), once Chromium runs.
+    /// The DevTools HTTP endpoint, when started with a port for development.
     static var debuggingURL: URL? { debuggingPort.flatMap { URL(string: "http://127.0.0.1:\($0)") } }
 
     static let dataDirectory = ShellIntegration.supportDir.appendingPathComponent("Chromium", isDirectory: true)
@@ -38,6 +38,12 @@ enum ChromiumRuntime {
         } else if DevToolsPipe.isReserved {
             config.extraCommandLineSwitches["remote-debugging-pipe"] = .some(nil)
         }
+        // An agent's page in a tab you aren't looking at keeps running at full speed,
+        // as it would in headless Chrome: screenshots, timers and animations all work.
+        for flag in ["disable-renderer-backgrounding", "disable-backgrounding-occluded-windows",
+                     "disable-background-timer-throttling"] {
+            config.extraCommandLineSwitches[flag] = .some(nil)
+        }
         config.logFile = dataDirectory.appendingPathComponent("chromium.log")
         config.logSeverity = .warning
         do {
@@ -52,14 +58,14 @@ enum ChromiumRuntime {
         // would close them before the question, so a cancelled quit lost them.
         CEFApplication.setTerminateHandler(nil)
         debuggingPort = port
-        DevToolsConnection.shared.open()
+        ChromiumTargets.shared.start()
         return true
     }
 
     /// At quit: closes every page, lets Chromium finish (cookies reach the disk), stops it.
     static func shutdown() {
         guard isRunning else { return }
-        for page in pages.values { page.browser?.close(force: true) }
+        for page in pages.values { page.close() }
         let deadline = Date().addingTimeInterval(2)
         while pages.values.contains(where: { $0.browser != nil }), Date() < deadline {
             cef_do_message_loop_work()
@@ -69,34 +75,109 @@ enum ChromiumRuntime {
     }
 }
 
-/// A page in Chromium. The browser itself is created once its view is in a window
-/// (Chromium needs a parent view to draw into); until then a load waits.
+/// Chromium's pages as DevTools targets, from the app's own discovery on the pipe, so
+/// a page knows its target id (the gate names pages by it).
+@MainActor
+final class ChromiumTargets {
+    static let shared = ChromiumTargets()
+
+    struct Info: Equatable {
+        var targetID: String
+        var type: String
+        var url: String
+        var contextID: String
+    }
+
+    private(set) var targets: [String: Info] = [:]
+    private var waiters: [(match: (Info) -> Bool, resume: (Info?) -> Void)] = []
+
+    func start() {
+        let connection = DevToolsConnection.shared
+        connection.open()
+        connection.onMessage = { data in ChromiumGate.shared.route(data) }
+        connection.send(method: "Target.setDiscoverTargets", params: ["discover": true])
+    }
+
+    /// A browser-level event on the app's own session.
+    func handle(method: String, params: [String: Any]) {
+        switch method {
+        case "Target.targetCreated", "Target.targetInfoChanged":
+            guard let raw = params["targetInfo"] as? [String: Any], let id = raw["targetId"] as? String else { return }
+            let info = Info(targetID: id, type: raw["type"] as? String ?? "", url: raw["url"] as? String ?? "",
+                            contextID: raw["browserContextId"] as? String ?? "")
+            targets[id] = info
+            if let i = waiters.firstIndex(where: { $0.match(info) }) {
+                waiters.remove(at: i).resume(info)
+            }
+        case "Target.targetDestroyed":
+            if let id = params["targetId"] as? String { targets[id] = nil }
+        default:
+            break
+        }
+    }
+
+    /// The first target (already known or yet to appear) that `match` accepts.
+    func wait(timeout: TimeInterval = 10, for match: @escaping (Info) -> Bool) async -> Info? {
+        if let known = targets.values.first(where: match) { return known }
+        return await withCheckedContinuation { (cont: CheckedContinuation<Info?, Never>) in
+            var done = false
+            let resume: (Info?) -> Void = { info in
+                guard !done else { return }
+                done = true
+                cont.resume(returning: info)
+            }
+            waiters.append((match, resume))
+            DispatchQueue.main.asyncAfter(deadline: .now() + timeout) { resume(nil) }
+        }
+    }
+}
+
+/// A page in Chromium. The browser is created at once, in the parking window if the
+/// pane isn't on screen: an agent's page has to run whether you look at it or not.
 @MainActor
 final class ChromiumPage: PageEngine, CefBrowserDelegate {
     private let host = ChromiumHostView()
+    private let profile: CefProfile?
     fileprivate private(set) var browser: CefBrowser?
     private var pendingURL: URL?
     private var state = PageState()
     var view: NSView { host }
     var onChange: ((PageState) -> Void)?
 
-    init() {
+    init(profile: CefProfile?) {
+        self.profile = profile
         host.page = self
         ChromiumRuntime.pages[ObjectIdentifier(self)] = self
+        ParkingWindow.shared.park(host)
     }
 
-    /// Called by the host view when it lands in a window.
+    /// Creates the browser once the host view is in a window (it always is: here or parked).
     fileprivate func createBrowserIfNeeded() {
-        guard browser == nil, host.window != nil, ChromiumRuntime.start() else { return }
+        guard browser == nil, host.window != nil, pendingURL != nil, ChromiumRuntime.start() else { return }
         var options = CefBrowserOptions()
         options.backgroundColor = .windowBackgroundColor
-        let url = pendingURL ?? URL(string: "about:blank")!
+        options.profile = profile
+        let url = pendingURL!
         pendingURL = nil
         let b = CefBrowser.createBrowser(parentView: host, bounds: host.bounds, url: url,
                                          options: options, delegate: self)
         guard b.id >= 0 else { return }
         browser = b
         host.adopt(b.nativeView)
+    }
+
+    /// Opens the page on `url` and reports its DevTools target once Chromium has it:
+    /// the new page in `context`, or, for a profile's first page (`context` nil), the
+    /// page in a context nobody had before.
+    func open(_ url: URL, context: String?) async -> ChromiumTargets.Info? {
+        let targets = ChromiumTargets.shared
+        let known = Set(targets.targets.keys)
+        let knownContexts = Set(targets.targets.values.map(\.contextID))
+        load(url)
+        return await targets.wait { info in
+            info.type == "page" && !known.contains(info.targetID)
+                && (context.map { info.contextID == $0 } ?? !knownContexts.contains(info.contextID))
+        }
     }
 
     func load(_ url: URL) {
@@ -117,8 +198,39 @@ final class ChromiumPage: PageEngine, CefBrowserDelegate {
     }
 
     func close() {
-        if let browser { browser.close(force: true) } else { ChromiumRuntime.pages[ObjectIdentifier(self)] = nil }
-        host.removeFromSuperview()
+        guard let browser else {
+            ChromiumRuntime.pages[ObjectIdentifier(self)] = nil
+            host.removeFromSuperview()
+            return
+        }
+        let w = ChromiumPage.closingWindow(for: host)
+        closeWindow = w
+        browser.close(force: true)
+        // CEF ends an embedded page when its view goes: release it and its window.
+        DispatchQueue.main.async { [host] in
+            host.subviews.forEach { $0.removeFromSuperview() }
+            w.close()
+        }
+    }
+
+    /// CEF closes an embedded page by closing the window it's in (CefKit lets it). The
+    /// pane's window and the parking window must stay, so a closing page first moves to
+    /// an invisible window of its own, which goes with it.
+    private var closeWindow: NSWindow?
+
+    private static func closingWindow(for view: NSView) -> NSWindow {
+        let w = NSWindow(contentRect: NSRect(origin: .zero, size: view.bounds.size),
+                         styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        w.isReleasedWhenClosed = false
+        w.alphaValue = 0
+        w.ignoresMouseEvents = true
+        w.isExcludedFromWindowsMenu = true
+        w.collectionBehavior = [.transient, .ignoresCycle]
+        view.removeFromSuperview()
+        w.contentView = NSView(frame: NSRect(origin: .zero, size: view.bounds.size))
+        w.contentView?.addSubview(view)
+        w.orderBack(nil)
+        return w
     }
 
     private func report() { onChange?(state) }
@@ -126,7 +238,10 @@ final class ChromiumPage: PageEngine, CefBrowserDelegate {
     // MARK: CefBrowserDelegate
 
     func browser(_ b: CefBrowser, didChangeTitle title: String) { state.title = title; report() }
-    func browser(_ b: CefBrowser, didChangeURL url: URL?) { state.url = url; report() }
+    func browser(_ b: CefBrowser, didChangeURL url: URL?) {
+        state.url = url
+        report()
+    }
     func browser(_ b: CefBrowser, didChangeLoading isLoading: Bool, canGoBack: Bool, canGoForward: Bool) {
         state.isLoading = isLoading
         state.canGoBack = canGoBack
@@ -143,12 +258,15 @@ final class ChromiumPage: PageEngine, CefBrowserDelegate {
 
     func browserDidClose(_ b: CefBrowser) {
         browser = nil
+        closeWindow?.orderOut(nil)
+        closeWindow = nil
+        host.removeFromSuperview()
         ChromiumRuntime.pages[ObjectIdentifier(self)] = nil
     }
 }
 
 /// Holds Chromium's own view and keeps it the size of the pane. The pane moves this
-/// view between windows and tab switches; Chromium's view goes with it.
+/// view in and out; Chromium's view goes with it.
 @MainActor
 final class ChromiumHostView: NSView {
     weak var page: ChromiumPage?
@@ -168,5 +286,38 @@ final class ChromiumHostView: NSView {
     override func layout() {
         super.layout()
         subviews.forEach { $0.frame = bounds }
+    }
+}
+
+/// Where Chromium pages wait while no pane shows them: a window you never see (fully
+/// transparent, clicks pass through) but that macOS counts as on screen, so Chromium
+/// keeps drawing. Pages are parked at a desktop size, which is what an agent's
+/// screenshots and layout see.
+@MainActor
+final class ParkingWindow {
+    static let shared = ParkingWindow()
+    static let pageSize = NSSize(width: 1280, height: 800)
+
+    private lazy var window: NSWindow = {
+        let w = NSWindow(contentRect: NSRect(origin: .zero, size: Self.pageSize),
+                         styleMask: [.borderless], backing: .buffered, defer: false)
+        w.isReleasedWhenClosed = false
+        w.alphaValue = 0
+        w.ignoresMouseEvents = true
+        w.hasShadow = false
+        w.isExcludedFromWindowsMenu = true
+        w.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .transient]
+        w.level = NSWindow.Level(rawValue: NSWindow.Level.normal.rawValue - 1)
+        w.contentView = NSView(frame: NSRect(origin: .zero, size: Self.pageSize))
+        w.orderBack(nil)
+        return w
+    }()
+
+    func park(_ view: NSView) {
+        guard view.window !== window else { return }
+        view.removeFromSuperview()
+        view.frame = NSRect(origin: .zero, size: Self.pageSize)
+        view.autoresizingMask = []
+        window.contentView?.addSubview(view)
     }
 }

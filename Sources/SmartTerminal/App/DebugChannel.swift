@@ -64,7 +64,7 @@ final class DebugChannel {
             if let w = keyWindowID { model.toggleSidebar(w) }
         case "userAgent":
             // Writes the active tab's browser user agent to a file: userAgent <path>
-            model.browsers.browser(for: activeTab?.id)?.engine.evaluate("navigator.userAgent") { ua in
+            model.browsers.browser(for: activeTab?.id)?.current?.engine.evaluate("navigator.userAgent") { ua in
                 try? (ua ?? "").write(toFile: a1, atomically: true, encoding: .utf8)
             }
         case "engine":
@@ -75,6 +75,14 @@ final class DebugChannel {
             let params = (try? JSONSerialization.jsonObject(with: Data(a3.utf8))) as? [String: Any] ?? [:]
             let path = a2
             DevToolsConnection.shared.send(method: a1, params: params) { reply in
+                let data = (try? JSONSerialization.data(withJSONObject: reply, options: [.prettyPrinted, .sortedKeys])) ?? Data()
+                try? data.write(to: URL(fileURLWithPath: path))
+            }
+        case "cdpSession":
+            // A command on a DevTools session: cdpSession <sessionId> <method> <path> [params json]
+            let params = (try? JSONSerialization.jsonObject(with: Data((args.count > 4 ? args[4] : "").utf8))) as? [String: Any] ?? [:]
+            let path = a3
+            DevToolsConnection.shared.send(method: a2, params: params, sessionId: a1) { reply in
                 let data = (try? JSONSerialization.data(withJSONObject: reply, options: [.prettyPrinted, .sortedKeys])) ?? Data()
                 try? data.write(to: URL(fileURLWithPath: path))
             }
