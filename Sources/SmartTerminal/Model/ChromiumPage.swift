@@ -143,6 +143,7 @@ final class ChromiumPage: PageEngine, CefBrowserDelegate {
     private var state = PageState()
     var view: NSView { host }
     var onChange: ((PageState) -> Void)?
+    var onPageClosed: (() -> Void)?
 
     init(profile: CefProfile?) {
         self.profile = profile
@@ -166,18 +167,12 @@ final class ChromiumPage: PageEngine, CefBrowserDelegate {
         host.adopt(b.nativeView)
     }
 
-    /// Opens the page on `url` and reports its DevTools target once Chromium has it:
-    /// the new page in `context`, or, for a profile's first page (`context` nil), the
-    /// page in a context nobody had before.
-    func open(_ url: URL, context: String?) async -> ChromiumTargets.Info? {
-        let targets = ChromiumTargets.shared
-        let known = Set(targets.targets.keys)
-        let knownContexts = Set(targets.targets.values.map(\.contextID))
+    /// Opens the page on `url` and reports its DevTools target, as the page's own
+    /// DevTools agent names it, once Chromium lists it as a page.
+    func open(_ url: URL) async -> ChromiumTargets.Info? {
         load(url)
-        return await targets.wait { info in
-            info.type == "page" && !known.contains(info.targetID)
-                && (context.map { info.contextID == $0 } ?? !knownContexts.contains(info.contextID))
-        }
+        guard let browser, let id = await PageTargetQuery.targetID(of: browser) else { return nil }
+        return await ChromiumTargets.shared.wait { $0.targetID == id && $0.type == "page" }
     }
 
     func load(_ url: URL) {
@@ -254,6 +249,13 @@ final class ChromiumPage: PageEngine, CefBrowserDelegate {
     /// Links that open a new window load here instead, as in the WebKit pane.
     func browser(_ b: CefBrowser, decideWindowOpenFor request: CefWindowOpenRequest) -> CefWindowOpenAction {
         .openInCurrentBrowser
+    }
+
+    /// CEF closes no window for an embedded page (patched CefKit): either the app is
+    /// closing it (`close()` already removes the view) or the page called
+    /// window.close(), which closes it the same way.
+    func browserWantsToClose(_ b: CefBrowser) {
+        if closeWindow == nil { onPageClosed?() }
     }
 
     func browserDidClose(_ b: CefBrowser) {

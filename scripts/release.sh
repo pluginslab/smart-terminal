@@ -13,7 +13,7 @@ cd "$(dirname "$0")/.."
 VERSION="$(cat VERSION)"
 IDENTITY="${SMART_TERMINAL_SIGN_IDENTITY:-$(security find-identity -v -p codesigning | awk -F'"' '/Developer ID Application/ {print $2; exit}')}"
 PROFILE="${NOTARY_PROFILE:-fujifilm-notary}"
-DIST="dist"
+DIST="${SMART_TERMINAL_DIST:-dist}"
 APP="$DIST/SmartTerminal.app"   # not the repo-root bundle a dev instance may be running from
 DMG="$DIST/SmartTerminal-$VERSION.dmg"
 
@@ -26,12 +26,18 @@ swift test 2>&1 | grep -E "Test run with|error" | tail -2
 echo "==> universal release build"
 swift build -c release --triple arm64-apple-macosx26.0 --scratch-path .build/rel-arm64 >/dev/null
 swift build -c release --triple x86_64-apple-macosx26.0 --scratch-path .build/rel-x86_64 >/dev/null
-lipo -create .build/rel-arm64/release/SmartTerminal .build/rel-x86_64/release/SmartTerminal -output .build/SmartTerminal-universal
-lipo -info .build/SmartTerminal-universal
+for exe in SmartTerminal SmartTerminalHelper; do
+    lipo -create ".build/rel-arm64/release/$exe" ".build/rel-x86_64/release/$exe" -output ".build/$exe-universal"
+    lipo -info ".build/$exe-universal"
+done
+CEF_UNIVERSAL="$(scripts/cef.sh universal)"
+lipo -info "$CEF_UNIVERSAL/Versions/A/Chromium Embedded Framework"
 
 echo "==> bundle + sign ($IDENTITY)"
 mkdir -p "$DIST"
-SMART_TERMINAL_APP="$APP" SMART_TERMINAL_BINARY=.build/SmartTerminal-universal SMART_TERMINAL_SIGN_IDENTITY="$IDENTITY" SMART_TERMINAL_HARDENED=1 \
+SMART_TERMINAL_APP="$APP" SMART_TERMINAL_BINARY=.build/SmartTerminal-universal \
+    SMART_TERMINAL_HELPER_BINARY=.build/SmartTerminalHelper-universal SMART_TERMINAL_CEF_FRAMEWORK="$CEF_UNIVERSAL" \
+    SMART_TERMINAL_SIGN_IDENTITY="$IDENTITY" SMART_TERMINAL_HARDENED=1 \
     scripts/bundle.sh --release
 codesign --verify --strict --deep --verbose=1 "$APP"
 

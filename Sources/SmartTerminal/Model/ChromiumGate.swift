@@ -181,7 +181,8 @@ final class AgentBrowser {
     private let port: UInt16
     private(set) var contextID: String?
     private(set) var connections: [GateConnection] = []
-    private weak var browser: BrowserState?
+    /// The agent's own: it keeps running while another agent's browser has the tab's pane.
+    private(set) var browser: BrowserState?
     /// Pages by DevTools target id.
     private var pages: [String: BrowserPage] = [:]
 
@@ -210,7 +211,7 @@ final class AgentBrowser {
     func newPage(url: URL, select: Bool) async -> ChromiumTargets.Info? {
         guard let browser, let page = Optional(browser.addPage(select: select)),
               let engine = page.engine as? ChromiumPage,
-              let info = await engine.open(url, context: contextID) else { return nil }
+              let info = await engine.open(url) else { return nil }
         pages[info.targetID] = page
         return info
     }
@@ -234,20 +235,24 @@ final class AgentBrowser {
         }
         guard let session else { return nil }
         let c = GateConnection(agent: self, client: client,
-                               gate: DevToolsGate(browserSession: session, contextID: contextID))
+                               gate: DevToolsGate(browserSession: session, contextID: contextID,
+                                                  knownTargets: Set(pages.keys),
+                                                  allocateID: { ChromiumGate.shared.newUpstreamID() }))
         connections.append(c)
         return c
     }
 
     func disconnected(_ c: GateConnection) {
         connections.removeAll { $0 === c }
-        DevToolsConnection.shared.send(method: "Target.detachFromTarget", params: ["sessionId": c.gate.browserSession])
     }
 
     func close() {
         connections.forEach { $0.client.close() }
         connections = []
-        if let browser, let model = ChromiumGate.shared.model { model.browsers.closeAgent(browser, in: tabID) }
+        if let browser, let model = ChromiumGate.shared.model {
+            let next = ChromiumGate.shared.agents.values.first { $0 !== self && $0.tabID == tabID && $0.browser != nil }
+            model.browsers.closeAgent(browser, in: tabID, next: next?.browser)
+        }
         browser = nil
     }
 }
@@ -255,7 +260,8 @@ final class AgentBrowser {
 /// One DevTools client of an agent browser, and its gate.
 @MainActor
 final class GateConnection {
-    unowned let agent: AgentBrowser
+    /// Weak: the browser can end (closed by you or its tool) while clients are still connected.
+    weak var agent: AgentBrowser?
     let client: GateClient
     var gate: DevToolsGate
 
@@ -263,6 +269,15 @@ final class GateConnection {
         self.agent = agent
         self.client = client
         self.gate = gate
+    }
+
+    /// The client is gone (or its browser): undo what it set up in Chromium, whether
+    /// or not the browser is still there. A client's auto-attach outlives it otherwise
+    /// and holds every new page in Chromium at its start.
+    func end() {
+        for out in gate.teardown() { if case .toChromium(let d) = out { DevToolsConnection.shared.write(d) } }
+        DevToolsConnection.shared.send(method: "Target.detachFromTarget", params: ["sessionId": gate.browserSession])
+        agent?.disconnected(self)
     }
 
     func fromClient(_ data: Data) {
@@ -278,13 +293,13 @@ final class GateConnection {
             switch out {
             case .toClient(let d): client.send(d)
             case .toChromium(let d): DevToolsConnection.shared.write(d)
-            case .activatePage(let t): agent.activatePage(targetID: t)
+            case .activatePage(let t): agent?.activatePage(targetID: t)
             case .closePage(let rid, let t):
-                agent.closePage(targetID: t)
+                agent?.closePage(targetID: t)
                 perform(gate.pageClosed(requestID: rid))
             case .createPage(let rid, let url, let background):
                 Task {
-                    let info = await agent.newPage(url: URL(string: url) ?? URL(string: "about:blank")!, select: !background)
+                    let info = await agent?.newPage(url: URL(string: url) ?? URL(string: "about:blank")!, select: !background)
                     if let info {
                         perform(gate.pageCreated(requestID: rid, targetID: info.targetID))
                     } else {
@@ -377,7 +392,7 @@ final class GateClient {
     }
 
     private func finished() {
-        if let session { session.agent.disconnected(session) }
+        session?.end()
         session = nil
         gate.ended(self)
     }

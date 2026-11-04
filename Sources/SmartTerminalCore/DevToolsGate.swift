@@ -49,17 +49,47 @@ public struct DevToolsGate {
         let method: String
         /// The client's session, nil for browser-level commands.
         let sessionID: String?
+        var kind: Kind = .client
+
+        enum Kind { case client, utilityAttach, cookies }
     }
 
-    public init(browserSession: String, contextID: String) {
+    /// Cookies are per browser context, but Chromium's DevTools only knows the contexts
+    /// it made itself, not the app's in-memory profiles: `Storage.*Cookies` with the
+    /// agent's context fails. The gate answers them on a page session of its own, on one
+    /// of the agent's pages, with the `Network` equivalents (which act on that page's
+    /// context). Never shown to the client.
+    private var utilitySession: String?
+    private var utilityTarget: String?
+    private var cookieQueue: [(clientID: Int, method: String, params: [String: Any])] = []
+    private var attachingUtility = false
+
+    static let cookieMethods: [String: String] = [
+        "Storage.getCookies": "Network.getAllCookies",
+        "Storage.setCookies": "Network.setCookies",
+        "Storage.clearCookies": "Network.clearBrowserCookies",
+    ]
+
+    /// `knownTargets`: the agent's pages so far (the app knows them; the client may
+    /// not have asked yet).
+    /// `allocateID`: ids unique on the shared pipe, for commands the gate sends when
+    /// answering Chromium (the same allocator `fromClient` gets).
+    public init(browserSession: String, contextID: String, knownTargets: Set<String> = [],
+                allocateID: @escaping () -> Int) {
         self.browserSession = browserSession
         self.contextID = contextID
+        targets = knownTargets
+        self.allocateID = allocateID
     }
+
+    private let allocateID: () -> Int
 
     /// Whether a message from Chromium belongs to this gate: an answer it waits for,
     /// or something on one of its sessions.
     public func owns(replyID: Int) -> Bool { pending[replyID] != nil }
-    public func owns(sessionID: String) -> Bool { sessionID == browserSession || sessions.contains(sessionID) }
+    public func owns(sessionID: String) -> Bool {
+        sessionID == browserSession || sessions.contains(sessionID) || sessionID == utilitySession
+    }
 
     /// Methods without a session the client may call. Values: whether the method
     /// takes the agent's context (`browserContextId` is set to it).
@@ -78,9 +108,6 @@ public struct DevToolsGate {
         "Browser.grantPermissions": true,
         "Browser.resetPermissions": true,
         "Browser.setPermission": true,
-        "Storage.getCookies": true,
-        "Storage.setCookies": true,
-        "Storage.clearCookies": true,
         "SystemInfo.getInfo": false,
     ]
 
@@ -138,6 +165,9 @@ public struct DevToolsGate {
         default:
             break
         }
+        if Self.cookieMethods[method] != nil {
+            return cookies(clientID: id, method: method, params: params, newID: newID)
+        }
         guard let takesContext = Self.browserMethods[method] else {
             return [error(id, nil, "\(method) isn't available through Smart Terminal's browser gate", code: -32601)]
         }
@@ -162,6 +192,26 @@ public struct DevToolsGate {
         guard var msg = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [] }
         if let id = msg["id"] as? Int {
             guard let p = pending.removeValue(forKey: id) else { return [] }
+            switch p.kind {
+            case .utilityAttach:
+                attachingUtility = false
+                guard let s = (msg["result"] as? [String: Any])?["sessionId"] as? String else {
+                    let waiting = cookieQueue
+                    cookieQueue = []
+                    return waiting.map { error($0.clientID, nil, "No page to read cookies through") }
+                }
+                utilitySession = s
+                return flushCookies(using: allocateID)
+            case .cookies:
+                var reply: [String: Any] = ["id": p.clientID]
+                if let e = msg["error"] { reply["error"] = e } else {
+                    let r = msg["result"] as? [String: Any] ?? [:]
+                    reply["result"] = p.method == "Storage.getCookies" ? ["cookies": r["cookies"] ?? []] : [:]
+                }
+                return [encoded(reply)]
+            case .client:
+                break
+            }
             msg["id"] = p.clientID
             if let s = p.sessionID { msg["sessionId"] = s } else { msg.removeValue(forKey: "sessionId") }
             if var result = msg["result"] as? [String: Any] {
@@ -181,6 +231,7 @@ public struct DevToolsGate {
 
         guard let method = msg["method"] as? String, let session = msg["sessionId"] as? String else { return [] }
         let params = msg["params"] as? [String: Any] ?? [:]
+        if session == utilitySession { return [] } // the gate's own; nothing for the client
         if session != browserSession {
             // An event on one of the agent's sessions; its subsessions are the agent's too.
             guard sessions.contains(session) else { return [] }
@@ -216,6 +267,7 @@ public struct DevToolsGate {
             targets.insert(t)
         case "Target.targetDestroyed", "Target.targetCrashed":
             guard let t = params["targetId"] as? String, targets.contains(t) else { return [] }
+            if t == utilityTarget { utilitySession = nil; utilityTarget = nil }
             if method == "Target.targetDestroyed" { targets.remove(t) }
         case "Target.attachedToTarget":
             guard let s = params["sessionId"] as? String else { return [] }
@@ -233,6 +285,63 @@ public struct DevToolsGate {
         }
         return [encoded(msg)]
     }
+
+    // MARK: Leaving
+
+    /// The client went away. What it set up in Chromium outlives its connection: a
+    /// browser-level auto-attach with waitForDebuggerOnStart would hold every new page
+    /// of the agent's at its start, for a debugger that never comes; request
+    /// interception on a page would hold its requests. So: no more auto-attach or
+    /// discovery, every page let run, every session dropped. The app then detaches
+    /// `browserSession` itself.
+    public mutating func teardown() -> [Output] {
+        var out = [command("Target.setAutoAttach", ["autoAttach": false, "waitForDebuggerOnStart": false],
+                           session: browserSession, newID: nil),
+                   command("Target.setDiscoverTargets", ["discover": false], session: browserSession, newID: nil)]
+        let all = sessions.union(heldSessions.keys).union([utilitySession].compactMap { $0 })
+        for s in all.sorted() {
+            out.append(command("Runtime.runIfWaitingForDebugger", [:], session: s, newID: nil))
+            out.append(command("Target.detachFromTarget", ["sessionId": s], session: browserSession, newID: nil))
+        }
+        sessions = []
+        heldSessions = [:]
+        held = [:]
+        utilitySession = nil
+        pending = [:]
+        return out
+    }
+
+    // MARK: Cookies
+
+    private mutating func cookies(clientID: Int, method: String, params: [String: Any], newID: () -> Int) -> [Output] {
+        var p = params
+        p.removeValue(forKey: "browserContextId")
+        cookieQueue.append((clientID, method, p))
+        if utilitySession != nil { return flushCookies(using: newID) }
+        guard !attachingUtility else { return [] }
+        guard let target = targets.sorted().first else {
+            cookieQueue.removeLast()
+            return [error(clientID, nil, "No page to read cookies through yet")]
+        }
+        attachingUtility = true
+        utilityTarget = target
+        let upstream = newID()
+        pending[upstream] = Pending(clientID: -1, method: "Target.attachToTarget", sessionID: nil, kind: .utilityAttach)
+        return [command("Target.attachToTarget", ["targetId": target, "flatten": true], session: browserSession, newID: upstream)]
+    }
+
+    /// Sends the queued cookie commands on the utility session.
+    private mutating func flushCookies(using newID: () -> Int) -> [Output] {
+        guard let session = utilitySession else { return [] }
+        let queue = cookieQueue
+        cookieQueue = []
+        return queue.map { item in
+            let upstream = newID()
+            pending[upstream] = Pending(clientID: item.clientID, method: item.method, sessionID: nil, kind: .cookies)
+            return command(Self.cookieMethods[item.method]!, item.params, session: session, newID: upstream)
+        }
+    }
+
 
     /// A held target got its real type: what was held goes out with the real info.
     private mutating func release(_ target: String, as info: [String: Any]) -> [Output] {

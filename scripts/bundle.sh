@@ -26,7 +26,7 @@ else
     BIN="$(swift build -c "$CONFIG" --show-bin-path)/SmartTerminal"
     HELPER_BIN="$(swift build -c "$CONFIG" --show-bin-path)/SmartTerminalHelper"
 fi
-CEF_FRAMEWORK="$(scripts/cef.sh framework)"   # downloads the pinned Chromium on first use
+CEF_FRAMEWORK="${SMART_TERMINAL_CEF_FRAMEWORK:-$(scripts/cef.sh framework)}"   # downloads the pinned Chromium on first use
 VERSION="$(cat VERSION)"
 BUILD="$(date -u +%Y%m%d%H%M)"   # monotonic build number (CFBundleVersion)
 APP="${SMART_TERMINAL_APP:-SmartTerminal.app}"   # test-run.sh builds elsewhere so it never rewrites a running dev bundle

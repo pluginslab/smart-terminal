@@ -6,7 +6,10 @@ import Testing
     let ours = "CTX-AGENT"
     let yours = "CTX-DEFAULT"
 
-    func gate() -> DevToolsGate { DevToolsGate(browserSession: "BROWSER", contextID: ours) }
+    func gate() -> DevToolsGate {
+        var n = 900
+        return DevToolsGate(browserSession: "BROWSER", contextID: ours, allocateID: { n += 1; return n })
+    }
 
     func json(_ obj: [String: Any]) -> Data { try! JSONSerialization.data(withJSONObject: obj) }
     func obj(_ d: Data) -> [String: Any] { (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] ?? [:] }
@@ -91,10 +94,31 @@ import Testing
         #expect(toClient(g.fromChromium(json(["method": "Page.loadEventFired", "sessionId": "S-OTHER", "params": [:]]))).isEmpty)
     }
 
-    @Test func cookiesAndPermissionsArePinnedToTheAgentsContext() {
+    @Test func cookiesGoThroughAPageOfTheAgents() {
+        var g = DevToolsGate(browserSession: "BROWSER", contextID: ours, knownTargets: ["A"], allocateID: { 777 })
+        let ids = IDs()
+        // First a page session on the agent's page, the client's call waits for it.
+        let attach = toChromium(g.fromClient(json(["id": 6, "method": "Storage.setCookies",
+                                                   "params": ["browserContextId": yours, "cookies": [["name": "a"]]]]), newID: ids.take))
+        #expect(attach.map { $0["method"] as? String } == ["Target.attachToTarget"])
+        #expect((attach[0]["params"] as? [String: Any])?["targetId"] as? String == "A")
+        let sent = toChromium(g.fromChromium(json(["id": 500, "sessionId": "BROWSER", "result": ["sessionId": "UTIL"]])))
+        #expect(sent.map { $0["method"] as? String } == ["Network.setCookies"])
+        #expect(sent[0]["sessionId"] as? String == "UTIL")
+        #expect((sent[0]["params"] as? [String: Any])?["browserContextId"] == nil)
+        // The answer goes back as the Storage reply; the utility session stays hidden.
+        let back = toClient(g.fromChromium(json(["id": 777, "sessionId": "UTIL", "result": [:]])))
+        #expect(back[0]["id"] as? Int == 6 && back[0]["sessionId"] == nil)
+        #expect(toClient(g.fromChromium(json(["method": "Network.dataReceived", "sessionId": "UTIL", "params": [:]]))).isEmpty)
+        // Later calls use the session straight away.
+        let get = toChromium(g.fromClient(json(["id": 7, "method": "Storage.getCookies"]), newID: ids.take))
+        #expect(get.map { $0["method"] as? String } == ["Network.getAllCookies"])
+        let cookies = toClient(g.fromChromium(json(["id": 501, "sessionId": "UTIL", "result": ["cookies": [["name": "a"]]]])))
+        #expect(((cookies[0]["result"] as? [String: Any])?["cookies"] as? [[String: Any]])?.count == 1)
+    }
+
+    @Test func permissionsArePinnedToTheAgentsContext() {
         var g = gate(); let ids = IDs()
-        let sent = toChromium(g.fromClient(json(["id": 6, "method": "Storage.getCookies", "params": ["browserContextId": yours]]), newID: ids.take))
-        #expect((sent[0]["params"] as? [String: Any])?["browserContextId"] as? String == ours)
         let grant = toChromium(g.fromClient(json(["id": 7, "method": "Browser.grantPermissions", "params": ["permissions": ["geolocation"]]]), newID: ids.take))
         #expect((grant[0]["params"] as? [String: Any])?["browserContextId"] as? String == ours)
     }
@@ -142,5 +166,17 @@ import Testing
         // From then on, its session's events flow straight through.
         #expect(toClient(g.fromChromium(json(["method": "Page.loadEventFired", "sessionId": "S-N", "params": [:]]))).count == 1)
         #expect(g.targets.contains("N"))
+    }
+
+    @Test func leavingUndoesWhatTheClientSetUp() {
+        var g = gate()
+        _ = g.fromChromium(json(["method": "Target.attachedToTarget", "sessionId": "BROWSER",
+                                 "params": ["sessionId": "S-A", "targetInfo": info("A", ours), "waitingForDebugger": true]]))
+        let out = toChromium(g.teardown())
+        #expect(out.map { $0["method"] as? String } == ["Target.setAutoAttach", "Target.setDiscoverTargets",
+                                                        "Runtime.runIfWaitingForDebugger", "Target.detachFromTarget"])
+        #expect(out.prefix(2).allSatisfy { $0["sessionId"] as? String == "BROWSER" })
+        #expect(out[2]["sessionId"] as? String == "S-A")
+        #expect(!g.owns(sessionID: "S-A"))
     }
 }

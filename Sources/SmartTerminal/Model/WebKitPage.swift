@@ -7,6 +7,7 @@ final class WebKitPage: NSObject, PageEngine, WKUIDelegate {
     let webView: WKWebView
     var view: NSView { webView }
     var onChange: ((PageState) -> Void)?
+    var onPageClosed: (() -> Void)?
     private var observations: [NSKeyValueObservation] = []
 
     override init() {
@@ -69,6 +70,9 @@ final class WebKitPage: NSObject, PageEngine, WKUIDelegate {
         webView.stopLoading()
         webView.removeFromSuperview()
     }
+
+    /// The page called window.close(): it leaves the pane.
+    func webViewDidClose(_ webView: WKWebView) { onPageClosed?() }
 
     /// Links that open a new window (target="_blank", window.open) load here
     /// instead, so they land in this pane's history rather than nowhere.

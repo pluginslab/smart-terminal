@@ -56,19 +56,25 @@ final class BrowserStore {
         if case .agent = b.owner { ChromiumGate.shared.tabClosed(tabID) }
     }
 
-    /// An agent's pane in the tab, in its own Chromium profile. Replaces whatever pane
-    /// the tab had; shows it unless you hid the tab's browser.
+    /// An agent's pane in the tab, in its own Chromium profile. It takes the tab's pane;
+    /// another agent's browser there keeps running out of sight (its agent holds it)
+    /// and comes back when this one ends. A pane of yours is closed.
     func openAgent(id: String, in tabID: UUID, profile: CefProfile) -> BrowserState {
-        if let existing = browsers.removeValue(forKey: tabID) { existing.close() }
+        if let existing = browsers[tabID], existing.owner == .user {
+            browsers[tabID] = nil
+            existing.close()
+        }
         let b = BrowserState(engine: .chromium, owner: .agent(id: id), profile: profile)
         browsers[tabID] = b
         hidden.remove(tabID)
         return b
     }
 
-    func closeAgent(_ browser: BrowserState, in tabID: UUID) {
+    /// An agent's browser ended: its pages close, and the tab shows the agent's
+    /// browser that's left there, if any.
+    func closeAgent(_ browser: BrowserState, in tabID: UUID, next: BrowserState?) {
+        browser.close()
         guard browsers[tabID] === browser else { return }
-        hidden.remove(tabID)
-        browsers.removeValue(forKey: tabID)?.close()
+        browsers[tabID] = next
     }
 }

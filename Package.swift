@@ -7,8 +7,9 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", from: "1.20.0"),
         // Chromium (CEF) for browser panes that agents drive over the DevTools protocol.
-        // Loaded at runtime with dlopen, so the app never links Chromium. Pinned to a commit.
-        .package(url: "https://github.com/Rajaniraiyn/CefSwift.git", revision: "b18cceef8afaf6686147e19a9239f31c2dd81541"),
+        // Loaded at runtime with dlopen, so the app never links Chromium. Vendored with
+        // one addition: Vendor/CefSwift/SMART-TERMINAL.md.
+        .package(path: "Vendor/CefSwift"),
     ],
     targets: [
         // Pure tab/group model + persistence. No UI, fully unit-tested.

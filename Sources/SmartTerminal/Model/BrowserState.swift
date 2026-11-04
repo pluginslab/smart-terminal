@@ -35,6 +35,8 @@ protocol PageEngine: AnyObject {
     var view: NSView { get }
     /// Set by `BrowserPage`; the engine calls it whenever its state changes.
     var onChange: ((PageState) -> Void)? { get set }
+    /// Set by `BrowserState`: the page closed itself (`window.close()`).
+    var onPageClosed: (() -> Void)? { get set }
     func load(_ url: URL)
     func back()
     func forward()
@@ -103,6 +105,9 @@ final class BrowserState {
         case .chromium: ChromiumPage(profile: profile)
         }
         let page = BrowserPage(engine: engine)
+        engine.onPageClosed = { [weak self, weak page] in
+            if let self, let page { self.closePage(page) }
+        }
         pages.append(page)
         if select || selectedID == nil { selectedID = page.id }
         return page
