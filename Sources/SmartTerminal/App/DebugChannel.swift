@@ -52,6 +52,7 @@ final class DebugChannel {
         guard let cmd = args.first else { return }
         let a1 = args.count > 1 ? args[1] : ""
         let a2 = args.count > 2 ? args[2] : ""
+        let a3 = args.count > 3 ? args[3] : ""
         switch cmd {
         case "snapshot":
             snapshot(to: a1)
@@ -63,9 +64,32 @@ final class DebugChannel {
             if let w = keyWindowID { model.toggleSidebar(w) }
         case "userAgent":
             // Writes the active tab's browser user agent to a file: userAgent <path>
-            model.browsers.browser(for: activeTab?.id)?.webView.evaluateJavaScript("navigator.userAgent") { ua, _ in
-                try? (ua as? String ?? "").write(toFile: a1, atomically: true, encoding: .utf8)
+            model.browsers.browser(for: activeTab?.id)?.current?.engine.evaluate("navigator.userAgent") { ua in
+                try? (ua ?? "").write(toFile: a1, atomically: true, encoding: .utf8)
             }
+        case "engine":
+            // Which engine new browser panes use: engine webKit|chromium
+            if let e = BrowserEngine(rawValue: a1) { BrowserEngine.preferred = e }
+        case "cdp":
+            // One DevTools command over the app's pipe: cdp <method> <path> [params json]
+            let params = (try? JSONSerialization.jsonObject(with: Data(a3.utf8))) as? [String: Any] ?? [:]
+            let path = a2
+            DevToolsConnection.shared.send(method: a1, params: params) { reply in
+                let data = (try? JSONSerialization.data(withJSONObject: reply, options: [.prettyPrinted, .sortedKeys])) ?? Data()
+                try? data.write(to: URL(fileURLWithPath: path))
+            }
+        case "cdpSession":
+            // A command on a DevTools session: cdpSession <sessionId> <method> <path> [params json]
+            let params = (try? JSONSerialization.jsonObject(with: Data((args.count > 4 ? args[4] : "").utf8))) as? [String: Any] ?? [:]
+            let path = a3
+            DevToolsConnection.shared.send(method: a2, params: params, sessionId: a1) { reply in
+                let data = (try? JSONSerialization.data(withJSONObject: reply, options: [.prettyPrinted, .sortedKeys])) ?? Data()
+                try? data.write(to: URL(fileURLWithPath: path))
+            }
+        case "chromium":
+            // Chromium's state and DevTools endpoint: chromium <path>
+            let line = "running=\(ChromiumRuntime.isRunning) pipe=\(DevToolsPipe.isReserved) devtools=\(ChromiumRuntime.debuggingURL?.absoluteString ?? "-") error=\(ChromiumRuntime.startError ?? "-")"
+            try? line.write(toFile: a1, atomically: true, encoding: .utf8)
         case "inspect":
             // The active tab's browser opens its Web Inspector.
             model.browsers.browser(for: activeTab?.id)?.showInspector()
@@ -215,6 +239,13 @@ final class DebugChannel {
                          "windowOpaque=\(v.window?.isOpaque ?? true) firstResponder=\(v.window?.firstResponder === v)"]
             var p: NSView? = v.superview
             while let x = p { lines.append("  ancestor \(type(of: x)) opaque=\(x.isOpaque) layerBG=\(String(describing: x.layer?.backgroundColor))"); p = x.superview }
+            try? lines.joined(separator: "\n").write(toFile: a1, atomically: true, encoding: .utf8)
+        case "screenText":
+            // The active terminal's visible lines as text: screenText <path>
+            guard let t = activeTab, let term = model.sessions.existing(t.id)?.view.getTerminal() else { return }
+            let lines = (0..<term.rows).map { row in
+                term.getLine(row: row)?.translateToString(trimRight: true) ?? ""
+            }
             try? lines.joined(separator: "\n").write(toFile: a1, atomically: true, encoding: .utf8)
         case "shift":
             // Same path as the menu item (⌃←/⌃→).

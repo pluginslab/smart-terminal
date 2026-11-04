@@ -9,3 +9,5 @@ demo/home/Library/
 demo/home/.zcompdump*
 demo/home/.zsh_sessions/
 demo/home/.zsh_history
+.cef/
+dist-chromium/

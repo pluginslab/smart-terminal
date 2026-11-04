@@ -1,88 +1,7 @@
 import AppKit
+import CefKit
 import Observation
-import WebKit
 import SmartTerminalCore
-
-/// One tab's browser: a WebKit view that lives as long as the tab (or until you
-/// close the pane), so its page, history and scroll position survive tab switches.
-@MainActor
-@Observable
-final class BrowserState: NSObject, WKUIDelegate {
-    let webView: WKWebView
-    private(set) var url: URL?
-    private(set) var title = ""
-    private(set) var isLoading = false
-    private(set) var progress = 0.0
-    private(set) var canGoBack = false
-    private(set) var canGoForward = false
-    /// Opened empty from the toolbar button: the address field takes the cursor.
-    var wantsAddressFocus = false
-    @ObservationIgnored private var observations: [NSKeyValueObservation] = []
-
-    override init() {
-        let config = WKWebViewConfiguration()
-        config.websiteDataStore = .default() // logins and cookies shared by every tab, kept across launches
-        // Web Inspector in the app: "Inspect Element" in the page's context menu and the
-        // dev-tools button. A private WebKit preference, set the way Safari's own is.
-        config.preferences.setValue(true, forKey: "developerExtrasEnabled")
-        // WebKit alone leaves out Safari's "Version/… Safari/…" tail, and sites that sniff
-        // for a supported browser (Slack) turn it away. Identify as the Safari on this Mac.
-        config.applicationNameForUserAgent = Self.safariUserAgentSuffix
-        webView = WKWebView(frame: .zero, configuration: config)
-        webView.isInspectable = true // also listed in Safari's Develop menu
-        webView.allowsBackForwardNavigationGestures = true
-        webView.allowsMagnification = true
-        super.init()
-        webView.uiDelegate = self
-        // KVO arrives on the main thread for WKWebView's properties.
-        observations = [
-            webView.observe(\.url) { [weak self] w, _ in MainActor.assumeIsolated { self?.url = w.url } },
-            webView.observe(\.title) { [weak self] w, _ in MainActor.assumeIsolated { self?.title = w.title ?? "" } },
-            webView.observe(\.isLoading) { [weak self] w, _ in MainActor.assumeIsolated { self?.isLoading = w.isLoading } },
-            webView.observe(\.estimatedProgress) { [weak self] w, _ in MainActor.assumeIsolated { self?.progress = w.estimatedProgress } },
-            webView.observe(\.canGoBack) { [weak self] w, _ in MainActor.assumeIsolated { self?.canGoBack = w.canGoBack } },
-            webView.observe(\.canGoForward) { [weak self] w, _ in MainActor.assumeIsolated { self?.canGoForward = w.canGoForward } },
-        ]
-    }
-
-    /// "Version/26.5.2 Safari/605.1.15", from the Safari installed here.
-    static let safariUserAgentSuffix: String = {
-        let safari = Bundle(path: "/Applications/Safari.app")?.infoDictionary
-        let version = safari?["CFBundleShortVersionString"] as? String ?? "26.0"
-        return "Version/\(version) Safari/605.1.15"
-    }()
-
-    func load(_ url: URL) { webView.load(URLRequest(url: url)) }
-
-    /// Links that open a new window (target="_blank", window.open) load here
-    /// instead, so they land in this pane's history rather than nowhere.
-    func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
-                 for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
-        webView.load(navigationAction.request)
-        return nil
-    }
-
-    /// Address-bar entry: a URL, a host, or words to search for.
-    func go(_ input: String) {
-        if let url = BrowserAddress.url(from: input) { load(url) }
-    }
-
-    func back() { webView.goBack() }
-    func forward() { webView.goForward() }
-    func reloadOrStop() {
-        if isLoading { webView.stopLoading() } else { webView.reload() }
-    }
-
-    /// Opens the Web Inspector for this page (WebKit's `_inspector`, the object behind
-    /// the context menu's Inspect Element).
-    func showInspector() {
-        (webView.value(forKey: "_inspector") as? NSObject)?.perform(NSSelectorFromString("show"))
-    }
-
-    func openInDefaultBrowser() {
-        if let url { NSWorkspace.shared.open(url) }
-    }
-}
 
 /// The browsers of all tabs. A tab has one only after something opened a page in it.
 @MainActor
@@ -106,7 +25,7 @@ final class BrowserStore {
     /// re-shows the tab's existing one without losing its page.
     func toggle(_ tabID: UUID) {
         if browsers[tabID] == nil {
-            let b = BrowserState()
+            let b = BrowserState(engine: .preferred)
             b.wantsAddressFocus = true
             browsers[tabID] = b
         } else if hidden.contains(tabID) {
@@ -118,8 +37,11 @@ final class BrowserStore {
 
     /// Shows `url` in the tab's pane, creating the pane if needed.
     @discardableResult
-    func open(_ url: URL, in tabID: UUID) -> BrowserState {
-        let b = browsers[tabID] ?? BrowserState()
+    func open(_ url: URL, in tabID: UUID, engine: BrowserEngine = .preferred) -> BrowserState {
+        // A pane in the other engine is replaced: a page can't move between engines.
+        // An agent's pane stays the agent's: your page opens in a pane of your own.
+        if let existing = browsers[tabID], existing.engineKind != engine || existing.owner != .user { close(tabID) }
+        let b = browsers[tabID] ?? BrowserState(engine: engine)
         browsers[tabID] = b
         hidden.remove(tabID)
         b.load(url)
@@ -129,7 +51,30 @@ final class BrowserStore {
     func close(_ tabID: UUID) {
         hidden.remove(tabID)
         guard let b = browsers.removeValue(forKey: tabID) else { return }
-        b.webView.stopLoading()
-        b.webView.removeFromSuperview()
+        b.close()
+        // Closing an agent's pane ends its browser: the agent's next call says so.
+        if case .agent = b.owner { ChromiumGate.shared.tabClosed(tabID) }
+    }
+
+    /// An agent's pane in the tab, in its own Chromium profile. It takes the tab's pane;
+    /// another agent's browser there keeps running out of sight (its agent holds it)
+    /// and comes back when this one ends. A pane of yours is closed.
+    func openAgent(id: String, in tabID: UUID, profile: CefProfile) -> BrowserState {
+        if let existing = browsers[tabID], existing.owner == .user {
+            browsers[tabID] = nil
+            existing.close()
+        }
+        let b = BrowserState(engine: .chromium, owner: .agent(id: id), profile: profile)
+        browsers[tabID] = b
+        hidden.remove(tabID)
+        return b
+    }
+
+    /// An agent's browser ended: its pages close, and the tab shows the agent's
+    /// browser that's left there, if any.
+    func closeAgent(_ browser: BrowserState, in tabID: UUID, next: BrowserState?) {
+        browser.close()
+        guard browsers[tabID] === browser else { return }
+        browsers[tabID] = next
     }
 }

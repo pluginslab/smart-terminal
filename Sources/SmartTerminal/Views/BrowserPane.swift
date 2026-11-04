@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import WebKit
 import SmartTerminalCore
 
 /// The tab's browser beside its terminal: navigation bar on top, the page below,
@@ -18,7 +17,12 @@ struct BrowserPane: View {
     var body: some View {
         VStack(spacing: 0) {
             BrowserNavigationBar(browser: browser) { model.browsers.close(tabID) }
-            WebViewContainer(webView: browser.webView)
+            if let page = browser.current {
+                PageContainer(page: page.engine.view).id(page.id)
+            } else {
+                ContentUnavailableView("No pages", systemImage: "macwindow",
+                                       description: Text("The agent closed its last page."))
+            }
         }
         // Gives way before the terminal does: down to its minimum, then they share.
         .frame(minWidth: Self.minWidth, idealWidth: width, maxWidth: width)
@@ -62,6 +66,8 @@ private struct BrowserNavigationBar: View {
                 .focused($editing)
                 .onSubmit { browser.go(address); editing = false }
                 .onExitCommand { address = shown; editing = false }
+            if browser.pages.count > 1 { PageMenu(browser: browser) }
+            if case .agent = browser.owner { AgentBadge() }
             NavButton(symbol: "hammer", help: "Web Inspector (⌥⌘I)", enabled: browser.url != nil,
                       action: browser.showInspector)
                 .keyboardShortcut("i", modifiers: [.command, .option])
@@ -101,6 +107,38 @@ private struct BrowserNavigationBar: View {
     private var shown: String { browser.url?.absoluteString ?? "" }
 }
 
+/// An agent's pages: which one the pane shows. The agent keeps working in all of them.
+private struct PageMenu: View {
+    let browser: BrowserState
+
+    var body: some View {
+        Menu {
+            ForEach(browser.pages) { page in
+                Toggle(isOn: Binding(get: { browser.current?.id == page.id }, set: { _ in browser.select(page) })) {
+                    Text(page.state.title.isEmpty ? (page.state.url?.absoluteString ?? "New page") : page.state.title)
+                }
+            }
+        } label: {
+            Label("\(browser.pages.count)", systemImage: "square.on.square").font(.callout).monospacedDigit()
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .help("\(browser.pages.count) pages")
+    }
+}
+
+/// The pane is an agent's: it drives these pages through the DevTools protocol.
+private struct AgentBadge: View {
+    var body: some View {
+        Label("Agent", systemImage: "sparkles")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(ClaudeGlyph.claudeOrange)
+            .padding(.horizontal, 7).padding(.vertical, 3)
+            .background(Capsule().fill(ClaudeGlyph.claudeOrange.opacity(0.14)))
+            .help("An agent drives this browser. Its pages run in a profile of their own; it sees none of yours.")
+    }
+}
+
 private struct NavButton: View {
     let symbol: String
     let help: String
@@ -124,19 +162,25 @@ private struct NavButton: View {
     }
 }
 
-/// Hosts the tab's web view. The view belongs to the tab's `BrowserState`; this
-/// container only reparents it, the way `TerminalContainer` does for terminals.
-struct WebViewContainer: NSViewRepresentable {
-    let webView: WKWebView
+/// Hosts the tab's page view (either engine's). The view belongs to the tab's
+/// `BrowserState`; this only reparents it, the way `TerminalContainer` does for terminals.
+struct PageContainer: NSViewRepresentable {
+    let page: NSView
 
     func makeNSView(context: Context) -> NSView { NSView() }
 
+    /// The pane goes (tab switch, hidden): Chromium pages wait in the parking window,
+    /// still running, rather than leave every window.
+    static func dismantleNSView(_ container: NSView, coordinator: ()) {
+        for case let host as ChromiumHostView in container.subviews { ParkingWindow.shared.park(host) }
+    }
+
     func updateNSView(_ container: NSView, context: Context) {
-        guard webView.superview !== container else { return }
+        guard page.superview !== container else { return }
         container.subviews.forEach { $0.removeFromSuperview() }
-        webView.removeFromSuperview()
-        webView.frame = container.bounds
-        webView.autoresizingMask = [.width, .height]
-        container.addSubview(webView)
+        page.removeFromSuperview()
+        page.frame = container.bounds
+        page.autoresizingMask = [.width, .height]
+        container.addSubview(page)
     }
 }

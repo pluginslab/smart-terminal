@@ -94,6 +94,14 @@ final class AppModel {
         browsers.open(url, in: target)
     }
 
+    /// The tab an agent tool named: its `SMART_TERMINAL_TAB`, or "-" or nothing for
+    /// the tab you're in (a tool inside tmux can't know its tab).
+    func agentTab(_ name: String?) -> UUID? {
+        if let name, let id = UUID(uuidString: name), windowID(containingTab: id) != nil { return id }
+        let key = (NSApp.keyWindow as? TerminalWindow).flatMap { window($0.windowID)?.activeTabID }
+        return key ?? layout.windows.first?.activeTabID
+    }
+
     // MARK: - Sidebar
 
     func isSidebarOpen(_ windowID: UUID) -> Bool { sidebarOpen[windowID] ?? sidebarDefault }
