@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import WebKit
 import SmartTerminalCore
 
 /// The tab's browser beside its terminal: navigation bar on top, the page below,
@@ -18,7 +17,7 @@ struct BrowserPane: View {
     var body: some View {
         VStack(spacing: 0) {
             BrowserNavigationBar(browser: browser) { model.browsers.close(tabID) }
-            WebViewContainer(webView: browser.webView)
+            PageContainer(page: browser.engine.view)
         }
         // Gives way before the terminal does: down to its minimum, then they share.
         .frame(minWidth: Self.minWidth, idealWidth: width, maxWidth: width)
@@ -124,19 +123,19 @@ private struct NavButton: View {
     }
 }
 
-/// Hosts the tab's web view. The view belongs to the tab's `BrowserState`; this
-/// container only reparents it, the way `TerminalContainer` does for terminals.
-struct WebViewContainer: NSViewRepresentable {
-    let webView: WKWebView
+/// Hosts the tab's page view (either engine's). The view belongs to the tab's
+/// `BrowserState`; this only reparents it, the way `TerminalContainer` does for terminals.
+struct PageContainer: NSViewRepresentable {
+    let page: NSView
 
     func makeNSView(context: Context) -> NSView { NSView() }
 
     func updateNSView(_ container: NSView, context: Context) {
-        guard webView.superview !== container else { return }
+        guard page.superview !== container else { return }
         container.subviews.forEach { $0.removeFromSuperview() }
-        webView.removeFromSuperview()
-        webView.frame = container.bounds
-        webView.autoresizingMask = [.width, .height]
-        container.addSubview(webView)
+        page.removeFromSuperview()
+        page.frame = container.bounds
+        page.autoresizingMask = [.width, .height]
+        container.addSubview(page)
     }
 }

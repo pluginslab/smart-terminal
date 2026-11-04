@@ -40,6 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         isTerminating = true
         model.saveNow()
         model.sessions.terminateAll()
+        ChromiumRuntime.shutdown()
         return .terminateNow
     }
 
@@ -228,6 +229,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         if let t = activeTabID { model.browsers.toggle(t) }
     }
 
+    /// View ▸ Browser Engine: which engine new browser panes use (tag = index in `BrowserEngine.allCases`).
+    @objc func setBrowserEngine(_ sender: NSMenuItem) {
+        BrowserEngine.preferred = BrowserEngine.allCases[sender.tag]
+    }
+
     @objc func toggleTabLayout(_ sender: Any?) {
         UserDefaults.standard.set((TabLayout.current == .strip ? TabLayout.sidebar : .strip).rawValue, forKey: TabLayout.defaultsKey)
     }
@@ -248,6 +254,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         case #selector(toggleBrowser(_:)):
             item.title = model.browsers.visibleBrowser(for: activeTabID) != nil ? "Hide Browser" : "Show Browser"
             return activeTabID != nil
+        case #selector(setBrowserEngine(_:)):
+            item.state = BrowserEngine.allCases[item.tag] == .preferred ? .on : .off
+            return true
         case #selector(toggleTabLayout(_:)):
             item.state = TabLayout.current == .sidebar ? .on : .off
             return true

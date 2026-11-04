@@ -73,6 +73,15 @@ enum MainMenu {
             .separator(),
             item("Show Sidebar", #selector(AppDelegate.toggleSidebar(_:)), "s", [.command, .control]),
             item("Show Browser", #selector(AppDelegate.toggleBrowser(_:)), "b", [.command, .shift]),
+            {
+                let engines = NSMenu(title: "Browser Engine")
+                for (i, e) in BrowserEngine.allCases.enumerated() {
+                    engines.addItem(item(e.displayName, #selector(AppDelegate.setBrowserEngine(_:)), tag: i))
+                }
+                let top = NSMenuItem(title: "Browser Engine", action: nil, keyEquivalent: "")
+                top.submenu = engines
+                return top
+            }(),
             item("Tabs in Columns", #selector(AppDelegate.toggleTabLayout(_:)), "l", [.command, .control]),
             .separator(),
             item("Enter Full Screen", #selector(NSWindow.toggleFullScreen(_:)), "f", [.command, .control], to: nil),

@@ -5,5 +5,8 @@
     <!-- Import Tabs from Terminal.app talks to Terminal via Apple Events; the hardened runtime blocks that without this. -->
     <key>com.apple.security.automation.apple-events</key>
     <true/>
+    <!-- Chromium runs V8 in the app's own (browser) process too. -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
 </dict>
 </plist>

@@ -63,9 +63,16 @@ final class DebugChannel {
             if let w = keyWindowID { model.toggleSidebar(w) }
         case "userAgent":
             // Writes the active tab's browser user agent to a file: userAgent <path>
-            model.browsers.browser(for: activeTab?.id)?.webView.evaluateJavaScript("navigator.userAgent") { ua, _ in
-                try? (ua as? String ?? "").write(toFile: a1, atomically: true, encoding: .utf8)
+            model.browsers.browser(for: activeTab?.id)?.engine.evaluate("navigator.userAgent") { ua in
+                try? (ua ?? "").write(toFile: a1, atomically: true, encoding: .utf8)
             }
+        case "engine":
+            // Which engine new browser panes use: engine webKit|chromium
+            if let e = BrowserEngine(rawValue: a1) { BrowserEngine.preferred = e }
+        case "chromium":
+            // Chromium's state and DevTools endpoint: chromium <path>
+            let line = "running=\(ChromiumRuntime.isRunning) devtools=\(ChromiumRuntime.debuggingURL?.absoluteString ?? "-") error=\(ChromiumRuntime.startError ?? "-")"
+            try? line.write(toFile: a1, atomically: true, encoding: .utf8)
         case "inspect":
             // The active tab's browser opens its Web Inspector.
             model.browsers.browser(for: activeTab?.id)?.showInspector()
@@ -215,6 +222,13 @@ final class DebugChannel {
                          "windowOpaque=\(v.window?.isOpaque ?? true) firstResponder=\(v.window?.firstResponder === v)"]
             var p: NSView? = v.superview
             while let x = p { lines.append("  ancestor \(type(of: x)) opaque=\(x.isOpaque) layerBG=\(String(describing: x.layer?.backgroundColor))"); p = x.superview }
+            try? lines.joined(separator: "\n").write(toFile: a1, atomically: true, encoding: .utf8)
+        case "screenText":
+            // The active terminal's visible lines as text: screenText <path>
+            guard let t = activeTab, let term = model.sessions.existing(t.id)?.view.getTerminal() else { return }
+            let lines = (0..<term.rows).map { row in
+                term.getLine(row: row)?.translateToString(trimRight: true) ?? ""
+            }
             try? lines.joined(separator: "\n").write(toFile: a1, atomically: true, encoding: .utf8)
         case "shift":
             // Same path as the menu item (⌃←/⌃→).
