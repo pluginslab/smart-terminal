@@ -7,8 +7,9 @@ import Darwin
 /// Chromium inside the app (CEF). Started the first time a tab opens a Chromium page,
 /// never before: until then the app doesn't load the framework at all.
 ///
-/// Its DevTools endpoint is what chrome-devtools-mcp connects to. It listens on
-/// 127.0.0.1 only, on a port picked at start.
+/// Its DevTools protocol runs over a private pipe (`DevToolsPipe`), not a port: only
+/// the app talks to Chromium, and agents reach their own tab through the gate.
+/// `SMART_TERMINAL_CHROMIUM_PORT` opens a plain TCP port instead, for development.
 @MainActor
 enum ChromiumRuntime {
     private(set) static var debuggingPort: Int?
@@ -31,8 +32,12 @@ enum ChromiumRuntime {
         config.rootCachePath = dataDirectory
         config.cachePath = dataDirectory.appendingPathComponent("Default", isDirectory: true)
         config.persistSessionCookies = true
-        let port = freeLocalPort()
-        config.remoteDebuggingPort = port
+        let port = ProcessInfo.processInfo.environment["SMART_TERMINAL_CHROMIUM_PORT"].flatMap(Int.init)
+        if let port {
+            config.remoteDebuggingPort = port
+        } else if DevToolsPipe.isReserved {
+            config.extraCommandLineSwitches["remote-debugging-pipe"] = .some(nil)
+        }
         config.logFile = dataDirectory.appendingPathComponent("chromium.log")
         config.logSeverity = .warning
         do {
@@ -47,6 +52,7 @@ enum ChromiumRuntime {
         // would close them before the question, so a cancelled quit lost them.
         CEFApplication.setTerminateHandler(nil)
         debuggingPort = port
+        DevToolsConnection.shared.open()
         return true
     }
 
@@ -60,24 +66,6 @@ enum ChromiumRuntime {
             usleep(10_000)
         }
         CefRuntime.shared.shutdown()
-    }
-
-    /// A port nothing listens on now, for Chromium to take.
-    private static func freeLocalPort() -> Int {
-        let fd = socket(AF_INET, SOCK_STREAM, 0)
-        defer { Darwin.close(fd) }
-        var addr = sockaddr_in()
-        addr.sin_family = sa_family_t(AF_INET)
-        addr.sin_addr.s_addr = inet_addr("127.0.0.1")
-        addr.sin_port = 0
-        var len = socklen_t(MemoryLayout<sockaddr_in>.size)
-        _ = withUnsafeMutablePointer(to: &addr) {
-            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(fd, $0, len) }
-        }
-        _ = withUnsafeMutablePointer(to: &addr) {
-            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { getsockname(fd, $0, &len) }
-        }
-        return Int(UInt16(bigEndian: addr.sin_port))
     }
 }
 

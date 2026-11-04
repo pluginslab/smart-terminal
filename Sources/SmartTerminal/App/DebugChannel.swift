@@ -52,6 +52,7 @@ final class DebugChannel {
         guard let cmd = args.first else { return }
         let a1 = args.count > 1 ? args[1] : ""
         let a2 = args.count > 2 ? args[2] : ""
+        let a3 = args.count > 3 ? args[3] : ""
         switch cmd {
         case "snapshot":
             snapshot(to: a1)
@@ -69,9 +70,17 @@ final class DebugChannel {
         case "engine":
             // Which engine new browser panes use: engine webKit|chromium
             if let e = BrowserEngine(rawValue: a1) { BrowserEngine.preferred = e }
+        case "cdp":
+            // One DevTools command over the app's pipe: cdp <method> <path> [params json]
+            let params = (try? JSONSerialization.jsonObject(with: Data(a3.utf8))) as? [String: Any] ?? [:]
+            let path = a2
+            DevToolsConnection.shared.send(method: a1, params: params) { reply in
+                let data = (try? JSONSerialization.data(withJSONObject: reply, options: [.prettyPrinted, .sortedKeys])) ?? Data()
+                try? data.write(to: URL(fileURLWithPath: path))
+            }
         case "chromium":
             // Chromium's state and DevTools endpoint: chromium <path>
-            let line = "running=\(ChromiumRuntime.isRunning) devtools=\(ChromiumRuntime.debuggingURL?.absoluteString ?? "-") error=\(ChromiumRuntime.startError ?? "-")"
+            let line = "running=\(ChromiumRuntime.isRunning) pipe=\(DevToolsPipe.isReserved) devtools=\(ChromiumRuntime.debuggingURL?.absoluteString ?? "-") error=\(ChromiumRuntime.startError ?? "-")"
             try? line.write(toFile: a1, atomically: true, encoding: .utf8)
         case "inspect":
             // The active tab's browser opens its Web Inspector.
