@@ -14,5 +14,5 @@ pkill -f "^$APP/Contents/MacOS/SmartTerminal" 2>/dev/null || true
 [[ "${1:-}" == "--keep" ]] || rm -rf "$SUPPORT"
 mkdir -p "$SUPPORT"
 SMART_TERMINAL_APP="$APP" scripts/bundle.sh >/dev/null
-open -n --env SMART_TERMINAL_SUPPORT_DIR="$SUPPORT" --env SMART_TERMINAL_DEBUG=1 --env SMART_TERMINAL_DEBUG_ID=test --env SMART_TERMINAL_LOG_OUTPUT="${SMART_TERMINAL_LOG_OUTPUT:-0}" "$APP"
+open -n --env SMART_TERMINAL_SUPPORT_DIR="$SUPPORT" --env SMART_TERMINAL_DEBUG=1 --env SMART_TERMINAL_DEBUG_ID=test --env SMART_TERMINAL_TEST_POPUPS="${SMART_TERMINAL_TEST_POPUPS:-0}" --env SMART_TERMINAL_LOG_OUTPUT="${SMART_TERMINAL_LOG_OUTPUT:-0}" "$APP"
 echo "launched test instance (support dir: $SUPPORT)"

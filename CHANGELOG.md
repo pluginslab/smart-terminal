@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.11.2] - 2026-11-05
+- Fix: "Sign in with Google" and other OAuth popups hung on their last screen. A page's `window.open` loaded in the pane itself, so the sign-in had no `window.opener` to hand its result to and no popup to close. Popups a page opens now get a real window over the app's (with the configuration WebKit hands over, which keeps the opener); `window.close()` closes it. Links with `target="_blank"` still load in the pane. WebKit panes only: Chromium panes are unchanged.
+- Smart Terminal declares that it opens `http`/`https` links. That makes it a browser to macOS, a condition for Apple's passkey entitlement (`com.apple.developer.web-browser.public-key-credential`), which would let the pane use passkeys from the Passwords app; it is not granted yet. It doesn't become your default browser unless you choose it; if you do, links open in the browser of the tab in front.
+
 ## [0.11.1] - 2026-11-04
 - Agents' pages get a desktop layout in a narrow pane. They took the pane's width (about 560 px), so sites handed agents their phone layout. An agent's page is now zoomed out with Chromium's own page zoom until the pane holds 1366 CSS pixels, applied again after each navigation. Input stays Chromium's, so clicks land right for the agent and for you. Your own panes aren't zoomed.
 - Restored sessions resume when you open their tab, one at a time as you get to them, instead of all at once through Resume All (30 Claude sessions starting together pinned the CPU). The tab in front of each window resumes at launch; the others wait with their Resume bar until you look at them. Shell ▸ Resume Sessions When Opened turns it off; Resume All Sessions still starts every one.

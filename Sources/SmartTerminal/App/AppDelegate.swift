@@ -30,6 +30,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         if let t = activeTabID { model.clearIndicators(t, reason: "app activated") }
     }
 
+    /// A web link handed to the app (if you made it your browser, or `open -a`): it
+    /// shows in the browser of the tab in front.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls where ["http", "https"].contains(url.scheme?.lowercased() ?? "") {
+            model.openInBrowser(url, tabID: nil)
+        }
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

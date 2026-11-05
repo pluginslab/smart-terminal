@@ -60,6 +60,18 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>NSAppleEventsUsageDescription</key><string>Smart Terminal reads your open Terminal.app tabs so it can import them.</string>
     <key>NSSupportsAutomaticTermination</key><false/>
     <key>NSSupportsSuddenTermination</key><false/>
+    <!-- Smart Terminal can open web links (in a tab's browser). Declaring it is what makes
+         it a browser to macOS, a condition for the passkey entitlement
+         (com.apple.developer.web-browser.public-key-credential). It is never made the
+         default browser unless you choose it. -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key><string>Web site URL</string>
+            <key>CFBundleURLSchemes</key><array><string>http</string><string>https</string></array>
+            <key>CFBundleTypeRole</key><string>Viewer</string>
+        </dict>
+    </array>
     <key>UTExportedTypeDeclarations</key>
     <array>
         <dict>
