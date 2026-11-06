@@ -33,6 +33,8 @@ struct TabSidebarLayout<Detail: View>: View {
     let model: AppModel
     @ViewBuilder let detail: () -> Detail
     @State private var category: TabCategory = .all
+    /// The tab last shown in each category, so going back to one shows it again.
+    @State private var lastTab: [TabCategory: UUID] = [:]
 
     var body: some View {
         let window = model.window(windowID)
@@ -56,11 +58,18 @@ struct TabSidebarLayout<Detail: View>: View {
         // column and the margin around the floating sidebar showed the desktop.
         .background(Color(nsColor: .windowBackgroundColor))
         // A tab chosen elsewhere (⌘], a notification, a drop) brings its category along.
-        .onChange(of: window?.activeTabID) { _, _ in
-            guard let tab = model.window(windowID)?.activeTab,
-                  !resolved(category, in: model.window(windowID)).contains(tab) else { return }
-            category = tab.groupID.map { .group($0) } ?? .ungrouped
+        .onChange(of: window?.activeTabID, initial: true) { _, _ in
+            guard let tab = model.window(windowID)?.activeTab else { return }
+            if !resolved(category, in: model.window(windowID)).contains(tab) {
+                category = tab.groupID.map { .group($0) } ?? .ungrouped
+            }
+            remember(tab)
         }
+        #if DEBUG
+        .onChange(of: DebugUI.shared.category) { _, new in
+            if let new { category = new; DebugUI.shared.category = nil }
+        }
+        #endif
         // Git state for the rows, only while this layout is on screen.
         .task(id: windowID) {
             while !Task.isCancelled {
@@ -70,11 +79,22 @@ struct TabSidebarLayout<Detail: View>: View {
             }
         }
         // Picking a category shows one of its sessions, so the terminal matches the list.
+        // Picking a category shows the session last shown in it (else its first), so
+        // the terminal matches the list.
         .onChange(of: category) { _, new in
-            guard let w = model.window(windowID), let active = w.activeTab, !new.contains(active),
-                  let first = w.tabs.first(where: new.contains) else { return }
-            model.select(first.id)
+            guard let w = model.window(windowID), let active = w.activeTab, !new.contains(active) else { return }
+            let last = lastTab[new].flatMap { w.tab($0) }.flatMap { new.contains($0) ? $0 : nil }
+            guard let pick = last ?? w.tabs.first(where: new.contains) else { return }
+            model.select(pick.id)
         }
+    }
+
+    /// Notes `tab` as the one last shown in the category on screen, in its own
+    /// group (or Ungrouped), and in All Sessions.
+    private func remember(_ tab: TerminalTab) {
+        lastTab[category] = tab.id
+        lastTab[tab.groupID.map { .group($0) } ?? .ungrouped] = tab.id
+        lastTab[.all] = tab.id
     }
 
     /// A group that no longer exists falls back to everything.

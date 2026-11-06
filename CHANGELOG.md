@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.11.3] - 2026-11-06
+- Fix: going back to a group in the sidebar showed its first session, not the one you had open there. Each group (and Ungrouped, and All Sessions) now remembers the session last shown in it and shows it again; the first one only if that session was closed or moved. Kept while the app runs, not across launches.
+
 ## [0.11.2] - 2026-11-05
 - Fix: "Sign in with Google" and other OAuth popups hung on their last screen. A page's `window.open` loaded in the pane itself, so the sign-in had no `window.opener` to hand its result to and no popup to close. Popups a page opens now get a real window over the app's (with the configuration WebKit hands over, which keeps the opener); `window.close()` closes it. Links with `target="_blank"` still load in the pane. WebKit panes only: Chromium panes are unchanged.
 - Smart Terminal declares that it opens `http`/`https` links. That makes it a browser to macOS, a condition for Apple's passkey entitlement (`com.apple.developer.web-browser.public-key-credential`), which would let the pane use passkeys from the Passwords app; it is not granted yet. It doesn't become your default browser unless you choose it; if you do, links open in the browser of the tab in front.

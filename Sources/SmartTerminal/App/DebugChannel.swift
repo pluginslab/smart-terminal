@@ -16,6 +16,8 @@ import SmartTerminalCore
 final class DebugUI {
     static let shared = DebugUI()
     var subagentPopover: String?
+    /// A category for the sidebar layout to pick, as a click on its row would.
+    var category: TabCategory?
 }
 
 @MainActor
@@ -175,6 +177,14 @@ final class DebugChannel {
             if let img = r.nsImage, let tiff = img.tiffRepresentation,
                let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
                 try? png.write(to: URL(fileURLWithPath: a1))
+            }
+        case "category":
+            // Picks a groups-column row: category all | ungrouped | <group name>
+            guard let w = keyWindowID, let win = model.window(w) else { return }
+            DebugUI.shared.category = switch a1 {
+            case "all": .all
+            case "ungrouped": .ungrouped
+            default: win.orderedGroups.first { $0.name == a1 }.map { .group($0.id) }
             }
         case "newWindow":
             model.newWindow()
