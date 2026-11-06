@@ -103,6 +103,10 @@ enum MainMenu {
             item("Move Tab Right in Group", #selector(AppDelegate.shiftTabRight(_:)), right, [.control, .option]),
             item("Move Tab to New Window", #selector(AppDelegate.moveTabToNewWindow(_:))),
             .separator(),
+            // Xcode's history keys: ⌘[ and ⌘] are the browser pane's Back and Forward.
+            item("Back", #selector(AppDelegate.tabHistoryBack(_:)), left, [.command, .control]),
+            item("Forward", #selector(AppDelegate.tabHistoryForward(_:)), right, [.command, .control]),
+            .separator(),
             item("Show Next Tab", #selector(AppDelegate.selectNextTab(_:)), "]", [.command, .shift]),
             item("Show Previous Tab", #selector(AppDelegate.selectPreviousTab(_:)), "[", [.command, .shift]),
             item("Show Next Tab", #selector(AppDelegate.selectNextTab(_:)), "\t", .control).hiddenAlternate(),

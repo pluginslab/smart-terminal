@@ -1,6 +1,7 @@
 # Changelog
 
 ## [0.13.0] - 2026-11-06
+- New: Back and Forward through the tabs you looked at, as in Slack: the arrows left of the title above the terminal, Tab ▸ Back / Forward, ⌃⌘← and ⌃⌘→ (Xcode's; ⌘[ and ⌘] stay the browser pane's). Each window keeps its own history of the last 100 tabs, however you got to them (a click, ⌘1, a notification, a group); tabs closed or moved to another window are skipped.
 - New: Desktop / Mobile in Chromium panes. The button beside the address shows the layout (a computer or a phone) and switches it. Mobile is an iPhone: 390 CSS px wide (narrower if the pane is), the mobile viewport, touch, and Safari on iPhone's user agent; the page reloads so the site sees the phone from its first request. Desktop is as before: an agent's pages laid out 1366 px wide, zoomed to fit.
 - Agents can switch too, with the tool they already have: chrome-devtools-mcp's `emulate` with a viewport (`390x844x3,mobile,touch`) lays the page out as that phone and the pane shows it; `emulate` without one goes back. Before, the pane's desktop zoom stayed on under the agent's phone metrics, the two compounded and the agent's clicks missed. The gate tells the app when an agent sets or clears a page's device metrics, and the app takes its zoom off meanwhile. When the agent goes, the pane goes back to what you chose.
 

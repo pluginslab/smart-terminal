@@ -214,6 +214,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         if let t = activeTabID { model.moveTabToNewWindow(t) }
     }
 
+    @objc func tabHistoryBack(_ sender: Any?) {
+        if let id = keyWindowID { model.goInHistory(-1, in: id) }
+    }
+
+    @objc func tabHistoryForward(_ sender: Any?) {
+        if let id = keyWindowID { model.goInHistory(1, in: id) }
+    }
+
     @objc func selectNextTab(_ sender: Any?) {
         if let id = keyWindowID { model.update(id) { $0.selectRelative(1) }; clearActive() }
     }
@@ -290,6 +298,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
             return tab != nil
         case #selector(moveTabToNewWindow(_:)):
             return (wid.flatMap { model.window($0)?.tabs.count } ?? 0) > 1
+        case #selector(tabHistoryBack(_:)):
+            return wid.map { model.canGoInHistory(-1, in: $0) } ?? false
+        case #selector(tabHistoryForward(_:)):
+            return wid.map { model.canGoInHistory(1, in: $0) } ?? false
         case #selector(selectNextTab(_:)), #selector(selectPreviousTab(_:)), #selector(selectTabByNumber(_:)):
             return wid != nil
         default:

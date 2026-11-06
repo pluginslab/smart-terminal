@@ -126,6 +126,7 @@ private struct HeaderButton: View {
     let symbol: String
     let help: String
     var highlighted = false
+    var enabled = true
     let action: () -> Void
     @State private var hovering = false
 
@@ -133,12 +134,13 @@ private struct HeaderButton: View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(highlighted ? Color.accentColor : .primary)
+                .foregroundStyle(highlighted ? Color.accentColor : enabled ? Color.primary : Color.primary.opacity(0.3))
                 .frame(width: 32, height: 28)
-                .background(Capsule().fill(Color.primary.opacity(hovering ? 0.1 : 0)))
+                .background(Capsule().fill(Color.primary.opacity(hovering && enabled ? 0.1 : 0)))
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .disabled(!enabled)
         .onHover { hovering = $0 }
         .help(help)
     }
@@ -310,6 +312,12 @@ private struct DetailHeader: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
+            GlassGroup {
+                HeaderButton(symbol: "chevron.left", help: "Back (⌃⌘←)",
+                             enabled: model.canGoInHistory(-1, in: windowID)) { model.goInHistory(-1, in: windowID) }
+                HeaderButton(symbol: "chevron.right", help: "Forward (⌃⌘→)",
+                             enabled: model.canGoInHistory(1, in: windowID)) { model.goInHistory(1, in: windowID) }
+            }
             VStack(alignment: .leading, spacing: 1) {
                 if let tab {
                     Text(tab.displayTitle).font(.title3.weight(.bold)).lineLimit(1).truncationMode(.middle)

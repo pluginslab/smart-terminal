@@ -189,6 +189,9 @@ final class DebugChannel {
             case "ungrouped": .ungrouped
             default: win.orderedGroups.first { $0.name == a1 }.map { .group($0.id) }
             }
+        case "history":
+            // Back or Forward through the tabs shown: history -1|1
+            if let w = keyWindowID, let d = Int(a1) { model.goInHistory(d, in: w) }
         case "newWindow":
             model.newWindow()
         case "select":

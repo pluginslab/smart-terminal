@@ -52,6 +52,8 @@ final class AppModel {
     private(set) var titleBars: [UUID: TitleBarInfo] = [:]
     /// Claude Code sessions running in tabs.
     private(set) var agents: [UUID: AgentSnapshot] = [:]
+    /// Per window: the tabs it showed, for Back and Forward.
+    private(set) var tabHistory: [UUID: TabHistory] = [:]
 
     /// Per-window sidebar state; windows never toggled follow the last toggle anywhere.
     private var sidebarOpen: [UUID: Bool] = [:]
@@ -136,9 +138,27 @@ final class AppModel {
     // MARK: - Mutation plumbing
 
     private func mutate(_ change: (inout AppLayout) -> Void) {
+        let shown = Dictionary(layout.windows.map { ($0.id, $0.activeTabID) }, uniquingKeysWith: { a, _ in a })
         change(&layout)
+        for w in layout.windows where w.activeTabID != shown[w.id] ?? nil {
+            if let t = w.activeTabID { tabHistory[w.id, default: TabHistory()].visit(t) }
+        }
         scheduleSave()
         scheduleIndex()
+    }
+
+    // MARK: - Back and Forward
+
+    func canGoInHistory(_ direction: Int, in windowID: UUID) -> Bool {
+        guard let w = window(windowID) else { return false }
+        return tabHistory[windowID]?.canMove(direction) { w.tab($0) != nil } ?? false
+    }
+
+    /// Shows the tab before (-1) or after (+1) in the window's history.
+    func goInHistory(_ direction: Int, in windowID: UUID) {
+        guard let w = window(windowID),
+              let t = tabHistory[windowID]?.move(direction, exists: { w.tab($0) != nil }) else { return }
+        select(t)
     }
 
     func update(_ windowID: UUID, _ change: (inout WindowLayout) -> Void) {
@@ -192,7 +212,10 @@ final class AppModel {
             mutate { _ = $0.reopenClosedWindow() }
         }
         if layout.windows.isEmpty { _ = newWindow(open: false) }
-        for w in layout.windows { windows?.openWindow(for: w.id) }
+        for w in layout.windows {
+            if let t = w.activeTabID { tabHistory[w.id, default: TabHistory()].visit(t) }
+            windows?.openWindow(for: w.id)
+        }
         scheduleIndex() // the pid changed: readers would take the old file for stale
     }
 
