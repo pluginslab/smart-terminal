@@ -27,6 +27,8 @@ struct PageState: Equatable {
     var progress = 0.0
     var canGoBack = false
     var canGoForward = false
+    /// Laid out as a phone (the pane's Mobile mode, or an agent's mobile viewport).
+    var isMobile = false
 }
 
 /// One engine's page: the view it draws in, and the commands the navigation bar sends.
@@ -43,6 +45,10 @@ protocol PageEngine: AnyObject {
     func reload()
     func stop()
     func showInspector()
+    /// Whether the engine has a Mobile mode (Chromium).
+    var supportsMobile: Bool { get }
+    /// Lays the page out as a phone, or back on the desktop.
+    func setMobile(_ on: Bool)
     /// Runs `script` in the page and hands back its result as text (debug channel).
     func evaluate(_ script: String, completion: @escaping (String?) -> Void)
     /// The page is gone for good: release it.
@@ -142,6 +148,9 @@ final class BrowserState {
         if isLoading { current?.engine.stop() } else { current?.engine.reload() }
     }
     func showInspector() { current?.engine.showInspector() }
+    var isMobile: Bool { state.isMobile }
+    var supportsMobile: Bool { current?.engine.supportsMobile ?? false }
+    func toggleMobile() { current.map { $0.engine.setMobile(!$0.state.isMobile) } }
 
     func openInDefaultBrowser() {
         if let url { NSWorkspace.shared.open(url) }

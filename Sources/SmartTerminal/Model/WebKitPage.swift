@@ -57,6 +57,8 @@ final class WebKitPage: NSObject, PageEngine, WKUIDelegate {
     }()
 
     func load(_ url: URL) { webView.load(URLRequest(url: url)) }
+    var supportsMobile: Bool { false }
+    func setMobile(_ on: Bool) {}
     func back() { webView.goBack() }
     func forward() { webView.goForward() }
     func reload() { webView.reload() }

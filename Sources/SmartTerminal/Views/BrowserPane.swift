@@ -68,6 +68,11 @@ private struct BrowserNavigationBar: View {
                 .onExitCommand { address = shown; editing = false }
             if browser.pages.count > 1 { PageMenu(browser: browser) }
             if case .agent = browser.owner { AgentBadge() }
+            if browser.supportsMobile {
+                NavButton(symbol: browser.isMobile ? "iphone" : "desktopcomputer",
+                          help: browser.isMobile ? "Mobile layout: switch to desktop" : "Desktop layout: switch to mobile",
+                          enabled: browser.url != nil, action: browser.toggleMobile)
+            }
             NavButton(symbol: "hammer", help: "Web Inspector (⌥⌘I)", enabled: browser.url != nil,
                       action: browser.showInspector)
                 .keyboardShortcut("i", modifiers: [.command, .option])

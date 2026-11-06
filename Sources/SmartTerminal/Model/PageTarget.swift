@@ -84,3 +84,19 @@ final class PageTargetQuery {
 private func releaseBrowser(_ browser: UnsafeMutablePointer<cef_browser_t>?) {
     browser?.withMemoryRebound(to: cef_base_ref_counted_t.self, capacity: 1) { _ = $0.pointee.release?($0) }
 }
+
+/// Sends a DevTools command to a page through CEF, as the page's own client (no
+/// session on the pipe). Fire and forget: the reply goes nowhere.
+@MainActor
+enum PageDevTools {
+    private static var nextID: Int32 = 1_000_000
+
+    static func send(_ browser: CefBrowser, _ method: String, _ params: [String: Any]) {
+        nextID += 1
+        let msg: [String: Any] = ["id": Int(nextID), "method": method, "params": params]
+        guard let data = try? JSONSerialization.data(withJSONObject: msg) else { return }
+        _ = browser.withRawHost { host -> Int32 in
+            data.withUnsafeBytes { raw in host.pointee.send_dev_tools_message?(host, raw.baseAddress, raw.count) ?? 0 }
+        }
+    }
+}

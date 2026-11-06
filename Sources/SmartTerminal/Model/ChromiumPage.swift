@@ -175,7 +175,7 @@ final class ChromiumPage: PageEngine, CefBrowserDelegate {
         return await ChromiumTargets.shared.wait { $0.targetID == id && $0.type == "page" }
     }
 
-    // MARK: Desktop-sized pages for agents
+    // MARK: Desktop and mobile viewports
 
     /// An agent's page is laid out at least this wide whatever the pane's width: a
     /// narrow pane must not hand the agent a phone layout (what fleet's 1366x900 window
@@ -183,8 +183,18 @@ final class ChromiumPage: PageEngine, CefBrowserDelegate {
     /// pane holds 1366 CSS pixels. Input stays Chromium's, so clicks land right for
     /// the agent and for you (DevTools' scaled device metrics moved the agent's clicks).
     static let agentPageWidth = 1366.0
+    /// The phone the pane's Mobile mode is: an iPhone's width, and its Safari.
+    static let mobileWidth = 390.0
+    static let mobileUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1"
     private var keepsDesktopWidth = false
     private var appliedZoom: Double?
+    /// Mobile chosen in the pane: the app emulates the phone itself.
+    private var mobileByUser = false
+    /// Device metrics an agent set (`emulate` viewport): nil none, else whether mobile.
+    private var agentViewport: Bool?
+    /// Whatever its metrics, a page with any emulated viewport runs unzoomed: page zoom
+    /// on top of device metrics compounds, and clicks miss.
+    private var zoomsToDesktop: Bool { keepsDesktopWidth && !mobileByUser && agentViewport == nil }
 
     func keepDesktopWidth(targetID: String) {
         keepsDesktopWidth = true
@@ -192,9 +202,70 @@ final class ChromiumPage: PageEngine, CefBrowserDelegate {
         paneResized(host.bounds.size)
     }
 
+    var supportsMobile: Bool { true }
+
+    /// The pane's Desktop / Mobile switch. Reloads, so the site sees the phone from
+    /// the first request (user agent, layout).
+    func setMobile(_ on: Bool) {
+        guard on != mobileByUser else { return }
+        mobileByUser = on
+        appliedZoom = nil
+        if on { emulatePhone() } else { stopEmulatingPhone() }
+        paneResized(host.bounds.size)
+        updateViewportState()
+        browser?.reload()
+    }
+
+    /// The gate saw the agent set (or clear) device metrics on this page.
+    func agentSetViewport(mobile: Bool?) {
+        agentViewport = mobile
+        appliedZoom = nil
+        paneResized(host.bounds.size)
+        updateViewportState()
+        // Device metrics are the page's, not a session's: the agent's clear wipes the
+        // pane's phone too. Set it again once the clear has gone through (it travels
+        // on the pipe, the pane's on CEF's own channel: no order between the two).
+        if mobile == nil, mobileByUser {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                guard let self, self.mobileByUser, self.agentViewport == nil else { return }
+                self.emulatePhone()
+            }
+        }
+    }
+
+    private func updateViewportState() {
+        let mobile = mobileByUser || agentViewport == true
+        if state.isMobile != mobile { state.isMobile = mobile; report() }
+    }
+
+    private func emulatePhone() {
+        guard let browser else { return }
+        let size = host.bounds.size
+        PageDevTools.send(browser, "Emulation.setDeviceMetricsOverride", [
+            "width": Int(min(Self.mobileWidth, max(size.width, 200))), "height": Int(max(size.height, 200)),
+            "deviceScaleFactor": 0, "mobile": true,
+        ])
+        // A wider viewport than the pane (an agent's) leaves the page scaled down to fit.
+        PageDevTools.send(browser, "Emulation.resetPageScaleFactor", [:])
+        PageDevTools.send(browser, "Emulation.setTouchEmulationEnabled", ["enabled": true, "maxTouchPoints": 5])
+        // Not setEmitTouchEventsForMouse: with it an agent's Input.dispatchMouseEvent never returns.
+        PageDevTools.send(browser, "Emulation.setUserAgentOverride", ["userAgent": Self.mobileUserAgent, "platform": "iPhone"])
+    }
+
+    private func stopEmulatingPhone() {
+        guard let browser else { return }
+        PageDevTools.send(browser, "Emulation.clearDeviceMetricsOverride", [:])
+        PageDevTools.send(browser, "Emulation.setTouchEmulationEnabled", ["enabled": false])
+        PageDevTools.send(browser, "Emulation.setUserAgentOverride", ["userAgent": ""])
+    }
+
+    private var emulatedSize: NSSize?
+
     fileprivate func paneResized(_ size: NSSize) {
-        guard keepsDesktopWidth, let browser, size.width > 50 else { return }
-        let factor = min(1, size.width / Self.agentPageWidth)
+        guard let browser, size.width > 50 else { return }
+        if mobileByUser, emulatedSize != size { emulatedSize = size; emulatePhone() }
+        guard keepsDesktopWidth || mobileByUser else { return }
+        let factor = zoomsToDesktop ? min(1, size.width / Self.agentPageWidth) : 1
         let level = log(factor) / log(1.2) // Chromium's zoom levels: factor 1.2^level
         // Zoom is kept per site: a navigation can reset it, so re-apply when it differs.
         guard appliedZoom.map({ abs($0 - level) > 0.01 }) ?? true || abs(browser.zoomLevel - level) > 0.01 else { return }
@@ -261,12 +332,12 @@ final class ChromiumPage: PageEngine, CefBrowserDelegate {
 
     func browser(_ b: CefBrowser, didChangeTitle title: String) { state.title = title; report() }
     func browser(_ b: CefBrowser, didChangeURL url: URL?) {
-        if keepsDesktopWidth { appliedZoom = nil; paneResized(host.bounds.size) }
+        if keepsDesktopWidth || mobileByUser { appliedZoom = nil; paneResized(host.bounds.size) }
         state.url = url
         report()
     }
     func browser(_ b: CefBrowser, didChangeLoading isLoading: Bool, canGoBack: Bool, canGoForward: Bool) {
-        if keepsDesktopWidth { appliedZoom = nil; paneResized(host.bounds.size) }
+        if keepsDesktopWidth || mobileByUser { appliedZoom = nil; paneResized(host.bounds.size) }
         state.isLoading = isLoading
         state.canGoBack = canGoBack
         state.canGoForward = canGoForward

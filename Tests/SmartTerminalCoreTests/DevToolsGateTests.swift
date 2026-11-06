@@ -179,4 +179,32 @@ import Testing
         #expect(out[2]["sessionId"] as? String == "S-A")
         #expect(!g.owns(sessionID: "S-A"))
     }
+
+    @Test func viewportOverridesReachTheApp() {
+        var g = DevToolsGate(browserSession: "BROWSER", contextID: ours, knownTargets: ["P"], allocateID: { 0 })
+        let ids = IDs()
+        // Attached by the client (puppeteer attaches pages with auto-attach, also covered).
+        _ = g.fromClient(json(["id": 1, "method": "Target.attachToTarget", "params": ["targetId": "P", "flatten": true]]), newID: ids.take)
+        _ = g.fromChromium(json(["id": 500, "sessionId": "BROWSER", "result": ["sessionId": "S1"]]))
+        _ = g.fromChromium(json(["method": "Target.attachedToTarget", "sessionId": "BROWSER",
+                                 "params": ["sessionId": "S2", "targetInfo": info("Q", ours), "waitingForDebugger": false]]))
+
+        let set = g.fromClient(json(["id": 2, "sessionId": "S1", "method": "Emulation.setDeviceMetricsOverride",
+                                     "params": ["width": 390, "height": 844, "deviceScaleFactor": 3, "mobile": true]]), newID: ids.take)
+        // The app hears first (its zoom goes before the metrics land), then Chromium.
+        #expect(set.first == .pageViewport(targetID: "P", mobile: true))
+        #expect(toChromium(set).first?["method"] as? String == "Emulation.setDeviceMetricsOverride")
+        let desktop = g.fromClient(json(["id": 3, "sessionId": "S2", "method": "Emulation.setDeviceMetricsOverride",
+                                         "params": ["width": 1920, "height": 1080, "deviceScaleFactor": 1, "mobile": false]]), newID: ids.take)
+        #expect(desktop.first == .pageViewport(targetID: "Q", mobile: false))
+        let clear = g.fromClient(json(["id": 4, "sessionId": "S2", "method": "Emulation.clearDeviceMetricsOverride"]), newID: ids.take)
+        #expect(clear.first == .pageViewport(targetID: "Q", mobile: nil))
+        // Other commands don't.
+        let other = g.fromClient(json(["id": 5, "sessionId": "S1", "method": "Runtime.evaluate", "params": ["expression": "1"]]), newID: ids.take)
+        #expect(!other.contains { if case .pageViewport = $0 { true } else { false } })
+        // Leaving: Chromium drops the client's overrides, and the pane goes back to desktop.
+        let left = g.teardown()
+        #expect(left.contains(.pageViewport(targetID: "P", mobile: nil)))
+        #expect(!left.contains(.pageViewport(targetID: "Q", mobile: nil)))
+    }
 }

@@ -28,6 +28,11 @@ public struct DevToolsGate {
         case closePage(requestID: Int, targetID: String)
         /// Show one of the agent's pages in the tab's pane.
         case activatePage(targetID: String)
+        /// The agent set (`mobile` true or false) or cleared (nil) a page's device metrics
+        /// (chrome-devtools-mcp's `emulate` viewport). The app takes its own desktop zoom
+        /// off the page while they're set, or the two would compound, and shows the
+        /// mode in the pane. Comes before the command itself goes to Chromium.
+        case pageViewport(targetID: String, mobile: Bool?)
     }
 
     /// The gate's browser-level session on the pipe.
@@ -36,6 +41,10 @@ public struct DevToolsGate {
     public let contextID: String
     public private(set) var targets: Set<String> = []
     private var sessions: Set<String> = []
+    /// The page each of the agent's page sessions is attached to.
+    private var sessionTargets: [String: String] = [:]
+    /// Pages the agent set device metrics on, to undo in the pane when it goes.
+    private var emulated: Set<String> = []
     private var pending: [Int: Pending] = [:]
     /// Targets Chromium announced as "other": a page it creates starts out that way and
     /// turns into a "page" a moment later. Clients decide a target's kind when it
@@ -50,6 +59,8 @@ public struct DevToolsGate {
         /// The client's session, nil for browser-level commands.
         let sessionID: String?
         var kind: Kind = .client
+        /// For `Target.attachToTarget`: the target asked for.
+        var target: String? = nil
 
         enum Kind { case client, utilityAttach, cookies }
     }
@@ -141,7 +152,19 @@ public struct DevToolsGate {
             guard !Self.browserOnly.contains(method) else {
                 return [error(id, session, "\(method) isn't available through Smart Terminal's browser gate", code: -32601)]
             }
-            return [forward(id: id, method: method, params: params, sessionID: session, as: session, newID: newID)]
+            let sent = forward(id: id, method: method, params: params, sessionID: session, as: session, newID: newID)
+            if let target = sessionTargets[session] {
+                switch method {
+                case "Emulation.setDeviceMetricsOverride":
+                    emulated.insert(target)
+                    return [.pageViewport(targetID: target, mobile: params["mobile"] as? Bool ?? false), sent]
+                case "Emulation.clearDeviceMetricsOverride":
+                    emulated.remove(target)
+                    return [.pageViewport(targetID: target, mobile: nil), sent]
+                default: break
+                }
+            }
+            return [sent]
         }
 
         switch method {
@@ -221,7 +244,10 @@ public struct DevToolsGate {
                     infos.compactMap { $0["targetId"] as? String }.forEach { targets.insert($0) }
                     result["targetInfos"] = infos
                 case "Target.attachToTarget":
-                    if let s = result["sessionId"] as? String { sessions.insert(s) }
+                    if let s = result["sessionId"] as? String {
+                        sessions.insert(s)
+                        if let t = p.target { sessionTargets[s] = t }
+                    }
                 default: break
                 }
                 msg["result"] = result
@@ -237,7 +263,7 @@ public struct DevToolsGate {
             guard sessions.contains(session) else { return [] }
             if let t = heldSessions[session] { held[t, default: []].append(data); return [] }
             if method == "Target.attachedToTarget", let s = params["sessionId"] as? String { sessions.insert(s) }
-            if method == "Target.detachedFromTarget", let s = params["sessionId"] as? String { sessions.remove(s) }
+            if method == "Target.detachedFromTarget", let s = params["sessionId"] as? String { sessions.remove(s); sessionTargets[s] = nil }
             return [.toClient(data)]
         }
 
@@ -251,7 +277,7 @@ public struct DevToolsGate {
                 held[t] = [encodedData(msg)]
                 return []
             case "Target.attachedToTarget" where isOther || held[t] != nil:
-                if let s = params["sessionId"] as? String { sessions.insert(s); heldSessions[s] = t }
+                if let s = params["sessionId"] as? String { sessions.insert(s); heldSessions[s] = t; sessionTargets[s] = t }
                 held[t, default: []].append(encodedData(msg))
                 return []
             case "Target.targetInfoChanged" where held[t] != nil:
@@ -277,9 +303,13 @@ public struct DevToolsGate {
                         command("Target.detachFromTarget", ["sessionId": s], session: browserSession, newID: nil)]
             }
             sessions.insert(s)
-            if let t = info["targetId"] as? String { targets.insert(t) }
+            if let t = info["targetId"] as? String {
+                targets.insert(t)
+                if info["type"] as? String == "page" { sessionTargets[s] = t }
+            }
         case "Target.detachedFromTarget":
             guard let s = params["sessionId"] as? String, sessions.remove(s) != nil else { return [] }
+            sessionTargets[s] = nil
         default:
             return [] // downloads and the like carry no context to check
         }
@@ -303,7 +333,11 @@ public struct DevToolsGate {
             out.append(command("Runtime.runIfWaitingForDebugger", [:], session: s, newID: nil))
             out.append(command("Target.detachFromTarget", ["sessionId": s], session: browserSession, newID: nil))
         }
+        // Chromium drops a session's overrides with the session: the pane follows.
+        out.append(contentsOf: emulated.sorted().map { .pageViewport(targetID: $0, mobile: nil) })
+        emulated = []
         sessions = []
+        sessionTargets = [:]
         heldSessions = [:]
         held = [:]
         utilitySession = nil
@@ -369,7 +403,8 @@ public struct DevToolsGate {
     private mutating func forward(id: Int, method: String, params: [String: Any], sessionID: String?,
                                   as upstreamSession: String, newID: () -> Int) -> Output {
         let upstream = newID()
-        pending[upstream] = Pending(clientID: id, method: method, sessionID: sessionID)
+        pending[upstream] = Pending(clientID: id, method: method, sessionID: sessionID,
+                                    target: method == "Target.attachToTarget" ? params["targetId"] as? String : nil)
         return command(method, params, session: upstreamSession, newID: upstream)
     }
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.13.0] - 2026-11-06
+- New: Desktop / Mobile in Chromium panes. The button beside the address shows the layout (a computer or a phone) and switches it. Mobile is an iPhone: 390 CSS px wide (narrower if the pane is), the mobile viewport, touch, and Safari on iPhone's user agent; the page reloads so the site sees the phone from its first request. Desktop is as before: an agent's pages laid out 1366 px wide, zoomed to fit.
+- Agents can switch too, with the tool they already have: chrome-devtools-mcp's `emulate` with a viewport (`390x844x3,mobile,touch`) lays the page out as that phone and the pane shows it; `emulate` without one goes back. Before, the pane's desktop zoom stayed on under the agent's phone metrics, the two compounded and the agent's clicks missed. The gate tells the app when an agent sets or clears a page's device metrics, and the app takes its zoom off meanwhile. When the agent goes, the pane goes back to what you chose.
+
 ## [0.12.0] - 2026-11-06
 - New: `claude-sessions.json` in Smart Terminal's Application Support folder, for tools outside the app (the Mobile Agent bridge shows it in its sessions list). For every tab: its name, its group's name and colour, the window, the folder, and the Claude Code session running or saved in it; keyed by Claude session id and by tab id. Rewritten in one step whenever any of that changes, readable only by you; `pid` says which Smart Terminal wrote it, so a file left by one that quit can be told apart. A Claude Code hook can name its tab exactly from `SMART_TERMINAL_TAB` (except inside tmux, where it names the tab that started the tmux server).
 

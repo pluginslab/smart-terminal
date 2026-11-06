@@ -222,6 +222,10 @@ final class AgentBrowser {
         browser?.closePage(page)
     }
 
+    func pageViewport(targetID: String, mobile: Bool?) {
+        (pages[targetID]?.engine as? ChromiumPage)?.agentSetViewport(mobile: mobile)
+    }
+
     func activatePage(targetID: String) {
         if let page = pages[targetID] { browser?.select(page) }
     }
@@ -295,6 +299,7 @@ final class GateConnection {
             case .toClient(let d): client.send(d)
             case .toChromium(let d): DevToolsConnection.shared.write(d)
             case .activatePage(let t): agent?.activatePage(targetID: t)
+            case .pageViewport(let t, let mobile): agent?.pageViewport(targetID: t, mobile: mobile)
             case .closePage(let rid, let t):
                 agent?.closePage(targetID: t)
                 perform(gate.pageClosed(requestID: rid))

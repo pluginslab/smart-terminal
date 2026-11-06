@@ -88,6 +88,9 @@ final class DebugChannel {
                 let data = (try? JSONSerialization.data(withJSONObject: reply, options: [.prettyPrinted, .sortedKeys])) ?? Data()
                 try? data.write(to: URL(fileURLWithPath: path))
             }
+        case "mobile":
+            // The pane's Desktop / Mobile switch on the active tab's page: mobile on|off
+            if let page = model.browsers.browser(for: activeTab?.id)?.current { page.engine.setMobile(a1 == "on") }
         case "chromium":
             // Chromium's state and DevTools endpoint: chromium <path>
             let line = "running=\(ChromiumRuntime.isRunning) pipe=\(DevToolsPipe.isReserved) devtools=\(ChromiumRuntime.debuggingURL?.absoluteString ?? "-") error=\(ChromiumRuntime.startError ?? "-")"
