@@ -66,6 +66,8 @@ final class AppModel {
     @ObservationIgnored var notifier: Notifier?
     @ObservationIgnored private let store: LayoutStore
     @ObservationIgnored private var saveTask: Task<Void, Never>?
+    @ObservationIgnored private var indexTask: Task<Void, Never>?
+    @ObservationIgnored private var lastIndex: ClaudeSessionIndex?
 
     init(store: LayoutStore = .default()) {
         self.store = store
@@ -136,6 +138,7 @@ final class AppModel {
     private func mutate(_ change: (inout AppLayout) -> Void) {
         change(&layout)
         scheduleSave()
+        scheduleIndex()
     }
 
     func update(_ windowID: UUID, _ change: (inout WindowLayout) -> Void) {
@@ -156,6 +159,30 @@ final class AppModel {
         do { try store.save(layout) } catch { NSLog("SmartTerminal: save failed: \(error)") }
     }
 
+    /// `claude-sessions.json` beside the layout: each tab's Claude session, name, group
+    /// and colour, for tools outside the app (see `ClaudeSessionIndex`).
+    var sessionIndexURL: URL { store.url.deletingLastPathComponent().appendingPathComponent("claude-sessions.json") }
+
+    func scheduleIndex() {
+        indexTask?.cancel()
+        indexTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled else { return }
+            self?.writeIndex()
+        }
+    }
+
+    private func writeIndex() {
+        var ids: [UUID: String] = [:]
+        for t in layout.windows.flatMap(\.tabs) {
+            if let id = agents[t.id]?.sessionID ?? t.agentSession?.sessionID { ids[t.id] = id }
+        }
+        let index = ClaudeSessionIndex(layout: layout, sessionIDs: ids, pid: ProcessInfo.processInfo.processIdentifier)
+        guard !index.sameContent(as: lastIndex) else { return }
+        do { try index.write(to: sessionIndexURL); lastIndex = index }
+        catch { NSLog("SmartTerminal: session index not written: \(error)") }
+    }
+
     // MARK: - Windows
 
     /// Makes sure there is at least one window with one tab; opens all windows.
@@ -166,6 +193,7 @@ final class AppModel {
         }
         if layout.windows.isEmpty { _ = newWindow(open: false) }
         for w in layout.windows { windows?.openWindow(for: w.id) }
+        scheduleIndex() // the pid changed: readers would take the old file for stale
     }
 
     @discardableResult
@@ -417,6 +445,7 @@ final class AppModel {
                 DebugLog.write("agent \(tabID.uuidString.prefix(4)) \(previous?.status.rawValue ?? "nil") -> \(agent?.status.rawValue ?? "nil") visible=\(isVisibleToUser(tabID)) active=\(NSApp.isActive)")
             }
             agents[tabID] = agent
+            if previous?.sessionID != agent?.sessionID { scheduleIndex() }
             if let agent, previous?.status != agent.status { agentStatusChanged(tabID, from: previous?.status, to: agent) }
         }
         let previousTmux = liveTmux[tabID]

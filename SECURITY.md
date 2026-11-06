@@ -77,6 +77,12 @@ Useful context if you are assessing risk.
   Terminal.app's tabs and types `/exit` into the Claude sessions being handed over,
   and `tmux detach-client` for tmux clients being moved.
 
+**The session index.** The app writes `claude-sessions.json` to its support folder,
+readable by you alone (mode 0600): each tab's name, folder, group name and colour,
+and the id of the Claude Code session in it. No transcript content, no tokens. It is
+there for tools of yours outside the app (the Mobile Agent bridge) and is rewritten
+as tabs change; nothing listens or sends it anywhere.
+
 **The agent browser gate.** At launch the app listens on `127.0.0.1` (a random port,
 never another interface) and writes `chromium-gate.json` to its support folder,
 readable by you alone (mode 0600), with that port and a random control token. Each

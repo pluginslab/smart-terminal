@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.12.0] - 2026-11-06
+- New: `claude-sessions.json` in Smart Terminal's Application Support folder, for tools outside the app (the Mobile Agent bridge shows it in its sessions list). For every tab: its name, its group's name and colour, the window, the folder, and the Claude Code session running or saved in it; keyed by Claude session id and by tab id. Rewritten in one step whenever any of that changes, readable only by you; `pid` says which Smart Terminal wrote it, so a file left by one that quit can be told apart. A Claude Code hook can name its tab exactly from `SMART_TERMINAL_TAB` (except inside tmux, where it names the tab that started the tmux server).
+
 ## [0.11.3] - 2026-11-06
 - Fix: going back to a group in the sidebar showed its first session, not the one you had open there. Each group (and Ungrouped, and All Sessions) now remembers the session last shown in it and shows it again; the first one only if that session was closed or moved. Kept while the app runs, not across launches.
 
