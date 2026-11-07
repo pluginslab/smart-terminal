@@ -110,6 +110,14 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
         tmux.onAnswer = { [weak self] in self?.poll() }
     }
 
+    var isZsh: Bool { (shellPath as NSString).lastPathComponent == "zsh" }
+
+    /// The lines on screen, top to bottom, as text.
+    func screenLines() -> [String] {
+        let term = view.getTerminal()
+        return (0..<term.rows).map { term.getLine(row: $0)?.translateToString(trimRight: true) ?? "" }
+    }
+
     func start(cwd: String?) {
         guard !isRunning else { return }
         var isDir: ObjCBool = false

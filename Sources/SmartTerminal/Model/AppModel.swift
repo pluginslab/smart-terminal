@@ -54,6 +54,9 @@ final class AppModel {
     private(set) var agents: [UUID: AgentSnapshot] = [:]
     /// Per window: the tabs it showed, for Back and Forward.
     private(set) var tabHistory: [UUID: TabHistory] = [:]
+    /// Tabs holding a command Claude proposed, until it runs (see ProposedCommands.swift).
+    var proposedCommands: [UUID: ProposedCommand] = [:]
+    @ObservationIgnored let proposals = ProposalBook()
 
     /// Per-window sidebar state; windows never toggled follow the last toggle anywhere.
     private var sidebarOpen: [UUID: Bool] = [:]
@@ -81,7 +84,8 @@ final class AppModel {
         }
         clipboard.start()
         ShellIntegration.install() // before any tab's shell starts, and before the inbox is watched
-        browserInbox = BrowserInbox { [weak self] request in self?.openInBrowser(request.url, tabID: request.tabID) }
+        browserInbox = BrowserInbox(handle: { [weak self] request in self?.openInBrowser(request.url, tabID: request.tabID) },
+                                    finished: { [weak self] id, text in self?.proposalFinished(id: id, report: text) })
     }
 
     // MARK: - Browser
@@ -276,6 +280,7 @@ final class AppModel {
 
     func closeTab(_ tabID: UUID) {
         guard let wid = windowID(containingTab: tabID) else { return }
+        proposalTabClosed(tabID)
         sessions.terminate(tabID)
         browsers.close(tabID)
         clearIndicators(tabID)

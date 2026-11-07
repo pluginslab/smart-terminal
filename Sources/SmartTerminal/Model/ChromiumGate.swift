@@ -92,7 +92,7 @@ final class ChromiumGate {
     /// One HTTP request; the reply goes to `respond`. A WebSocket upgrade returns the
     /// agent browser it's for instead.
     fileprivate func handle(_ req: HTTPRequest, respond: @escaping (Data) -> Void) -> AgentBrowser? {
-        let parts = req.path.split(separator: "?")[0].split(separator: "/").map(String.init)
+        let parts = req.path.split(separator: "?", omittingEmptySubsequences: false)[0].split(separator: "/").map(String.init)
         if req.isWebSocketUpgrade, parts.count == 3, parts[0] == "devtools", parts[1] == "browser",
            let agent = agents.values.first(where: { $0.token == parts[2] }) {
             return agent
@@ -111,6 +111,28 @@ final class ChromiumGate {
                 return nil
             }
             Task { respond(await self.ensureAgent(id: id, tab: body["tab"] as? String)) }
+        case ("POST", ["v1", "commands"]):
+            // A command Claude proposes: typed into a new tab for you to run.
+            let body = (try? JSONSerialization.jsonObject(with: req.body)) as? [String: Any] ?? [:]
+            guard let model, let tabID = model.agentTab(body["tab"] as? String) else {
+                respond(HTTPResponse.json(404, ["error": "no such tab"]))
+                return nil
+            }
+            switch model.proposeCommand(body["command"] as? String ?? "", from: tabID,
+                                        cwd: body["cwd"] as? String, reason: body["reason"] as? String) {
+            case .failure(let e):
+                respond(HTTPResponse.json(400, ["error": e.message]))
+            case .success(let id):
+                let wait = min(max((body["wait"] as? Double) ?? 0, 0), 1800)
+                model.proposals.wait(id, seconds: wait) { respond(HTTPResponse.json(200, ["id": id].merging($0.json) { a, _ in a })) }
+            }
+        case ("GET", let p) where p.count == 3 && p[0] == "v1" && p[1] == "commands":
+            guard let model, model.proposals.status(p[2]) != nil else {
+                respond(HTTPResponse.json(404, ["error": "no such command"]))
+                return nil
+            }
+            let wait = min(max(Self.query(req.path)["wait"].flatMap(Double.init) ?? 0, 0), 1800)
+            model.proposals.wait(p[2], seconds: wait) { respond(HTTPResponse.json(200, ["id": p[2]].merging($0.json) { a, _ in a })) }
         case ("DELETE", let p) where p.count == 3 && p[0] == "v1" && p[1] == "browsers":
             if let agent = agents.removeValue(forKey: p[2]) { agent.close() }
             respond(HTTPResponse.json(200, ["closed": p[2]]))
@@ -118,6 +140,14 @@ final class ChromiumGate {
             respond(HTTPResponse.json(404, ["error": "no such endpoint"]))
         }
         return nil
+    }
+
+    private static func query(_ path: String) -> [String: String] {
+        guard let q = path.split(separator: "?", maxSplits: 1).dropFirst().first else { return [:] }
+        return Dictionary(q.split(separator: "&").compactMap { pair in
+            let kv = pair.split(separator: "=", maxSplits: 1).map(String.init)
+            return kv.count == 2 ? (kv[0], kv[1].removingPercentEncoding ?? kv[1]) : nil
+        }, uniquingKeysWith: { a, _ in a })
     }
 
     private func ensureAgent(id: String, tab: String?) async -> Data {

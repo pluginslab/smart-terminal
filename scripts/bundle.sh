@@ -21,10 +21,12 @@ done
 if [[ -n "${SMART_TERMINAL_BINARY:-}" ]]; then
     BIN="$SMART_TERMINAL_BINARY"   # prebuilt (release.sh passes a universal binary)
     HELPER_BIN="${SMART_TERMINAL_HELPER_BINARY:?release.sh passes the helper binary too}"
+    MCP_BIN="${SMART_TERMINAL_MCP_BINARY:?release.sh passes smart-terminal-mcp too}"
 else
     swift build -c "$CONFIG"
     BIN="$(swift build -c "$CONFIG" --show-bin-path)/SmartTerminal"
     HELPER_BIN="$(swift build -c "$CONFIG" --show-bin-path)/SmartTerminalHelper"
+    MCP_BIN="$(swift build -c "$CONFIG" --show-bin-path)/SmartTerminalMCP"
 fi
 CEF_FRAMEWORK="${SMART_TERMINAL_CEF_FRAMEWORK:-$(scripts/cef.sh framework)}"   # downloads the pinned Chromium on first use
 VERSION="$(cat VERSION)"
@@ -34,6 +36,8 @@ APP="${SMART_TERMINAL_APP:-SmartTerminal.app}"   # test-run.sh builds elsewhere 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/SmartTerminal"
+# The MCP server Claude Code starts in a tab: claude mcp add -s user smart-terminal -- <app>/Contents/MacOS/smart-terminal-mcp
+cp "$MCP_BIN" "$APP/Contents/MacOS/smart-terminal-mcp"
 [[ -f Resources/AppIcon.icns ]] && cp Resources/AppIcon.icns "$APP/Contents/Resources/"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
@@ -137,6 +141,7 @@ sign_all() {
     local helper_flags=("${base[@]}")
     [[ $hardened == 1 ]] && helper_flags+=(--entitlements SmartTerminalHelper.entitlements)
     for h in "${HELPERS[@]}"; do codesign "${helper_flags[@]}" "$h" || return 1; done
+    codesign "${base[@]}" --identifier com.pluginslab.smartterminal.mcp "$APP/Contents/MacOS/smart-terminal-mcp" || return 1
     local app_flags=("${base[@]}")
     [[ $hardened == 1 ]] && app_flags+=(--entitlements SmartTerminal.entitlements)
     codesign "${app_flags[@]}" "$APP"

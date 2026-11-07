@@ -83,6 +83,14 @@ and the id of the Claude Code session in it. No transcript content, no tokens. I
 there for tools of yours outside the app (the Mobile Agent bridge) and is rewritten
 as tabs change; nothing listens or sends it anywhere.
 
+**Commands Claude proposes.** `smart-terminal-mcp`, an MCP server Claude Code starts
+when you add it, asks the app over the same local gate (below) to type a command into a
+new tab. The app types it and never presses Return: only single lines of printable text
+are accepted (no line break, tab, escape or other control character, no text-direction
+control), so the command can't run itself or read differently than it runs. A zsh hook in
+that tab reports the first command's exit status and command line to the app, which
+hands them and the screen's text back to the session that asked.
+
 **The agent browser gate.** At launch the app listens on `127.0.0.1` (a random port,
 never another interface) and writes `chromium-gate.json` to its support folder,
 readable by you alone (mode 0600), with that port and a random control token. Each

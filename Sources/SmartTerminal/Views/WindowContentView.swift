@@ -40,6 +40,9 @@ struct WindowContentView: View {
                 ResumeBar(recovery: recovery, command: recovery.command(cwd: tab.cwd),
                           resume: { model.resumeAgent(tab.id) }, dismiss: { model.dismissResume(tab.id) })
             }
+            if let tab = window?.activeTab, let proposal = model.proposedCommands[tab.id] {
+                ProposalBar(proposal: proposal, dismiss: { model.dismissProposal(tab.id) })
+            }
             // Always present (never inside an if/else) so SwiftUI keeps the
             // container alive and only swaps the terminal view inside it.
             HStack(spacing: 0) {
@@ -141,5 +144,35 @@ struct ResumeBar: View {
         case .reattach: "Reattach"
         case .recreate(_, let agent): agent == nil ? "Recreate" : "Resume in tmux"
         }
+    }
+}
+
+/// Over a tab Smart Terminal opened for a command Claude proposed: who asked and why.
+/// The command itself is already typed at the prompt; Return runs it.
+struct ProposalBar: View {
+    let proposal: ProposedCommand
+    let dismiss: () -> Void
+    static let tint = Color(red: 0x5F / 255, green: 0xB8 / 255, blue: 0xC9 / 255)
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Image(systemName: "sparkle")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(Self.tint)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Claude in “\(proposal.askedBy)” asks you to run this. Press Return to run it, or edit it first.")
+                    .font(.system(size: 12))
+                if let reason = proposal.reason, !reason.isEmpty {
+                    Text(reason).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(2)
+                }
+            }
+            Spacer(minLength: 8)
+            Button("Dismiss", action: dismiss).controlSize(.small)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Self.tint.opacity(0.12))
+        .background(.bar)
+        .overlay(alignment: .bottom) { Divider() }
     }
 }

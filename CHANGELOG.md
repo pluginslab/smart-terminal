@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.14.0] - 2026-11-07
+- New: Claude can ask you to run a command instead of telling you to type `! …`. A tab opens beside the session, in its group, with the command typed at the prompt and a bar saying which session asked and why; press Return to run it (or edit it first). Claude then gets the exit status, the command as it ran and what it printed, and goes on. For logins, 2FA and password prompts, `sudo`, `npm publish`. Nothing runs without your Return: only one line of plain text is typed.
+- `smart-terminal-mcp`, in the app bundle: the MCP server behind it. Add it once with `claude mcp add -s user smart-terminal -- /Applications/SmartTerminal.app/Contents/MacOS/smart-terminal-mcp`. Its tools are `propose_command` and `command_status`; outside Smart Terminal it offers none.
+
 ## [0.13.0] - 2026-11-06
 - New: Back and Forward through the tabs you looked at, as in Slack: the arrows left of the title above the terminal, Tab ▸ Back / Forward, ⌃⌘← and ⌃⌘→ (Xcode's; ⌘[ and ⌘] stay the browser pane's). Each window keeps its own history of the last 100 tabs, however you got to them (a click, ⌘1, a notification, a group); tabs closed or moved to another window are skipped.
 - New: Desktop / Mobile in Chromium panes. The button beside the address shows the layout (a computer or a phone) and switches it. Mobile is an iPhone: 390 CSS px wide (narrower if the pane is), the mobile viewport, touch, and Safari on iPhone's user agent; the page reloads so the site sees the phone from its first request. Desktop is as before: an agent's pages laid out 1366 px wide, zoomed to fit.

@@ -27,6 +27,10 @@ let package = Package(
             dependencies: [.product(name: "CefKit", package: "CefSwift")]
         ),
 
+        // smart-terminal-mcp: the MCP server Claude Code starts in a tab (bundle.sh copies it
+        // into Contents/MacOS). Foundation only; it talks to the app over the local gate.
+        .executableTarget(name: "SmartTerminalMCP", swiftSettings: [.swiftLanguageMode(.v5)]),
+
         .testTarget(
             name: "SmartTerminalCoreTests",
             dependencies: ["SmartTerminalCore"]

@@ -20,12 +20,17 @@ enum ShellIntegration {
     static let zshDir = supportDir.appendingPathComponent("zsh", isDirectory: true)
     static let inboxDir = supportDir.appendingPathComponent("browser-inbox", isDirectory: true)
 
+    /// Tabs opened to run a command Claude proposed: their shell reports how the first
+    /// command went (`SMART_TERMINAL_PROPOSAL`, see .zshenv). Main thread only.
+    nonisolated(unsafe) static var proposals: [UUID: String] = [:]
+
     /// Environment for a tab's shell. Only zsh gets `open`; every shell learns its tab.
     static func environment(shell: String, tabID: UUID, inherited: [String: String]) -> [String: String] {
         // Any shell: which tab it's in, and where agent tools ask for a browser in it
         // (ChromiumGate; the file is readable by you alone and holds the token).
-        let common = ["SMART_TERMINAL_TAB": tabID.uuidString,
+        var common = ["SMART_TERMINAL_TAB": tabID.uuidString,
                       "SMART_TERMINAL_GATE": ChromiumGate.infoFile.path]
+        if let id = proposals[tabID] { common["SMART_TERMINAL_PROPOSAL"] = id }
         guard (shell as NSString).lastPathComponent == "zsh" else { return common }
         var env = common.merging(["ZDOTDIR": zshDir.path,
                                   "SMART_TERMINAL_INBOX": inboxDir.path]) { a, _ in a }
@@ -94,6 +99,24 @@ enum ShellIntegration {
       }
     }
     _st_define_open
+
+    # A tab Smart Terminal opened for a command Claude proposed: when the first command
+    # you run there ends, tell the app its exit status and the line as it ran. First in
+    # precmd_functions, so $? is still that command's.
+    if [[ -n $SMART_TERMINAL_PROPOSAL && -o interactive && -d $SMART_TERMINAL_INBOX ]]; then
+      _st_proposal_preexec() { _st_proposal_cmd=$1 }
+      _st_proposal_precmd() {
+        local st=$?
+        [[ -n $_st_proposal_cmd ]] || return 0
+        local f=$SMART_TERMINAL_INBOX/.$SMART_TERMINAL_PROPOSAL.$$
+        print -r -- "$st"$'\n'"$_st_proposal_cmd" >| $f && mv -f $f $SMART_TERMINAL_INBOX/$SMART_TERMINAL_PROPOSAL.done
+        preexec_functions=(${preexec_functions:#_st_proposal_preexec})
+        precmd_functions=(${precmd_functions:#_st_proposal_precmd})
+        unset SMART_TERMINAL_PROPOSAL _st_proposal_cmd
+      }
+      preexec_functions=(_st_proposal_preexec $preexec_functions)
+      precmd_functions=(_st_proposal_precmd $precmd_functions)
+    fi
     """#
 
     /// .zprofile, .zshrc, .zlogin: load yours from your folder, then keep reading
@@ -115,9 +138,12 @@ enum ShellIntegration {
 final class BrowserInbox {
     private var source: DispatchSourceFileSystemObject?
     private let handle: (BrowserRequest) -> Void
+    private let finished: (String, String) -> Void
 
-    init(handle: @escaping (BrowserRequest) -> Void) {
+    /// `finished`: a proposed command's tab reported (proposal id, the file's text).
+    init(handle: @escaping (BrowserRequest) -> Void, finished: @escaping (String, String) -> Void = { _, _ in }) {
         self.handle = handle
+        self.finished = finished
         let fd = Darwin.open(ShellIntegration.inboxDir.path, O_EVTONLY)
         guard fd >= 0 else { return }
         let src = DispatchSource.makeFileSystemObjectSource(fileDescriptor: fd, eventMask: .write, queue: .main)
@@ -130,7 +156,13 @@ final class BrowserInbox {
 
     private func drain() {
         let fm = FileManager.default
-        let files = (try? fm.contentsOfDirectory(at: ShellIntegration.inboxDir, includingPropertiesForKeys: [.creationDateKey]))?
+        let all = (try? fm.contentsOfDirectory(at: ShellIntegration.inboxDir, includingPropertiesForKeys: [.creationDateKey])) ?? []
+        for file in all where file.pathExtension == "done" {
+            let text = (try? String(contentsOf: file, encoding: .utf8)) ?? ""
+            try? fm.removeItem(at: file)
+            finished(file.deletingPathExtension().lastPathComponent, text)
+        }
+        let files = Optional(all)?
             .filter { $0.pathExtension == "url" }
             .sorted { $0.lastPathComponent < $1.lastPathComponent } ?? []
         for file in files {

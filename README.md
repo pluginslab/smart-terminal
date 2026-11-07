@@ -133,6 +133,27 @@ back into its tmux session:
 
 Detach (`prefix d`) yourself and the tab forgets the tmux session.
 
+### Commands Claude asks you to run
+
+Some commands only you can run: a login that opens the browser, anything that asks for
+a password or a 2FA code. Instead of telling you to type `! <command>`, Claude can hand
+it to Smart Terminal. A new tab opens beside the session, in its group, with the command
+typed at the prompt and a bar saying who asked and why. Press Return to run it, or edit
+it first. Claude waits, then gets the exit status and what the command printed, and
+carries on.
+
+Nothing runs without your Return: Smart Terminal types only single lines of plain text
+(no line breaks, tabs, control or text-direction characters). The result comes back for
+zsh tabs.
+
+Set it up once, for all your Claude Code sessions:
+
+```bash
+claude mcp add -s user smart-terminal -- /Applications/SmartTerminal.app/Contents/MacOS/smart-terminal-mcp
+```
+
+Outside Smart Terminal the server offers no tools, so the setting is harmless there.
+
 ### Status bar: Claude Code
 
 The bar under the terminal shows the Claude Code session in the current tab:
