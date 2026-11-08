@@ -81,6 +81,7 @@ work in both.
 | Name, color, ungroup, close or move a group | double-click or right-click it in the left column, or its chip in the strip |
 | Move a tab left or right **within its group** | `⌃⌥←` `⌃⌥→` |
 | Switch tabs | `⌘1`…`⌘8`, `⌘9` for the last, `⌃Tab` / `⌃⇧Tab`, `⌘⇧]` / `⌘⇧[` |
+| Back and forward through the tabs you looked at, as in Slack | `⌃⌘←` / `⌃⌘→`, or the arrows left of the title above the terminal |
 | Move a tab or group to a new window | drag it onto the desktop, or right-click → *Move to New Window* |
 | New window, close tab, close window | `⌘N`, `⌘W`, `⌘⇧W` |
 | Reopen a closed window (its tabs and groups) | `⌘⇧T` |
@@ -118,7 +119,9 @@ tab for its last prompt and PR link.
 **Resume after a restart.** Quit the app, or let it crash, and every tab that was
 running Claude comes back with a bar: *Claude session "…" was running here.*
 **Resume** (`⌘⇧R`) runs `claude --resume <id>` with the flags the session was started
-with. If you exit Claude yourself, the tab forgets the session.
+with. If you exit Claude yourself, the tab forgets the session. With *Shell → Resume
+Sessions When Opened* (on by default) each tab resumes when you first look at it, so
+thirty sessions don't all start at once at launch.
 
 **Claude inside tmux** works the same way. Smart Terminal asks tmux which pane the
 tab's client is showing and follows the Claude running there: the tab's name and
@@ -132,6 +135,17 @@ back into its tmux session:
   attaches.
 
 Detach (`prefix d`) yourself and the tab forgets the tmux session.
+
+**tmux on another host, over ssh**, comes back too. While a tab's foreground is an
+`ssh` that attaches to tmux over there, such as
+`ssh server -t "tmux new-session -A -s work 'claude'"`, the tab remembers that command.
+After a restart it runs it again (**Reconnect**), and you are back in the session, with
+Claude still running in it on the other machine. Only ssh that attaches to tmux
+(`attach`, `a`, `new-session -A`) is remembered: a plain `ssh host` or a one-off remote
+command never runs again by itself.
+
+A **tmux** pill at the top right of a session row says it runs in tmux, and
+**tmux · host** for tmux over ssh. Hover it for the session's name.
 
 ### Commands Claude asks you to run
 
@@ -226,6 +240,14 @@ when it has more than one.
   load into that profile.
 - Several agents can share a tab; the pane shows the newest, and the others keep
   running out of sight. Pages in a tab you're not looking at keep rendering.
+- **Desktop or mobile.** Agents' pages get a desktop layout, 1366 CSS px zoomed to fit
+  the pane. The phone/computer button beside the address switches the pane to an
+  iPhone layout (390 px, touch, Safari's iPhone user agent) and back; an agent does the
+  same with chrome-devtools-mcp's `emulate`.
+- **A real Chrome instead,** when a site turns embedded browsers away (Google sign-in)
+  or you'd rather watch it there: ask the agent, and devtools-fleet (0.3.0 and later)
+  calls `browser_start({ chrome: true })`, or `browser_restart({ chrome: true })` to move a
+  running browser out of the pane with its cookies and tabs.
 
 **View ▸ Browser Engine** sets which engine the panes *you* open use: WebKit (the
 default) or Chromium. Agent panes are always Chromium.
@@ -325,6 +347,13 @@ which is how Claude Code's Bash tool, a fresh zsh, gets it too.
 The git line in each session row comes from `git status --porcelain=v2 --branch` and
 `git diff --shortstat HEAD`, run once per folder (tabs in the same repository share
 it) every few seconds while the session list is on screen.
+
+**For other tools**, Smart Terminal keeps `claude-sessions.json` in its Application
+Support folder: for every tab, its name, its group's name, colour and place in the
+sidebar, the window, the folder, and the Claude Code session running or saved in it,
+keyed by session id and by tab id. The Mobile Agent
+bridge uses it to show tab names and groups on the phone. It is rewritten in one step
+whenever any of that changes, and readable only by you.
 
 Import uses AppleScript to list Terminal.app's windows and tabs and their ttys, `ps`
 to find each tab's shell and foreground job, the Claude session file to recognise
