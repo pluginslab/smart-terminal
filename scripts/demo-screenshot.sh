@@ -17,6 +17,9 @@
 # don't matter; the demo window is brought to the front so it's drawn as active.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# Run from a Smart Terminal tab, the instance would inherit that tab's shell setup
+# (its zsh shim, your dotfiles' folder) and its tab and browser gate.
+unset ZDOTDIR SMART_TERMINAL_USER_ZDOTDIR SMART_TERMINAL_TAB SMART_TERMINAL_GATE
 REPO="$PWD"
 
 APP="$REPO/.build/SmartTerminal-demo.app"
@@ -31,8 +34,8 @@ pkill -f "^$APP/Contents/MacOS/SmartTerminal" 2>/dev/null || true
 SMART_TERMINAL_APP="$APP" scripts/bundle.sh >/dev/null
 
 # Shared preferences: the columns layout, with the clipboard sidebar closed.
-defaults write com.pluginslab.smartterminal sidebarOpen -bool false
-defaults write com.pluginslab.smartterminal tabLayout -string sidebar
+defaults write com.pluginslab.smartterminal.dev sidebarOpen -bool false
+defaults write com.pluginslab.smartterminal.dev tabLayout -string sidebar
 
 # Invented git state per folder. Own identity, no signing, no hooks: your git config
 # must not leak into the picture or prompt for anything.

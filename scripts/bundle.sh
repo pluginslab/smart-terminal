@@ -32,6 +32,16 @@ CEF_FRAMEWORK="${SMART_TERMINAL_CEF_FRAMEWORK:-$(scripts/cef.sh framework)}"   #
 VERSION="$(cat VERSION)"
 BUILD="$(date -u +%Y%m%d%H%M)"   # monotonic build number (CFBundleVersion)
 APP="${SMART_TERMINAL_APP:-SmartTerminal.app}"   # test-run.sh builds elsewhere so it never rewrites a running dev bundle
+# Dev, test and demo builds get their own bundle id and name. macOS keeps one privacy
+# grant (Screen Recording, Automation, notifications) per bundle id, tied to the
+# signature it saw: with the release's id, an Apple Development build took over the
+# installed app's grant and the notarized app was refused, with no way to add it.
+# Separate ids also keep their settings out of the installed app's.
+if [[ $CONFIG == release ]]; then
+    BUNDLE_ID=com.pluginslab.smartterminal; APP_NAME="Smart Terminal"
+else
+    BUNDLE_ID=com.pluginslab.smartterminal.dev; APP_NAME="Smart Terminal Dev"
+fi
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -46,9 +56,9 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <plist version="1.0">
 <dict>
     <key>CFBundleExecutable</key><string>SmartTerminal</string>
-    <key>CFBundleIdentifier</key><string>com.pluginslab.smartterminal</string>
-    <key>CFBundleName</key><string>Smart Terminal</string>
-    <key>CFBundleDisplayName</key><string>Smart Terminal</string>
+    <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
+    <key>CFBundleName</key><string>$APP_NAME</string>
+    <key>CFBundleDisplayName</key><string>$APP_NAME</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>${VERSION}</string>
     <key>CFBundleVersion</key><string>${BUILD}</string>
@@ -101,7 +111,7 @@ cp -cR "$CEF_FRAMEWORK" "$FRAMEWORKS/"   # -c: an APFS clone, instant and no ext
 HELPERS=()
 for kind in "" Alerts GPU Plugin Renderer; do
     name="SmartTerminal Helper${kind:+ ($kind)}"
-    id="com.pluginslab.smartterminal.helper${kind:+.$(tr '[:upper:]' '[:lower:]' <<<"$kind")}"
+    id="$BUNDLE_ID.helper${kind:+.$(tr '[:upper:]' '[:lower:]' <<<"$kind")}"
     helper="$FRAMEWORKS/$name.app"
     mkdir -p "$helper/Contents/MacOS"
     cp "$HELPER_BIN" "$helper/Contents/MacOS/$name"
@@ -141,7 +151,7 @@ sign_all() {
     local helper_flags=("${base[@]}")
     [[ $hardened == 1 ]] && helper_flags+=(--entitlements SmartTerminalHelper.entitlements)
     for h in "${HELPERS[@]}"; do codesign "${helper_flags[@]}" "$h" || return 1; done
-    codesign "${base[@]}" --identifier com.pluginslab.smartterminal.mcp "$APP/Contents/MacOS/smart-terminal-mcp" || return 1
+    codesign "${base[@]}" --identifier "$BUNDLE_ID.mcp" "$APP/Contents/MacOS/smart-terminal-mcp" || return 1
     local app_flags=("${base[@]}")
     [[ $hardened == 1 ]] && app_flags+=(--entitlements SmartTerminal.entitlements)
     codesign "${app_flags[@]}" "$APP"

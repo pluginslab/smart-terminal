@@ -3,6 +3,9 @@
 # Only the dev instance is restarted; a test instance or the real app is left alone.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# Run from a Smart Terminal tab, the instance would inherit that tab's shell setup
+# (its zsh shim, your dotfiles' folder) and its tab and browser gate.
+unset ZDOTDIR SMART_TERMINAL_USER_ZDOTDIR SMART_TERMINAL_TAB SMART_TERMINAL_GATE
 SUPPORT="${SMART_TERMINAL_SUPPORT_DIR:-$PWD/.build/dev-support}"
 mkdir -p "$SUPPORT"
 pkill -f "^$PWD/SmartTerminal.app/Contents/MacOS/SmartTerminal" 2>/dev/null || true

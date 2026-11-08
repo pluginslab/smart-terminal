@@ -6,6 +6,9 @@
 #   SMART_TERMINAL_DEBUG_ID=test scripts/debug.sh snapshot /tmp/x.png
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# Run from a Smart Terminal tab, the instance would inherit that tab's shell setup
+# (its zsh shim, your dotfiles' folder) and its tab and browser gate.
+unset ZDOTDIR SMART_TERMINAL_USER_ZDOTDIR SMART_TERMINAL_TAB SMART_TERMINAL_GATE
 APP="$PWD/.build/SmartTerminal-test.app"
 SUPPORT="$PWD/.build/test-support"
 pkill -f "^$APP/Contents/MacOS/SmartTerminal" 2>/dev/null || true
