@@ -172,7 +172,12 @@ public struct DevToolsGate {
             return [.createPage(requestID: id, url: params["url"] as? String ?? "about:blank",
                                 background: params["background"] as? Bool ?? false)]
         case "Target.closeTarget":
-            return [.closePage(requestID: id, targetID: params["targetId"] as? String ?? "")]
+            let t = params["targetId"] as? String ?? ""
+            // Chromium tells only a client that discovers targets that one went: the
+            // gate's cookie session must not outlive the page it runs on.
+            targets.remove(t)
+            if t == utilityTarget { dropUtility() }
+            return [.closePage(requestID: id, targetID: t)]
         case "Target.activateTarget":
             return [.activatePage(targetID: params["targetId"] as? String ?? ""), result(id, nil, [:])]
         case "Target.getBrowserContexts":
@@ -211,14 +216,19 @@ public struct DevToolsGate {
     // MARK: Chromium → client
 
     /// A message from Chromium that `owns` this gate.
-    public mutating func fromChromium(_ data: Data) -> [Output] {
-        guard var msg = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [] }
+    /// `parsed`: `data` already parsed (the app parses each message once).
+    public mutating func fromChromium(_ data: Data, parsed: [String: Any]? = nil) -> [Output] {
+        guard var msg = parsed ?? (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) else { return [] }
         if let id = msg["id"] as? Int {
             guard let p = pending.removeValue(forKey: id) else { return [] }
             switch p.kind {
             case .utilityAttach:
                 attachingUtility = false
                 guard let s = (msg["result"] as? [String: Any])?["sessionId"] as? String else {
+                    // That page is gone: try another of the agent's.
+                    if let t = utilityTarget { targets.remove(t) }
+                    utilityTarget = nil
+                    if !cookieQueue.isEmpty, let retry = attachUtility(newID: allocateID) { return retry }
                     let waiting = cookieQueue
                     cookieQueue = []
                     return waiting.map { error($0.clientID, nil, "No page to read cookies through") }
@@ -227,7 +237,11 @@ public struct DevToolsGate {
                 return flushCookies(using: allocateID)
             case .cookies:
                 var reply: [String: Any] = ["id": p.clientID]
-                if let e = msg["error"] { reply["error"] = e } else {
+                if let e = msg["error"] {
+                    // Most likely the page under the session closed: the next call attaches afresh.
+                    dropUtility()
+                    reply["error"] = e
+                } else {
                     let r = msg["result"] as? [String: Any] ?? [:]
                     reply["result"] = p.method == "Storage.getCookies" ? ["cookies": r["cookies"] ?? []] : [:]
                 }
@@ -308,6 +322,7 @@ public struct DevToolsGate {
                 if info["type"] as? String == "page" { sessionTargets[s] = t }
             }
         case "Target.detachedFromTarget":
+            if let s = params["sessionId"] as? String, s == utilitySession { dropUtility(); return [] }
             guard let s = params["sessionId"] as? String, sessions.remove(s) != nil else { return [] }
             sessionTargets[s] = nil
         default:
@@ -353,15 +368,24 @@ public struct DevToolsGate {
         cookieQueue.append((clientID, method, p))
         if utilitySession != nil { return flushCookies(using: newID) }
         guard !attachingUtility else { return [] }
-        guard let target = targets.sorted().first else {
-            cookieQueue.removeLast()
-            return [error(clientID, nil, "No page to read cookies through yet")]
-        }
+        if let attach = attachUtility(newID: newID) { return attach }
+        cookieQueue.removeLast()
+        return [error(clientID, nil, "No page to read cookies through yet")]
+    }
+
+    /// Attaches the gate's cookie session to one of the agent's pages; nil when it has none.
+    private mutating func attachUtility(newID: () -> Int) -> [Output]? {
+        guard let target = targets.sorted().first else { return nil }
         attachingUtility = true
         utilityTarget = target
         let upstream = newID()
         pending[upstream] = Pending(clientID: -1, method: "Target.attachToTarget", sessionID: nil, kind: .utilityAttach)
         return [command("Target.attachToTarget", ["targetId": target, "flatten": true], session: browserSession, newID: upstream)]
+    }
+
+    private mutating func dropUtility() {
+        utilitySession = nil
+        utilityTarget = nil
     }
 
     /// Sends the queued cookie commands on the utility session.

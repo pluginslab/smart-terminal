@@ -34,6 +34,8 @@ public struct TerminalTab: Identifiable, Codable, Hashable, Sendable {
     public var agentSession: AgentSessionRef?
     /// tmux session the tab was attached to when last seen; re-attached or recreated after a restart.
     public var tmuxSession: TmuxSessionRef?
+    /// ssh to tmux on another host (cc-super) when last seen; run again after a restart.
+    public var remoteSession: RemoteSessionRef?
 
     public init(id: UUID = UUID(), customTitle: String? = nil, autoTitle: String = "Terminal",
                 cwd: String? = nil, groupID: UUID? = nil, agentSession: AgentSessionRef? = nil,

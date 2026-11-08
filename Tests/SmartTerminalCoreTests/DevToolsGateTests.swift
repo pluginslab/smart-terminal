@@ -117,6 +117,29 @@ import Testing
         #expect(((cookies[0]["result"] as? [String: Any])?["cookies"] as? [[String: Any]])?.count == 1)
     }
 
+    @Test func cookiesMoveToAnotherPageWhenTheirsCloses() {
+        var g = DevToolsGate(browserSession: "BROWSER", contextID: ours, knownTargets: ["A", "B"], allocateID: { 777 })
+        let ids = IDs()
+        _ = g.fromClient(json(["id": 6, "method": "Storage.getCookies"]), newID: ids.take)
+        _ = g.fromChromium(json(["id": 500, "sessionId": "BROWSER", "result": ["sessionId": "UTIL"]]))
+        _ = g.fromChromium(json(["id": 777, "sessionId": "UTIL", "result": ["cookies": []]]))
+        // The agent closes the page the cookie session runs on (fleet's restart closes about:blank).
+        _ = g.fromClient(json(["id": 8, "method": "Target.closeTarget", "params": ["targetId": "A"]]), newID: ids.take)
+        let attach = toChromium(g.fromClient(json(["id": 9, "method": "Storage.getCookies"]), newID: ids.take))
+        #expect(attach.map { $0["method"] as? String } == ["Target.attachToTarget"])
+        #expect((attach[0]["params"] as? [String: Any])?["targetId"] as? String == "B")
+    }
+
+    @Test func aFailedAttachTriesTheNextPage() {
+        var g = DevToolsGate(browserSession: "BROWSER", contextID: ours, knownTargets: ["A", "B"], allocateID: { 777 })
+        let ids = IDs()
+        _ = g.fromClient(json(["id": 6, "method": "Storage.getCookies"]), newID: ids.take)
+        // A's gone without the gate hearing of it.
+        let retry = toChromium(g.fromChromium(json(["id": 500, "sessionId": "BROWSER", "error": ["message": "No target with given id found"]])))
+        #expect(retry.map { $0["method"] as? String } == ["Target.attachToTarget"])
+        #expect((retry[0]["params"] as? [String: Any])?["targetId"] as? String == "B")
+    }
+
     @Test func permissionsArePinnedToTheAgentsContext() {
         var g = gate(); let ids = IDs()
         let grant = toChromium(g.fromClient(json(["id": 7, "method": "Browser.grantPermissions", "params": ["permissions": ["geolocation"]]]), newID: ids.take))

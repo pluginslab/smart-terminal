@@ -522,6 +522,7 @@ private struct SessionRow: View {
                     indicator
                     titleView
                     Spacer(minLength: 4)
+                    if let tmux = tmuxPill { TmuxPill(label: tmux.label, help: tmux.help, onAccent: isActive) }
                     closeButton.opacity(hovering || isActive ? 1 : 0)
                 }
                 // Always a second line, so every row is at least as tall (and as easy to hit).
@@ -570,6 +571,19 @@ private struct SessionRow: View {
                 delegate: StripDropDelegate(windowID: windowID, model: model) { point in
                     point.y < 24 ? .beforeTab(tab.id) : .afterTab(tab.id)
                 })
+    }
+
+    /// tmux in this tab: live while a client is in front, else what a restart would bring back.
+    private var tmuxPill: (label: String, help: String)? {
+        if let r = model.liveRemote[tab.id] ?? tab.remoteSession {
+            let host = r.host.map { String($0.split(separator: ".").first ?? Substring($0)) }
+            return (host.map { "tmux · \($0)" } ?? "tmux",
+                    "tmux \(r.session.map { "“\($0)” " } ?? "")on \(r.host ?? "a remote host"), over ssh")
+        }
+        if let t = model.liveTmux[tab.id] ?? tab.tmuxSession {
+            return ("tmux", "tmux session “\(t.session)”")
+        }
+        return nil
     }
 
     private var hint: DropTarget? {
@@ -646,5 +660,24 @@ private struct SessionRow: View {
         guard isRenaming else { return }
         model.rename(tab: tab.id, to: draft == tab.autoTitle ? nil : draft)
         model.renamingTabID = nil
+    }
+}
+
+/// "tmux" at the top right of a session row: the session lives in tmux (locally or over ssh).
+private struct TmuxPill: View {
+    let label: String
+    let help: String
+    let onAccent: Bool
+
+    var body: some View {
+        Text(label)
+            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+            .lineLimit(1)
+            .padding(.horizontal, 5).padding(.vertical, 1)
+            .foregroundStyle(onAccent ? AnyShapeStyle(Color.white) : AnyShapeStyle(.secondary))
+            .background(Capsule().fill(onAccent ? Color.white.opacity(0.18) : Color.primary.opacity(0.07)))
+            .overlay(Capsule().strokeBorder(onAccent ? Color.white.opacity(0.35) : Color.primary.opacity(0.15), lineWidth: 0.5))
+            .fixedSize()
+            .help(help)
     }
 }

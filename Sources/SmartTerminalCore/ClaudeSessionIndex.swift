@@ -14,6 +14,8 @@ public struct ClaudeSessionIndex: Codable, Equatable, Sendable {
         public var id: String
         public var name: String
         public var color: String
+        /// Its place in its window's sidebar, 0 first. The file's dictionaries carry no order.
+        public var order: Int
     }
 
     public struct Tab: Codable, Equatable, Sendable {
@@ -23,6 +25,8 @@ public struct ClaudeSessionIndex: Codable, Equatable, Sendable {
         public var window: Int
         public var cwd: String?
         public var sessionID: String?
+        /// Its place in its window's tab list, 0 first.
+        public var order: Int
 
         // `null`, not a missing key, for an ungrouped tab or one without a session.
         public func encode(to encoder: Encoder) throws {
@@ -33,6 +37,7 @@ public struct ClaudeSessionIndex: Codable, Equatable, Sendable {
             try c.encode(window, forKey: .window)
             try c.encode(cwd, forKey: .cwd)
             try c.encode(sessionID, forKey: .sessionID)
+            try c.encode(order, forKey: .order)
         }
     }
 
@@ -49,13 +54,15 @@ public struct ClaudeSessionIndex: Codable, Equatable, Sendable {
         updatedAt = ISO8601DateFormatter().string(from: now)
         var sessions: [String: Tab] = [:], tabs: [String: Tab] = [:]
         for (i, w) in layout.windows.enumerated() {
-            for t in w.tabs {
-                let group = t.groupID.flatMap { w.group($0) }.map {
-                    Group(id: $0.id.uuidString, name: $0.name, color: $0.color.rawValue)
+            let groupOrder = w.orderedGroups.map(\.id)
+            for (ti, t) in w.tabs.enumerated() {
+                let group = t.groupID.flatMap { w.group($0) }.map { g in
+                    Group(id: g.id.uuidString, name: g.name, color: g.color.rawValue,
+                          order: groupOrder.firstIndex(of: g.id) ?? groupOrder.count)
                 }
                 let sid = sessionIDs[t.id]
                 let entry = Tab(tabID: t.id.uuidString, tab: t.displayTitle, group: group,
-                                window: i + 1, cwd: t.cwd, sessionID: sid)
+                                window: i + 1, cwd: t.cwd, sessionID: sid, order: ti)
                 tabs[t.id.uuidString] = entry
                 if let sid { sessions[sid] = entry }
             }

@@ -135,6 +135,8 @@ struct ResumeBar: View {
         case .recreate(let t, let agent):
             agent == nil ? "tmux session \(quoted(t.session)) was attached here and has ended."
                 : "\(claude) was running here in tmux \(quoted(t.session)), which has ended."
+        case .reconnect(let r):
+            "tmux \(quoted(r.session ?? "session")) on \(r.host ?? "the remote host") was attached here over ssh."
         }
     }
 
@@ -143,6 +145,7 @@ struct ResumeBar: View {
         case .resume: "Resume"
         case .reattach: "Reattach"
         case .recreate(_, let agent): agent == nil ? "Recreate" : "Resume in tmux"
+        case .reconnect: "Reconnect"
         }
     }
 }

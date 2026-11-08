@@ -183,13 +183,13 @@ final class ChromiumGate {
 
     /// Every message from Chromium: replies and session events go to the gate that owns
     /// them; browser-level events on the app's own session to the target directory.
-    func route(_ data: Data) {
-        guard let msg = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+    func route(_ message: DevToolsMessage) {
+        let msg = message.object
         let gates = agents.values.flatMap(\.connections)
         if let session = msg["sessionId"] as? String {
-            gates.first { $0.gate.owns(sessionID: session) }?.fromChromium(data)
+            gates.first { $0.gate.owns(sessionID: session) }?.fromChromium(message)
         } else if let id = msg["id"] as? Int {
-            gates.first { $0.gate.owns(replyID: id) }?.fromChromium(data)
+            gates.first { $0.gate.owns(replyID: id) }?.fromChromium(message)
         } else if let method = msg["method"] as? String {
             ChromiumTargets.shared.handle(method: method, params: msg["params"] as? [String: Any] ?? [:])
         }
@@ -319,8 +319,8 @@ final class GateConnection {
         perform(gate.fromClient(data, newID: ChromiumGate.shared.newUpstreamID))
     }
 
-    func fromChromium(_ data: Data) {
-        perform(gate.fromChromium(data))
+    func fromChromium(_ message: DevToolsMessage) {
+        perform(gate.fromChromium(message.data, parsed: message.object))
     }
 
     private func perform(_ outputs: [DevToolsGate.Output]) {

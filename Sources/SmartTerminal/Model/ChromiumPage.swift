@@ -94,7 +94,7 @@ final class ChromiumTargets {
     func start() {
         let connection = DevToolsConnection.shared
         connection.open()
-        connection.onMessage = { data in ChromiumGate.shared.route(data) }
+        connection.onMessage = { message in ChromiumGate.shared.route(message) }
         connection.send(method: "Target.setDiscoverTargets", params: ["discover": true])
     }
 

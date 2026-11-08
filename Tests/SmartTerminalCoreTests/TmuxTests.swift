@@ -61,3 +61,31 @@ import Testing
         #expect(try JSONDecoder().decode(TerminalTab.self, from: JSONEncoder().encode(t)) == t)
     }
 }
+
+@Suite struct RemoteSessionTests {
+    let ccSuper = ["ssh", "-L", "3118:localhost:3118", "-L", "8080:localhost:8080", "supermaschine", "-t",
+                   "tmux new-session -A -s 'Kanban' 'cd ~/codeable && claude --dangerously-skip-permissions'"]
+
+    @Test func ccSuperIsRecognisedAndRunsAgainAsIs() throws {
+        let r = try #require(RemoteSessionRef.from(sshArguments: ccSuper))
+        #expect(r.host == "supermaschine" && r.session == "Kanban")
+        #expect(r.command == "ssh -L 3118:localhost:3118 -L 8080:localhost:8080 supermaschine -t 'tmux new-session -A -s '\\''Kanban'\\'' '\\''cd ~/codeable && claude --dangerously-skip-permissions'\\'''")
+        #expect(TabRecovery.make(agent: nil, tmux: nil, remote: r, tmuxAlive: { _ in false }) == .reconnect(r))
+    }
+
+    @Test func onlyTmuxAttachingSSHIsKept() {
+        let attaching = [["ssh", "box", "-t", "tmux attach -t work"], ["ssh", "box", "-t", "tmux", "a"],
+                         ["/usr/bin/ssh", "u@box", "-t", "tmux -L x new -dA -s w"], ["ssh", "box", "-t", "tmux new-session -s w -A"]]
+        for a in attaching { #expect(RemoteSessionRef.from(sshArguments: a) != nil, "\(a)") }
+        let not = [["ssh", "box"], ["ssh", "box", "uptime"], ["ssh", "box", "-t", "tmux new-session -s w"],
+                   ["ssh", "box", "-t", "tmux new -s w 'claude -A'"], ["mosh", "box", "tmux", "a"], ["ssh", "box", "tmux ls"]]
+        for a in not { #expect(RemoteSessionRef.from(sshArguments: a) == nil, "\(a)") }
+        #expect(RemoteSessionRef(arguments: ["ssh", "-p", "2222", "-i", "k", "me@nas"]).host == "nas")
+    }
+
+    @Test func recreateSetsTheTabInTheNewSession() {
+        let tab = UUID()
+        let cmd = TmuxSessionRef(session: "api").recreateCommand(cwd: "/x", command: "claude --resume a", tabID: tab)
+        #expect(cmd.hasPrefix("tmux new-session -d -s api -c /x -e SMART_TERMINAL_TAB=\(tab.uuidString) && "))
+    }
+}

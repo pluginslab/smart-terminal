@@ -466,7 +466,8 @@ final class AppModel {
     }
 
     func agentUpdated(tabID: UUID, agent: AgentSnapshot?, ref: AgentSessionRef?,
-                      agentStillRunning: Bool = false, tmux: TmuxSessionRef? = nil) {
+                      agentStillRunning: Bool = false, tmux: TmuxSessionRef? = nil,
+                      remote: RemoteSessionRef? = nil) {
         let previous = agents[tabID]
         if previous != agent {
             if previous?.status != agent?.status {
@@ -478,9 +479,19 @@ final class AppModel {
         }
         let previousTmux = liveTmux[tabID]
         if previousTmux != tmux { liveTmux[tabID] = tmux }
+        let previousRemote = liveRemote[tabID]
+        if previousRemote != remote { liveRemote[tabID] = remote }
         guard let wid = windowID(containingTab: tabID), let tab = window(wid)?.tab(tabID) else { return }
         var agentSession = tab.agentSession
         var tmuxSession = tab.tmuxSession
+        var remoteSession = tab.remoteSession
+        if let remote {
+            remoteSession = remote
+        } else if previousRemote != nil {
+            // ssh ended while we watched (detached, logged out, dropped): nothing to rerun.
+            // A quit kills it unwatched, so the reference survives for the next launch.
+            remoteSession = nil
+        }
         if let tmux {
             tmuxSession = tmux
         } else if previousTmux != nil {
@@ -496,8 +507,10 @@ final class AppModel {
             // A quit or crash never gets here, so the reference survives for the next launch.
             agentSession = nil
         }
-        if agentSession != tab.agentSession || tmuxSession != tab.tmuxSession {
-            update(wid) { $0.updateTab(tabID) { $0.agentSession = agentSession; $0.tmuxSession = tmuxSession } }
+        if agentSession != tab.agentSession || tmuxSession != tab.tmuxSession || remoteSession != tab.remoteSession {
+            update(wid) { $0.updateTab(tabID) {
+                $0.agentSession = agentSession; $0.tmuxSession = tmuxSession; $0.remoteSession = remoteSession
+            } }
         }
     }
 
@@ -535,15 +548,17 @@ final class AppModel {
     private(set) var resumeLaunched: Set<UUID> = []
     /// Per tab, the tmux session its client is showing right now.
     private(set) var liveTmux: [UUID: TmuxSessionRef] = [:]
+    /// Per tab, the ssh-to-tmux client in front right now.
+    private(set) var liveRemote: [UUID: RemoteSessionRef] = [:]
     /// `tmux has-session`, asked once per tab while its offer is up (views read it while drawing).
     @ObservationIgnored private var tmuxAlive: [UUID: Bool] = [:]
 
     /// What this tab was running before the app restarted: a Claude session to resume,
     /// or a tmux session to re-attach (or recreate, with Claude resumed inside).
     func recovery(_ tabID: UUID) -> TabRecovery? {
-        guard agents[tabID] == nil, liveTmux[tabID] == nil, !resumeLaunched.contains(tabID),
+        guard agents[tabID] == nil, liveTmux[tabID] == nil, liveRemote[tabID] == nil, !resumeLaunched.contains(tabID),
               let wid = windowID(containingTab: tabID), let tab = window(wid)?.tab(tabID) else { return nil }
-        return TabRecovery.make(agent: tab.agentSession, tmux: tab.tmuxSession) { ref in
+        return TabRecovery.make(agent: tab.agentSession, tmux: tab.tmuxSession, remote: tab.remoteSession) { ref in
             if let known = tmuxAlive[tabID] { return known }
             let alive = TmuxProbe.hasSession(ref)
             tmuxAlive[tabID] = alive
@@ -557,7 +572,7 @@ final class AppModel {
         resumeLaunched.insert(tabID)
         tmuxAlive[tabID] = nil
         let session = sessions.session(for: tabID, cwd: tab.cwd)
-        session.view.send(txt: recovery.command(cwd: tab.cwd) + "\r") // the shell buffers it until its prompt is up
+        session.view.send(txt: recovery.command(cwd: tab.cwd, tabID: tabID) + "\r") // the shell buffers it until its prompt is up
     }
 
     /// Every tab, in every window, that offers to resume or reattach.
@@ -574,7 +589,7 @@ final class AppModel {
 
     func dismissResume(_ tabID: UUID) {
         guard let wid = windowID(containingTab: tabID) else { return }
-        update(wid) { $0.updateTab(tabID) { $0.agentSession = nil; $0.tmuxSession = nil } }
+        update(wid) { $0.updateTab(tabID) { $0.agentSession = nil; $0.tmuxSession = nil; $0.remoteSession = nil } }
     }
 
     func markAttention(_ tabID: UUID, force: Bool = false) {

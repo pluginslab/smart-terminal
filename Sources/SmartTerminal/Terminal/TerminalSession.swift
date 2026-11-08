@@ -73,10 +73,14 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
     private let claude = ClaudeWatcher()
     /// Set while a tmux client is in front: the session it shows (persisted for after a restart).
     private(set) var tmuxSession: TmuxSessionRef?
+    /// Set while ssh to tmux on another host is in front (persisted for after a restart).
+    private(set) var remoteSession: RemoteSessionRef?
     private let tmux = TmuxProbe()
     /// The Claude process last seen here. Gone from the front isn't gone: it may be
     /// suspended or in another tmux window, and then it can still be resumed.
     private var lastAgentPID: pid_t = 0
+    /// The ssh client `remoteSession` was read from.
+    private var remotePID: pid_t = 0
     var agentStillRunning: Bool { lastAgentPID > 0 && kill(lastAgentPID, 0) == 0 }
 
     var onChange: ((TerminalSession) -> Void)?
@@ -197,6 +201,18 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
         } else {
             tmux.reset()
         }
+        // ssh in front, attached to tmux over there: worth running again after a restart.
+        var newRemote: RemoteSessionRef?
+        if let pgid, ProcessInspector.name(of: pgid) == "ssh" {
+            if remotePID == pgid {
+                newRemote = remoteSession // the same client: its argv can't have changed
+            } else {
+                newRemote = ProcessInspector.arguments(of: pgid).flatMap(RemoteSessionRef.from(sshArguments:))
+                remotePID = pgid
+            }
+        } else {
+            remotePID = 0
+        }
         let newAgent = claude.update(foregroundPGID: claudeGroup, terminalTitle: title, titleNeedsRecord: claudeGroup != pgid)
         if newAgent != nil { lastAgentPID = claude.pid }
         let newCommand = Self.describeCommand(leader: pgid, shell: shellPath)
@@ -206,12 +222,13 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
         }
         // Always report the first poll: a tab that starts in its folder and whose shell
         // never sets a title would otherwise keep the placeholder name.
-        if !reportedOnce || cwd != currentDirectory || fg != foregroundProcess || newAgent != agent || newTmux != tmuxSession {
+        if !reportedOnce || cwd != currentDirectory || fg != foregroundProcess || newAgent != agent || newTmux != tmuxSession || newRemote != remoteSession {
             reportedOnce = true
             currentDirectory = cwd
             foregroundProcess = fg
             agent = newAgent
             tmuxSession = newTmux
+            remoteSession = newRemote
             onChange?(self)
         }
     }

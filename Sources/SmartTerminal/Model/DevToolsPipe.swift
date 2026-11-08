@@ -49,6 +49,44 @@ enum DevToolsPipe {
     }
 }
 
+/// A message from Chromium, as received and parsed once.
+struct DevToolsMessage: @unchecked Sendable { // the dictionary is never mutated after parsing
+    let data: Data
+    let object: [String: Any]
+}
+
+/// Splits Chromium's stream into messages and parses them, off the main thread: a
+/// screenshot or a page snapshot is megabytes, and agents ask for them often.
+private final class DevToolsReader: @unchecked Sendable { // used on `queue` only
+    let queue = DispatchQueue(label: "devtools.pipe.read", qos: .userInitiated)
+    private var buffer = Data()
+    /// Where the search for the next message's end resumes: bytes before it hold no NUL.
+    private var scanned = 0
+
+    /// Complete messages in what has arrived so far.
+    func received(_ bytes: UnsafeRawBufferPointer) -> [DevToolsMessage] {
+        buffer.append(contentsOf: bytes)
+        var out: [DevToolsMessage] = []
+        var start = 0
+        buffer.withUnsafeBytes { raw in
+            var i = scanned
+            while i < raw.count {
+                if raw[i] == 0 {
+                    let data = Data(raw[start..<i])
+                    if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                        out.append(DevToolsMessage(data: data, object: obj))
+                    }
+                    start = i + 1
+                }
+                i += 1
+            }
+        }
+        if start > 0 { buffer = Data(buffer[start...]) } // a fresh Data: indices from 0 again
+        scanned = buffer.count
+        return out
+    }
+}
+
 /// Sends DevTools commands over the pipe and routes what comes back: replies to the
 /// callback of the command they answer, everything else to `onMessage`.
 @MainActor
@@ -56,10 +94,10 @@ final class DevToolsConnection {
     static let shared = DevToolsConnection()
 
     /// Messages that aren't replies to `send` (events, and replies to raw forwards).
-    var onMessage: ((Data) -> Void)?
+    var onMessage: ((DevToolsMessage) -> Void)?
     private var pending: [Int: (([String: Any]) -> Void)] = [:]
     private var nextID = 1_000_000_000 // far above any id a client of the gate uses
-    private var buffer = Data()
+    private let reader = DevToolsReader()
     private var source: DispatchSourceRead?
     private let writeQueue = DispatchQueue(label: "devtools.pipe.write")
 
@@ -68,31 +106,30 @@ final class DevToolsConnection {
     /// Starts reading. Call once Chromium runs.
     func open() {
         guard source == nil, DevToolsPipe.isReserved else { return }
-        let fd = DevToolsPipe.messageFD
-        let src = DispatchSource.makeReadSource(fileDescriptor: fd, queue: .main)
-        src.setEventHandler { [weak self] in
-            var chunk = [UInt8](repeating: 0, count: 65536)
-            let n = read(fd, &chunk, chunk.count)
-            guard n > 0 else { return }
-            MainActor.assumeIsolated { self?.received(Data(chunk[0..<n])) }
-        }
+        let src = DispatchSource.makeReadSource(fileDescriptor: DevToolsPipe.messageFD, queue: reader.queue)
+        src.setEventHandler(handler: Self.readHandler(fd: DevToolsPipe.messageFD, reader: reader))
         src.resume()
         source = src
     }
 
-    private func received(_ data: Data) {
-        buffer.append(data)
-        while let end = buffer.firstIndex(of: 0) {
-            let message = buffer[buffer.startIndex..<end]
-            buffer.removeSubrange(buffer.startIndex...end)
-            dispatch(Data(message))
+    /// Runs on the reader's queue, so it must not inherit the main actor's isolation.
+    private nonisolated static func readHandler(fd: Int32, reader: DevToolsReader) -> @Sendable () -> Void {
+        {
+            var chunk = [UInt8](repeating: 0, count: 1 << 20)
+            let n = read(fd, &chunk, chunk.count)
+            guard n > 0 else { return }
+            let messages = chunk.withUnsafeBytes { reader.received(UnsafeRawBufferPointer(rebasing: $0[0..<n])) }
+            guard !messages.isEmpty else { return }
+            // One hop per read, in order: the main queue is serial.
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { for m in messages { DevToolsConnection.shared.dispatch(m) } }
+            }
         }
     }
 
-    private func dispatch(_ message: Data) {
-        if let obj = try? JSONSerialization.jsonObject(with: message) as? [String: Any],
-           let id = obj["id"] as? Int, let reply = pending.removeValue(forKey: id) {
-            reply(obj)
+    private func dispatch(_ message: DevToolsMessage) {
+        if let id = message.object["id"] as? Int, let reply = pending.removeValue(forKey: id) {
+            reply(message.object)
         } else {
             onMessage?(message)
         }
