@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.15.1] - 2026-11-09
+- Fixed: an agent in tmux took over the browser pane of whichever tab you were looking at. A tool inside tmux can't trust `SMART_TERMINAL_TAB` (tmux hands every session the environment of the tab that started its server), so it asked for "the tab you're in". devtools-fleet 0.3.1 now reads the tab from the tmux session's own environment, where `cc-tmux` and Smart Terminal's tmux restore put it, and otherwise sends the tmux session it runs in; Smart Terminal gives it the tab showing that session (or that last showed it), and only then the tab in front.
+
 ## [0.15.0] - 2026-11-08
 - New: tabs in ssh to tmux on another host come back after a restart, as `cc-super` runs it (`ssh supermaschine -t "tmux new-session -A -s name …"`). While such a client is in front, the tab remembers its ssh command; after a quit or crash it runs it again (on opening, or from its Reconnect bar), which reattaches to the session over there, Claude still running in it. Only ssh that attaches to tmux (`attach`, `a`, `new-session -A`) is remembered; a plain `ssh host` or a one-off remote command never runs again by itself. Ending ssh yourself forgets it.
 - New: a "tmux" pill at the top right of each session in the sidebar when it runs in tmux; "tmux · host" for tmux over ssh. Its tooltip names the session.

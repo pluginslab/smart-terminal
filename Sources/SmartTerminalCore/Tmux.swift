@@ -62,6 +62,18 @@ public struct TmuxSessionRef: Codable, Hashable, Sendable {
         return out
     }
 
+    /// Whether this is `session` on the server at `socketPath` (from a client's `$TMUX`).
+    /// Servers are told apart by their socket's name: "default", a `-L` name, or a `-S` file.
+    public func matches(socketPath: String, session other: String) -> Bool {
+        guard session == other else { return false }
+        let name = (socketPath as NSString).lastPathComponent
+        var mine = "default"
+        if let i = socketArgs.firstIndex(where: { $0 == "-L" || $0 == "-S" }), i + 1 < socketArgs.count {
+            mine = socketArgs[i] == "-L" ? socketArgs[i + 1] : (socketArgs[i + 1] as NSString).lastPathComponent
+        }
+        return mine == name
+    }
+
     private var tmux: String { (["tmux"] + socketArgs).map(AgentSessionRef.shellQuote).joined(separator: " ") }
     private var target: String { AgentSessionRef.shellQuote(session) }
 

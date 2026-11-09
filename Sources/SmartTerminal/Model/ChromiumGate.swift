@@ -110,7 +110,9 @@ final class ChromiumGate {
                 respond(HTTPResponse.json(400, ["error": "id is required"]))
                 return nil
             }
-            Task { respond(await self.ensureAgent(id: id, tab: body["tab"] as? String)) }
+            let t = body["tmux"] as? [String: Any]
+            let tmux = (t?["socket"] as? String).flatMap { s in (t?["session"] as? String).map { (socket: s, session: $0) } }
+            Task { respond(await self.ensureAgent(id: id, tab: body["tab"] as? String, tmux: tmux)) }
         case ("POST", ["v1", "commands"]):
             // A command Claude proposes: typed into a new tab for you to run.
             let body = (try? JSONSerialization.jsonObject(with: req.body)) as? [String: Any] ?? [:]
@@ -150,11 +152,11 @@ final class ChromiumGate {
         }, uniquingKeysWith: { a, _ in a })
     }
 
-    private func ensureAgent(id: String, tab: String?) async -> Data {
+    private func ensureAgent(id: String, tab: String?, tmux: (socket: String, session: String)?) async -> Data {
         if let existing = agents[id], existing.isAlive {
             return HTTPResponse.json(200, existing.summary) // same agent tool, reconnecting
         }
-        guard let model, let tabID = model.agentTab(tab) else {
+        guard let model, let tabID = model.agentTab(tab, tmux: tmux) else {
             return HTTPResponse.json(404, ["error": "no such tab: \(tab ?? "-")"])
         }
         guard ChromiumRuntime.start() else {

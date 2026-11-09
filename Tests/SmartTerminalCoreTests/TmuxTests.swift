@@ -89,3 +89,13 @@ import Testing
         #expect(cmd.hasPrefix("tmux new-session -d -s api -c /x -e SMART_TERMINAL_TAB=\(tab.uuidString) && "))
     }
 }
+
+@Suite struct TmuxServerMatchTests {
+    @Test func aSessionIsMatchedOnItsOwnServer() {
+        #expect(TmuxSessionRef(session: "w").matches(socketPath: "/private/tmp/tmux-501/default", session: "w"))
+        #expect(!TmuxSessionRef(session: "w").matches(socketPath: "/private/tmp/tmux-501/default", session: "x"))
+        #expect(TmuxSessionRef(session: "w", socketArgs: ["-L", "work"]).matches(socketPath: "/tmp/tmux-501/work", session: "w"))
+        #expect(!TmuxSessionRef(session: "w", socketArgs: ["-L", "work"]).matches(socketPath: "/tmp/tmux-501/default", session: "w"))
+        #expect(TmuxSessionRef(session: "w", socketArgs: ["-S", "/tmp/s/sock"]).matches(socketPath: "/private/tmp/s/sock", session: "w"))
+    }
+}

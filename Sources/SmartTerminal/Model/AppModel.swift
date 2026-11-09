@@ -104,8 +104,17 @@ final class AppModel {
 
     /// The tab an agent tool named: its `SMART_TERMINAL_TAB`, or "-" or nothing for
     /// the tab you're in (a tool inside tmux can't know its tab).
-    func agentTab(_ name: String?) -> UUID? {
+    /// `tmux`: the tmux session the tool runs in, when it couldn't name its tab: the tab
+    /// showing that session (or last showing it) is the one.
+    func agentTab(_ name: String?, tmux: (socket: String, session: String)? = nil) -> UUID? {
         if let name, let id = UUID(uuidString: name), windowID(containingTab: id) != nil { return id }
+        if let tmux {
+            if let live = liveTmux.first(where: { $0.value.matches(socketPath: tmux.socket, session: tmux.session) })?.key,
+               windowID(containingTab: live) != nil { return live }
+            if let saved = layout.windows.flatMap(\.tabs).first(where: {
+                $0.tmuxSession?.matches(socketPath: tmux.socket, session: tmux.session) == true
+            }) { return saved.id }
+        }
         let key = (NSApp.keyWindow as? TerminalWindow).flatMap { window($0.windowID)?.activeTabID }
         return key ?? layout.windows.first?.activeTabID
     }
