@@ -348,13 +348,6 @@ The git line in each session row comes from `git status --porcelain=v2 --branch`
 `git diff --shortstat HEAD`, run once per folder (tabs in the same repository share
 it) every few seconds while the session list is on screen.
 
-**For other tools**, Smart Terminal keeps `claude-sessions.json` in its Application
-Support folder: for every tab, its name, its group's name, colour and place in the
-sidebar, the window, the folder, and the Claude Code session running or saved in it,
-keyed by session id and by tab id. The Mobile Agent
-bridge uses it to show tab names and groups on the phone. It is rewritten in one step
-whenever any of that changes, and readable only by you.
-
 Import uses AppleScript to list Terminal.app's windows and tabs and their ttys, `ps`
 to find each tab's shell and foreground job, the Claude session file to recognise
 Claude, and `tmux list-clients` to map a tty to a tmux session.

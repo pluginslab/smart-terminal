@@ -77,12 +77,6 @@ Useful context if you are assessing risk.
   Terminal.app's tabs and types `/exit` into the Claude sessions being handed over,
   and `tmux detach-client` for tmux clients being moved.
 
-**The session index.** The app writes `claude-sessions.json` to its support folder,
-readable by you alone (mode 0600): each tab's name, folder, group name and colour,
-and the id of the Claude Code session in it. No transcript content, no tokens. It is
-there for tools of yours outside the app (the Mobile Agent bridge) and is rewritten
-as tabs change; nothing listens or sends it anywhere.
-
 **Commands Claude proposes.** `smart-terminal-mcp`, an MCP server Claude Code starts
 when you add it, asks the app over the same local gate (below) to type a command into a
 new tab. The app types it and never presses Return: only single lines of printable text

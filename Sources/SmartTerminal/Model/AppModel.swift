@@ -71,8 +71,6 @@ final class AppModel {
     @ObservationIgnored var notifier: Notifier?
     @ObservationIgnored private let store: LayoutStore
     @ObservationIgnored private var saveTask: Task<Void, Never>?
-    @ObservationIgnored private var indexTask: Task<Void, Never>?
-    @ObservationIgnored private var lastIndex: ClaudeSessionIndex?
 
     init(store: LayoutStore = .default()) {
         self.store = store
@@ -157,7 +155,6 @@ final class AppModel {
             if let t = w.activeTabID { tabHistory[w.id, default: TabHistory()].visit(t) }
         }
         scheduleSave()
-        scheduleIndex()
     }
 
     // MARK: - Back and Forward
@@ -192,28 +189,10 @@ final class AppModel {
         do { try store.save(layout) } catch { NSLog("SmartTerminal: save failed: \(error)") }
     }
 
-    /// `claude-sessions.json` beside the layout: each tab's Claude session, name, group
-    /// and colour, for tools outside the app (see `ClaudeSessionIndex`).
-    var sessionIndexURL: URL { store.url.deletingLastPathComponent().appendingPathComponent("claude-sessions.json") }
-
-    func scheduleIndex() {
-        indexTask?.cancel()
-        indexTask = Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(250))
-            guard !Task.isCancelled else { return }
-            self?.writeIndex()
-        }
-    }
-
-    private func writeIndex() {
-        var ids: [UUID: String] = [:]
-        for t in layout.windows.flatMap(\.tabs) {
-            if let id = agents[t.id]?.sessionID ?? t.agentSession?.sessionID { ids[t.id] = id }
-        }
-        let index = ClaudeSessionIndex(layout: layout, sessionIDs: ids, pid: ProcessInfo.processInfo.processIdentifier)
-        guard !index.sameContent(as: lastIndex) else { return }
-        do { try index.write(to: sessionIndexURL); lastIndex = index }
-        catch { NSLog("SmartTerminal: session index not written: \(error)") }
+    /// Removes `claude-sessions.json`, the session index written for Mobile Agent until
+    /// 0.15.1 (dropped 2026-11-10), so a stale copy doesn't linger.
+    func removeOldSessionIndex() {
+        try? FileManager.default.removeItem(at: store.url.deletingLastPathComponent().appendingPathComponent("claude-sessions.json"))
     }
 
     // MARK: - Windows
@@ -229,7 +208,7 @@ final class AppModel {
             if let t = w.activeTabID { tabHistory[w.id, default: TabHistory()].visit(t) }
             windows?.openWindow(for: w.id)
         }
-        scheduleIndex() // the pid changed: readers would take the old file for stale
+        removeOldSessionIndex()
     }
 
     @discardableResult
@@ -483,7 +462,6 @@ final class AppModel {
                 DebugLog.write("agent \(tabID.uuidString.prefix(4)) \(previous?.status.rawValue ?? "nil") -> \(agent?.status.rawValue ?? "nil") visible=\(isVisibleToUser(tabID)) active=\(NSApp.isActive)")
             }
             agents[tabID] = agent
-            if previous?.sessionID != agent?.sessionID { scheduleIndex() }
             if let agent, previous?.status != agent.status { agentStatusChanged(tabID, from: previous?.status, to: agent) }
         }
         let previousTmux = liveTmux[tabID]

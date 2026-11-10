@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.15.2] - 2026-11-10
+- Removed: the Claude session index written for Mobile Agent (dropped 2026-11-10). Smart Terminal no longer writes `claude-sessions.json` and deletes the one left in its Application Support folder at launch. Per-tab Claude sessions for Resume, `SMART_TERMINAL_TAB` and everything else in the app are unchanged.
+
 ## [0.15.1] - 2026-11-09
 - Fixed: an agent in tmux took over the browser pane of whichever tab you were looking at. A tool inside tmux can't trust `SMART_TERMINAL_TAB` (tmux hands every session the environment of the tab that started its server), so it asked for "the tab you're in". devtools-fleet 0.3.1 now reads the tab from the tmux session's own environment, where `cc-tmux` and Smart Terminal's tmux restore put it, and otherwise sends the tmux session it runs in; Smart Terminal gives it the tab showing that session (or that last showed it), and only then the tab in front.
 
