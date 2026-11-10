@@ -468,7 +468,10 @@ final class AppModel {
         if previousTmux != tmux { liveTmux[tabID] = tmux }
         if liveRemote[tabID] != remote { liveRemote[tabID] = remote }
         // What a resume started is running: if it ends later, the tab may offer again.
-        if agent != nil || tmux != nil || remote != nil { resumeLaunched.remove(tabID) }
+        // Only when it's there: this runs on every title frame of a working Claude, and
+        // any write to an observed set redraws every window that reads it (0.15.3-0.15.5
+        // re-laid out windows non-stop until AppKit gave up).
+        if resumeLaunched.contains(tabID), agent != nil || tmux != nil || remote != nil { resumeLaunched.remove(tabID) }
         guard let wid = windowID(containingTab: tabID), let tab = window(wid)?.tab(tabID) else { return }
         var agentSession = tab.agentSession
         var tmuxSession = tab.tmuxSession

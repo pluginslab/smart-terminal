@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.15.6] - 2026-11-10
+- Fixed: the app could lay its windows out over and over (two minutes at two-thirds of a core on 0.15.4) until AppKit threw and it quit. Whether the groups column is collapsed was read from layout and set as state inside that same layout pass, and the room it then made for the traffic lights could move the column and flip the answer back. The column now has to clearly cross over, and the change waits for the next run-loop turn.
+- Fixed: a working Claude's title frames, several a second per tab, each wrote to state every window watches (since 0.15.3), redrawing them all for nothing.
+
 ## [0.15.5] - 2026-11-10
 - The rest of the panels take the dark terminal's colours too: the clipboard sidebar, the browser pane's address bar, an empty browser waiting for an address (it showed a white page), and the Resume and proposal bars.
 

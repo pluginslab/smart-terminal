@@ -472,7 +472,17 @@ private struct SessionList: View {
         .background { if let palette { palette.list.ignoresSafeArea() } }
         // Up under the transparent title bar, so the header sits level with the traffic lights.
         .ignoresSafeArea(.container, edges: .top)
-        .onGeometryChange(for: Bool.self) { $0.frame(in: .global).minX < 40 } action: { sidebarCollapsed = $0 }
+        // Room for the traffic lights when the groups column is collapsed. Two guards
+        // against a loop: the padding this adds can move the column, which flipped the
+        // test back, and the state was set inside the layout pass itself; at some widths
+        // the two re-laid out the window until AppKit threw (0.15.4, 2026-11-10). Now
+        // the column must clearly cross over (hysteresis), and the change waits for the
+        // next turn of the run loop.
+        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minX } action: { x in
+            let collapsed = sidebarCollapsed ? x < 120 : x < 40
+            guard collapsed != sidebarCollapsed else { return }
+            DispatchQueue.main.async { sidebarCollapsed = collapsed }
+        }
     }
 
     /// Mail's list header: big title, a count below it, and grouped glass buttons.
