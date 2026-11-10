@@ -64,6 +64,8 @@ final class DebugChannel {
             if let g = activeTab?.groupID { model.newTab(inGroup: g) }
         case "sidebar":
             if let w = keyWindowID { model.toggleSidebar(w) }
+        case "browserToggle":
+            if let t = activeTab { model.browsers.toggle(t.id) }
         case "userAgent":
             // Writes the active tab's browser user agent to a file: userAgent <path>
             model.browsers.browser(for: activeTab?.id)?.current?.engine.evaluate("navigator.userAgent") { ua in

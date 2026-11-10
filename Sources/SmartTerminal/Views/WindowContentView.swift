@@ -90,6 +90,7 @@ struct VisualEffectBackground: NSViewRepresentable {
 
 /// Offered after a restart when Claude Code, or a tmux session, was running in this tab.
 struct ResumeBar: View {
+    @Environment(\.panelPalette) private var palette
     let recovery: TabRecovery
     /// What the button types, shown as its tooltip.
     let command: String
@@ -117,7 +118,7 @@ struct ResumeBar: View {
         // The tint alone let the desktop through in translucent windows; the strip's
         // own material goes underneath.
         .background(ClaudeGlyph.claudeOrange.opacity(0.12))
-        .background(.bar)
+        .background(palette.map { AnyShapeStyle($0.bar) } ?? AnyShapeStyle(.bar))
         .overlay(alignment: .bottom) { Divider() }
     }
 
@@ -153,6 +154,7 @@ struct ResumeBar: View {
 /// Over a tab Smart Terminal opened for a command Claude proposed: who asked and why.
 /// The command itself is already typed at the prompt; Return runs it.
 struct ProposalBar: View {
+    @Environment(\.panelPalette) private var palette
     let proposal: ProposedCommand
     let dismiss: () -> Void
     static let tint = Color(red: 0x5F / 255, green: 0xB8 / 255, blue: 0xC9 / 255)
@@ -175,7 +177,7 @@ struct ProposalBar: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(Self.tint.opacity(0.12))
-        .background(.bar)
+        .background(palette.map { AnyShapeStyle($0.bar) } ?? AnyShapeStyle(.bar))
         .overlay(alignment: .bottom) { Divider() }
     }
 }

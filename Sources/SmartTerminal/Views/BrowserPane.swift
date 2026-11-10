@@ -5,6 +5,7 @@ import SmartTerminalCore
 /// The tab's browser beside its terminal: navigation bar on top, the page below,
 /// and a handle on the leading edge to resize it.
 struct BrowserPane: View {
+    @Environment(\.panelPalette) private var palette
     let tabID: UUID
     let browser: BrowserState
     let model: AppModel
@@ -19,6 +20,12 @@ struct BrowserPane: View {
             BrowserNavigationBar(browser: browser) { model.browsers.close(tabID) }
             if let page = browser.current {
                 PageContainer(page: page.engine.view).id(page.id)
+                    // An empty pane, waiting for an address, in the panels' colour, not a white page.
+                    .overlay {
+                        if let palette, page.state.url == nil, !page.state.isLoading {
+                            palette.list.allowsHitTesting(false)
+                        }
+                    }
             } else {
                 ContentUnavailableView("No pages", systemImage: "macwindow",
                                        description: Text("The agent closed its last page."))
@@ -26,7 +33,7 @@ struct BrowserPane: View {
         }
         // Gives way before the terminal does: down to its minimum, then they share.
         .frame(minWidth: Self.minWidth, idealWidth: width, maxWidth: width)
-        .background(.background)
+        .background(palette.map { AnyShapeStyle($0.list) } ?? AnyShapeStyle(.background))
         .overlay(alignment: .leading) {
             Divider().overlay {
                 Color.clear.frame(width: 8).contentShape(Rectangle())
@@ -46,6 +53,7 @@ struct BrowserPane: View {
 /// Back, forward, reload or stop, the address, open elsewhere, close; a thin
 /// progress line under it while a page loads.
 private struct BrowserNavigationBar: View {
+    @Environment(\.panelPalette) private var palette
     let browser: BrowserState
     let close: () -> Void
     @State private var address = ""
@@ -82,7 +90,7 @@ private struct BrowserNavigationBar: View {
         }
         .padding(.horizontal, 8)
         .frame(height: 38)
-        .background(.bar)
+        .background(palette.map { AnyShapeStyle($0.head) } ?? AnyShapeStyle(.bar))
         .overlay(alignment: .bottom) {
             ZStack(alignment: .leading) {
                 Divider()

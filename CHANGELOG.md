@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.15.5] - 2026-11-10
+- The rest of the panels take the dark terminal's colours too: the clipboard sidebar, the browser pane's address bar, an empty browser waiting for an address (it showed a white page), and the Resume and proposal bars.
+
 ## [0.15.4] - 2026-11-10
 - New: with a dark terminal, the panels take its colours ("Harbor"). The groups column, session list, title bar and status bar are a step lighter than the terminal's own background, in its hue, with dividers to match, and the selected session is Claude's amber with dark text. They follow your Terminal.app profile: another dark background brings matching panels, and a light one keeps the system's colours.
 

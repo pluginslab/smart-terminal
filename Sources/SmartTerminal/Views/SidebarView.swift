@@ -5,6 +5,7 @@ import QuickLookThumbnailing
 /// The trailing panel's content: the clipboard history. (Claude's session details
 /// moved to the status bar under the terminal.)
 struct SidebarView: View {
+    @Environment(\.panelPalette) private var palette
     let windowID: UUID
     let model: AppModel
 
@@ -27,7 +28,7 @@ struct SidebarView: View {
             }
             .padding(.leading, 14).padding(.trailing, 10)
             .frame(height: 36)
-            Divider()
+            Divider().overlay(palette?.line ?? .clear)
             ClipboardPanel(windowID: windowID, model: model, history: model.clipboard)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -39,6 +40,7 @@ struct SidebarView: View {
 /// `.inspector` draws a floating rounded panel meant to sit under a toolbar; with
 /// our tab strip above it, its corner ran into the strip's divider.)
 struct SidebarPanel: View {
+    @Environment(\.panelPalette) private var palette
     let windowID: UUID
     let model: AppModel
 
@@ -50,7 +52,7 @@ struct SidebarPanel: View {
     var body: some View {
         SidebarView(windowID: windowID, model: model)
             .frame(width: width)
-            .background(.background.secondary)
+            .background(palette.map { AnyShapeStyle($0.side) } ?? AnyShapeStyle(.background.secondary))
             .overlay(alignment: .leading) {
                 Divider()
                     .overlay {
