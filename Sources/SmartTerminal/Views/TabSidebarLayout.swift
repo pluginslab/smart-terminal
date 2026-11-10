@@ -35,6 +35,9 @@ struct TabSidebarLayout<Detail: View>: View {
     @State private var category: TabCategory = .all
     /// The tab last shown in each category, so going back to one shows it again.
     @State private var lastTab: [TabCategory: UUID] = [:]
+    @Environment(\.colorScheme) private var colorScheme
+    /// Panels in the terminal's colours when it is dark (see PanelPalette).
+    private var palette: PanelPalette? { PanelPalette.derived(from: model.sessions.profile.background) }
 
     var body: some View {
         let window = model.window(windowID)
@@ -56,7 +59,9 @@ struct TabSidebarLayout<Detail: View>: View {
         .navigationSplitViewStyle(.balanced)
         // Translucent profiles clear the window background; without this the session
         // column and the margin around the floating sidebar showed the desktop.
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(palette.map { AnyShapeStyle($0.list) } ?? AnyShapeStyle(Color(nsColor: .windowBackgroundColor)))
+        .environment(\.panelPalette, palette)
+        .environment(\.colorScheme, palette != nil ? .dark : colorScheme)
         // A tab chosen elsewhere (⌘], a notification, a drop) brings its category along.
         .onChange(of: window?.activeTabID, initial: true) { _, _ in
             guard let tab = model.window(windowID)?.activeTab else { return }
@@ -152,6 +157,7 @@ private struct CategoryList: View {
     let windowID: UUID
     let model: AppModel
     @Binding var selection: TabCategory
+    @Environment(\.panelPalette) private var palette
 
     var body: some View {
         let window = model.window(windowID)
@@ -194,6 +200,7 @@ private struct CategoryList: View {
             .controlSize(.small)
             .padding(.horizontal, 12).padding(.vertical, 8)
         }
+        .background { if let palette { palette.side.ignoresSafeArea() } }
     }
 
     private func newGroup() {
@@ -222,6 +229,7 @@ private struct CategoryRow: View {
     var doubleClick: (() -> Void)?
 
     @State private var hovering = false
+    @Environment(\.panelPalette) private var palette
 
     var body: some View {
         HStack(spacing: 6) {
@@ -244,7 +252,8 @@ private struct CategoryRow: View {
         .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(selected ? AnyShapeStyle(.selection) : AnyShapeStyle(Color.primary.opacity(hovering ? 0.06 : 0)))
+                .fill(selected ? (palette.map { AnyShapeStyle($0.selectionSoft) } ?? AnyShapeStyle(.selection))
+                               : AnyShapeStyle(Color.primary.opacity(hovering ? 0.06 : 0)))
         }
         .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
         .onHover { hovering = $0 }
@@ -309,6 +318,7 @@ private struct DetailHeader: View {
     let windowID: UUID
     let tab: TerminalTab?
     let model: AppModel
+    @Environment(\.panelPalette) private var palette
 
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
@@ -345,20 +355,24 @@ private struct DetailHeader: View {
         .padding(.top, 10)
         .frame(maxWidth: .infinity)
         .frame(height: TabSidebarMetrics.headerHeight, alignment: .top)
-        .overlay(alignment: .bottom) { Divider() }
+        .background { if let palette { palette.head.ignoresSafeArea() } }
+        .overlay(alignment: .bottom) { Divider().overlay(palette?.line ?? .clear) }
     }
 }
 
 /// A row's git line: folder, branch chip, ahead/behind, then the uncommitted diff
 /// as +12 −4 on the right (or a check when clean).
 private struct GitLine: View {
+    @Environment(\.panelPalette) private var paletteForAccent
+    /// Text on the selected row: white on the system accent, dark on Claude amber.
+    private var onAccentColor: Color { paletteForAccent?.onSelection ?? .white }
     let status: GitStatus
     let folder: String?
     /// On the selected row's accent fill, where green and red don't read.
     let onAccent: Bool
 
     private var secondary: AnyShapeStyle {
-        onAccent ? AnyShapeStyle(Color.white.opacity(0.85)) : AnyShapeStyle(.secondary)
+        onAccent ? AnyShapeStyle(onAccentColor.opacity(0.85)) : AnyShapeStyle(.secondary)
     }
 
     var body: some View {
@@ -391,7 +405,7 @@ private struct GitLine: View {
                 .lineLimit(1).truncationMode(.middle)
         }
         .padding(.horizontal, 6).padding(.vertical, 1.5)
-        .background(Capsule().fill(onAccent ? Color.white.opacity(0.2) : Color.primary.opacity(0.08)))
+        .background(Capsule().fill(onAccent ? onAccentColor.opacity(0.2) : Color.primary.opacity(0.08)))
         .help(status.branch.map { "Branch \($0)" } ?? "Detached HEAD")
     }
 
@@ -404,9 +418,9 @@ private struct GitLine: View {
             HStack(spacing: 4) {
                 if status.insertions > 0 || status.deletions > 0 {
                     Text("+\(status.insertions)")
-                        .foregroundStyle(onAccent ? AnyShapeStyle(Color.white) : AnyShapeStyle(Color.green))
+                        .foregroundStyle(onAccent ? AnyShapeStyle(onAccentColor) : AnyShapeStyle(Color.green))
                     Text("−\(status.deletions)")
-                        .foregroundStyle(onAccent ? AnyShapeStyle(Color.white) : AnyShapeStyle(Color.red))
+                        .foregroundStyle(onAccent ? AnyShapeStyle(onAccentColor) : AnyShapeStyle(Color.red))
                 }
                 if status.untrackedFiles > 0 {
                     Text("?\(status.untrackedFiles)")
@@ -429,6 +443,7 @@ private struct SessionList: View {
     /// the traffic lights and sidebar toggle sit over this header. Read from where the
     /// column is, not from a visibility binding, which the toolbar's toggle doesn't update.
     @State private var sidebarCollapsed = false
+    @Environment(\.panelPalette) private var palette
 
     var body: some View {
         let window = model.window(windowID)
@@ -446,7 +461,7 @@ private struct SessionList: View {
                                    isActive: active, model: model)
                         // Mail's hairlines between rows, left out next to the selection.
                         if i + 1 < tabs.count, !active, window?.activeTabID != tabs[i + 1].id {
-                            Divider().padding(.horizontal, 12)
+                            Divider().overlay(palette?.line ?? .clear).padding(.horizontal, 12)
                         }
                     }
                 }
@@ -454,6 +469,7 @@ private struct SessionList: View {
                 .padding(.top, 10).padding(.bottom, 8)
             }
         }
+        .background { if let palette { palette.list.ignoresSafeArea() } }
         // Up under the transparent title bar, so the header sits level with the traffic lights.
         .ignoresSafeArea(.container, edges: .top)
         .onGeometryChange(for: Bool.self) { $0.frame(in: .global).minX < 40 } action: { sidebarCollapsed = $0 }
@@ -498,6 +514,9 @@ private struct SessionList: View {
 
 /// A Mail-style row: title, then folder and running command, then Claude's last prompt as the preview.
 private struct SessionRow: View {
+    @Environment(\.panelPalette) private var paletteForAccent
+    /// Text on the selected row: white on the system accent, dark on Claude amber.
+    private var onAccentColor: Color { paletteForAccent?.onSelection ?? .white }
     let windowID: UUID
     let tab: TerminalTab
     /// Shown as a color bar in "All Sessions", where rows from different groups mix.
@@ -531,13 +550,13 @@ private struct SessionRow: View {
                 } else {
                     Text(detail ?? " ")
                         .font(.callout)
-                        .foregroundStyle(isActive ? AnyShapeStyle(Color.white.opacity(0.85)) : AnyShapeStyle(.secondary))
+                        .foregroundStyle(isActive ? AnyShapeStyle(onAccentColor.opacity(0.85)) : AnyShapeStyle(.secondary))
                         .lineLimit(1).truncationMode(.middle)
                 }
                 if let prompt = agent?.lastPrompt {
                     Text(prompt)
                         .font(.callout)
-                        .foregroundStyle(isActive ? AnyShapeStyle(Color.white.opacity(0.7)) : AnyShapeStyle(.tertiary))
+                        .foregroundStyle(isActive ? AnyShapeStyle(onAccentColor.opacity(0.7)) : AnyShapeStyle(.tertiary))
                         .lineLimit(2)
                 }
             }
@@ -546,9 +565,9 @@ private struct SessionRow: View {
         .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(isActive ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(Color.primary.opacity(hovering ? 0.06 : 0)))
+                .fill(isActive ? AnyShapeStyle(paletteForAccent?.selection ?? Color.accentColor) : AnyShapeStyle(Color.primary.opacity(hovering ? 0.06 : 0)))
         }
-        .foregroundStyle(isActive ? Color.white : Color.primary)
+        .foregroundStyle(isActive ? onAccentColor : Color.primary)
         .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .onHover { hovering = $0 }
         .onChange(of: model.currentDrag) { _, _ in hovering = false }
@@ -652,7 +671,7 @@ private struct SessionRow: View {
             Image(systemName: "xmark").font(.system(size: 9, weight: .bold)).frame(width: 16, height: 16)
         }
         .buttonStyle(.plain)
-        .foregroundStyle(isActive ? AnyShapeStyle(Color.white.opacity(0.85)) : AnyShapeStyle(.secondary))
+        .foregroundStyle(isActive ? AnyShapeStyle(onAccentColor.opacity(0.85)) : AnyShapeStyle(.secondary))
         .help("Close Tab (⌘W)")
     }
 
@@ -665,6 +684,9 @@ private struct SessionRow: View {
 
 /// "tmux" at the top right of a session row: the session lives in tmux (locally or over ssh).
 private struct TmuxPill: View {
+    @Environment(\.panelPalette) private var paletteForAccent
+    /// Text on the selected row: white on the system accent, dark on Claude amber.
+    private var onAccentColor: Color { paletteForAccent?.onSelection ?? .white }
     let label: String
     let help: String
     let onAccent: Bool
@@ -674,9 +696,9 @@ private struct TmuxPill: View {
             .font(.system(size: 10, weight: .semibold, design: .monospaced))
             .lineLimit(1)
             .padding(.horizontal, 5).padding(.vertical, 1)
-            .foregroundStyle(onAccent ? AnyShapeStyle(Color.white) : AnyShapeStyle(.secondary))
-            .background(Capsule().fill(onAccent ? Color.white.opacity(0.18) : Color.primary.opacity(0.07)))
-            .overlay(Capsule().strokeBorder(onAccent ? Color.white.opacity(0.35) : Color.primary.opacity(0.15), lineWidth: 0.5))
+            .foregroundStyle(onAccent ? AnyShapeStyle(onAccentColor) : AnyShapeStyle(.secondary))
+            .background(Capsule().fill(onAccent ? onAccentColor.opacity(0.18) : Color.primary.opacity(0.07)))
+            .overlay(Capsule().strokeBorder(onAccent ? onAccentColor.opacity(0.35) : Color.primary.opacity(0.15), lineWidth: 0.5))
             .fixedSize()
             .help(help)
     }

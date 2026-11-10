@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.15.4] - 2026-11-10
+- New: with a dark terminal, the panels take its colours ("Harbor"). The groups column, session list, title bar and status bar are a step lighter than the terminal's own background, in its hue, with dividers to match, and the selected session is Claude's amber with dark text. They follow your Terminal.app profile: another dark background brings matching panels, and a light one keeps the system's colours.
+
 ## [0.15.3] - 2026-11-10
 - Fixed: tabs in tmux stopped coming back after a restart, and a session's git line stopped updating, after the app had run for a while. The tmux probe and git ran through Foundation's `Process`, whose `waitUntilExit` waits on a run loop; on Swift's task threads it could wait forever for a command that had long finished. Each stuck probe kept its tab from asking tmux again, so the tab never learned its session and had nothing to reattach; after a day 18 threads were parked like that. Helper commands now run with `posix_spawn` and `waitpid` on a queue of their own, with a timeout.
 - Changed: a tab in ssh to tmux on another host (`cc-super`) keeps its session when the connection drops, and offers Reconnect at once. Before, any end of ssh, a drop included, made the tab forget it. Dismiss on the bar forgets it now.

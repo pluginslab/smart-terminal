@@ -5,6 +5,7 @@ import SmartTerminalCore
 /// model, context and tokens, and a click opens the full session cards. Without:
 /// folder, command and size. Always there, so Claude starting never resizes the grid.
 struct TerminalStatusBar: View {
+    @Environment(\.panelPalette) private var palette
     let tab: TerminalTab?
     let model: AppModel
 
@@ -20,8 +21,8 @@ struct TerminalStatusBar: View {
             }
         }
         .frame(height: StatusBarMetrics.height)
-        .background(.bar)
-        .overlay(alignment: .top) { Divider() }
+        .background(palette.map { AnyShapeStyle($0.bar) } ?? AnyShapeStyle(.bar))
+        .overlay(alignment: .top) { Divider().overlay(palette?.line ?? .clear) }
     }
 }
 
