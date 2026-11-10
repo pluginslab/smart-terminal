@@ -25,9 +25,11 @@ final class TmuxProbe {
         inFlight = true
         lastAsked = Date()
         let args = socketArgs + ["list-clients", "-F", TmuxPane.format]
-        Task.detached(priority: .utility) {
-            let answer = Shell.run(tmux, args).flatMap { TmuxPane.parse($0, clientTTY: clientTTY) }
-            await MainActor.run { [weak self] in self?.received(answer, from: clientPID) }
+        Shell.queue.async {
+            let answer = Shell.run(tmux, args, timeout: 5).flatMap { TmuxPane.parse($0, clientTTY: clientTTY) }
+            DispatchQueue.main.async { [weak self] in
+                MainActor.assumeIsolated { self?.received(answer, from: clientPID) }
+            }
         }
     }
 

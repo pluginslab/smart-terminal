@@ -15,11 +15,13 @@ final class GitStatusStore {
 
     func refresh(_ paths: Set<String>) {
         for path in paths where inFlight.insert(path).inserted {
-            Task.detached(priority: .utility) {
+            Shell.queue.async {
                 let status = Self.read(path)
-                await MainActor.run {
-                    self.inFlight.remove(path)
-                    if self.statuses[path] != status { self.statuses[path] = status }
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated {
+                        self.inFlight.remove(path)
+                        if self.statuses[path] != status { self.statuses[path] = status }
+                    }
                 }
             }
         }
@@ -38,19 +40,9 @@ final class GitStatusStore {
 
     /// Output on success, nil when git fails (not a repository, no commits yet, no git).
     private nonisolated static func git(_ args: [String], in path: String) -> String? {
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-        p.arguments = ["-C", path] + args
         var env = ProcessInfo.processInfo.environment
         // A background status must not take index.lock while you commit in a tab.
         env["GIT_OPTIONAL_LOCKS"] = "0"
-        p.environment = env
-        let out = Pipe()
-        p.standardOutput = out
-        p.standardError = FileHandle.nullDevice
-        do { try p.run() } catch { return nil }
-        let data = out.fileHandleForReading.readDataToEndOfFile() // before waiting: a full pipe would block git
-        p.waitUntilExit()
-        return p.terminationStatus == 0 ? String(decoding: data, as: UTF8.self) : nil
+        return Shell.run("/usr/bin/git", ["-C", path] + args, environment: env, timeout: 10)
     }
 }

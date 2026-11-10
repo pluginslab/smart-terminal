@@ -466,19 +466,17 @@ final class AppModel {
         }
         let previousTmux = liveTmux[tabID]
         if previousTmux != tmux { liveTmux[tabID] = tmux }
-        let previousRemote = liveRemote[tabID]
-        if previousRemote != remote { liveRemote[tabID] = remote }
+        if liveRemote[tabID] != remote { liveRemote[tabID] = remote }
+        // What a resume started is running: if it ends later, the tab may offer again.
+        if agent != nil || tmux != nil || remote != nil { resumeLaunched.remove(tabID) }
         guard let wid = windowID(containingTab: tabID), let tab = window(wid)?.tab(tabID) else { return }
         var agentSession = tab.agentSession
         var tmuxSession = tab.tmuxSession
         var remoteSession = tab.remoteSession
-        if let remote {
-            remoteSession = remote
-        } else if previousRemote != nil {
-            // ssh ended while we watched (detached, logged out, dropped): nothing to rerun.
-            // A quit kills it unwatched, so the reference survives for the next launch.
-            remoteSession = nil
-        }
+        // ssh ending keeps the reference: a dropped connection (sleep, Wi-Fi, the host
+        // restarting) looks the same from here as logging out, and the tab then offers
+        // Reconnect at once. Dismiss on its bar forgets it.
+        if let remote { remoteSession = remote }
         if let tmux {
             tmuxSession = tmux
         } else if previousTmux != nil {

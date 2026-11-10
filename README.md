@@ -142,7 +142,8 @@ Detach (`prefix d`) yourself and the tab forgets the tmux session.
 After a restart it runs it again (**Reconnect**), and you are back in the session, with
 Claude still running in it on the other machine. Only ssh that attaches to tmux
 (`attach`, `a`, `new-session -A`) is remembered: a plain `ssh host` or a one-off remote
-command never runs again by itself.
+command never runs again by itself. If the connection drops (sleep, Wi-Fi, the host restarting), the
+tab keeps it and offers **Reconnect** right away; *Dismiss* forgets it.
 
 A **tmux** pill at the top right of a session row says it runs in tmux, and
 **tmux · host** for tmux over ssh. Hover it for the session's name.

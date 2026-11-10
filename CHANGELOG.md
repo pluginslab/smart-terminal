@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.15.3] - 2026-11-10
+- Fixed: tabs in tmux stopped coming back after a restart, and a session's git line stopped updating, after the app had run for a while. The tmux probe and git ran through Foundation's `Process`, whose `waitUntilExit` waits on a run loop; on Swift's task threads it could wait forever for a command that had long finished. Each stuck probe kept its tab from asking tmux again, so the tab never learned its session and had nothing to reattach; after a day 18 threads were parked like that. Helper commands now run with `posix_spawn` and `waitpid` on a queue of their own, with a timeout.
+- Changed: a tab in ssh to tmux on another host (`cc-super`) keeps its session when the connection drops, and offers Reconnect at once. Before, any end of ssh, a drop included, made the tab forget it. Dismiss on the bar forgets it now.
+- Fixed: after a Resume or Reconnect, a tab didn't offer again if what it started ended later the same day.
+
 ## [0.15.2] - 2026-11-10
 - Removed: the Claude session index written for Mobile Agent (dropped 2026-11-10). Smart Terminal no longer writes `claude-sessions.json` and deletes the one left in its Application Support folder at launch. Per-tab Claude sessions for Resume, `SMART_TERMINAL_TAB` and everything else in the app are unchanged.
 
