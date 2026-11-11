@@ -20,15 +20,12 @@ done
 
 if [[ -n "${SMART_TERMINAL_BINARY:-}" ]]; then
     BIN="$SMART_TERMINAL_BINARY"   # prebuilt (release.sh passes a universal binary)
-    HELPER_BIN="${SMART_TERMINAL_HELPER_BINARY:?release.sh passes the helper binary too}"
     MCP_BIN="${SMART_TERMINAL_MCP_BINARY:?release.sh passes smart-terminal-mcp too}"
 else
     swift build -c "$CONFIG"
     BIN="$(swift build -c "$CONFIG" --show-bin-path)/SmartTerminal"
-    HELPER_BIN="$(swift build -c "$CONFIG" --show-bin-path)/SmartTerminalHelper"
     MCP_BIN="$(swift build -c "$CONFIG" --show-bin-path)/SmartTerminalMCP"
 fi
-CEF_FRAMEWORK="${SMART_TERMINAL_CEF_FRAMEWORK:-$(scripts/cef.sh framework)}"   # downloads the pinned Chromium on first use
 VERSION="$(cat VERSION)"
 BUILD="$(date -u +%Y%m%d%H%M)"   # monotonic build number (CFBundleVersion)
 APP="${SMART_TERMINAL_APP:-SmartTerminal.app}"   # test-run.sh builds elsewhere so it never rewrites a running dev bundle
@@ -68,24 +65,10 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>LSMinimumSystemVersion</key><string>26.0</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
-    <!-- Chromium's allocator can't share the process with the Nano malloc zone. -->
-    <key>LSEnvironment</key><dict><key>MallocNanoZone</key><string>0</string></dict>
     <key>NSPrincipalClass</key><string>NSApplication</string>
     <key>NSAppleEventsUsageDescription</key><string>Smart Terminal reads your open Terminal.app tabs so it can import them.</string>
     <key>NSSupportsAutomaticTermination</key><false/>
     <key>NSSupportsSuddenTermination</key><false/>
-    <!-- Smart Terminal can open web links (in a tab's browser). Declaring it is what makes
-         it a browser to macOS, a condition for the passkey entitlement
-         (com.apple.developer.web-browser.public-key-credential). It is never made the
-         default browser unless you choose it. -->
-    <key>CFBundleURLTypes</key>
-    <array>
-        <dict>
-            <key>CFBundleURLName</key><string>Web site URL</string>
-            <key>CFBundleURLSchemes</key><array><string>http</string><string>https</string></array>
-            <key>CFBundleTypeRole</key><string>Viewer</string>
-        </dict>
-    </array>
     <key>UTExportedTypeDeclarations</key>
     <array>
         <dict>
@@ -103,54 +86,14 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-# Chromium: the framework and the five helper apps it launches its processes from.
-# The names are fixed by Chromium: "<executable> Helper (<kind>).app" in Frameworks/.
-FRAMEWORKS="$APP/Contents/Frameworks"
-mkdir -p "$FRAMEWORKS"
-cp -cR "$CEF_FRAMEWORK" "$FRAMEWORKS/"   # -c: an APFS clone, instant and no extra disk
-HELPERS=()
-for kind in "" Alerts GPU Plugin Renderer; do
-    name="SmartTerminal Helper${kind:+ ($kind)}"
-    id="$BUNDLE_ID.helper${kind:+.$(tr '[:upper:]' '[:lower:]' <<<"$kind")}"
-    helper="$FRAMEWORKS/$name.app"
-    mkdir -p "$helper/Contents/MacOS"
-    cp "$HELPER_BIN" "$helper/Contents/MacOS/$name"
-    cat > "$helper/Contents/Info.plist" <<HPLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key><string>$name</string>
-    <key>CFBundleIdentifier</key><string>$id</string>
-    <key>CFBundleName</key><string>$name</string>
-    <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>${VERSION}</string>
-    <key>CFBundleVersion</key><string>${BUILD}</string>
-    <key>LSMinimumSystemVersion</key><string>26.0</string>
-    <key>LSUIElement</key><true/>
-    <key>LSFileQuarantineEnabled</key><true/>
-    <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
-    <key>LSEnvironment</key><dict><key>MallocNanoZone</key><string>0</string></dict>
-</dict>
-</plist>
-HPLIST
-    HELPERS+=("$helper")
-done
-
 # A stable signing identity keeps macOS privacy grants (Automation, notifications)
 # across rebuilds; an ad-hoc signature changes every build and re-prompts.
 IDENTITY="${SMART_TERMINAL_SIGN_IDENTITY:-$(security find-identity -v -p codesigning 2>/dev/null | awk -F'"' '/Apple Development/ {print $2; exit}')}"
-# Inside out: the framework's libraries, the framework, each helper, then the app.
+# Inside out: the MCP server, then the app.
 sign_all() {
     local id="$1" hardened="$2"
     local base=(--force --sign "$id")
     [[ $hardened == 1 ]] && base+=(--options runtime --timestamp)
-    local fw="$FRAMEWORKS/Chromium Embedded Framework.framework"
-    for lib in "$fw"/Libraries/*.dylib; do codesign "${base[@]}" "$lib" || return 1; done
-    codesign "${base[@]}" "$fw" || return 1
-    local helper_flags=("${base[@]}")
-    [[ $hardened == 1 ]] && helper_flags+=(--entitlements SmartTerminalHelper.entitlements)
-    for h in "${HELPERS[@]}"; do codesign "${helper_flags[@]}" "$h" || return 1; done
     codesign "${base[@]}" --identifier "$BUNDLE_ID.mcp" "$APP/Contents/MacOS/smart-terminal-mcp" || return 1
     local app_flags=("${base[@]}")
     [[ $hardened == 1 ]] && app_flags+=(--entitlements SmartTerminal.entitlements)

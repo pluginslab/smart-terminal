@@ -73,16 +73,6 @@ enum MainMenu {
             item("Default Size", #selector(AppDelegate.resetFont(_:)), "0"),
             .separator(),
             item("Show Sidebar", #selector(AppDelegate.toggleSidebar(_:)), "s", [.command, .control]),
-            item("Show Browser", #selector(AppDelegate.toggleBrowser(_:)), "b", [.command, .shift]),
-            {
-                let engines = NSMenu(title: "Browser Engine")
-                for (i, e) in BrowserEngine.allCases.enumerated() {
-                    engines.addItem(item(e.displayName, #selector(AppDelegate.setBrowserEngine(_:)), tag: i))
-                }
-                let top = NSMenuItem(title: "Browser Engine", action: nil, keyEquivalent: "")
-                top.submenu = engines
-                return top
-            }(),
             item("Tabs in Columns", #selector(AppDelegate.toggleTabLayout(_:)), "l", [.command, .control]),
             .separator(),
             item("Enter Full Screen", #selector(NSWindow.toggleFullScreen(_:)), "f", [.command, .control], to: nil),
@@ -103,7 +93,7 @@ enum MainMenu {
             item("Move Tab Right in Group", #selector(AppDelegate.shiftTabRight(_:)), right, [.control, .option]),
             item("Move Tab to New Window", #selector(AppDelegate.moveTabToNewWindow(_:))),
             .separator(),
-            // Xcode's history keys: ⌘[ and ⌘] are the browser pane's Back and Forward.
+            // Xcode's history keys.
             item("Back", #selector(AppDelegate.tabHistoryBack(_:)), left, [.command, .control]),
             item("Forward", #selector(AppDelegate.tabHistoryForward(_:)), right, [.command, .control]),
             .separator(),

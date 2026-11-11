@@ -6,8 +6,6 @@ import SmartTerminalCore
 final class SmartTerminalView: LocalProcessTerminalView {
     var onBell: (() -> Void)?
     var onOutput: (() -> Void)?
-    /// A web link was ⌘-clicked. Returns whether it was handled; if not, macOS opens it.
-    var onOpenWebLink: ((URL) -> Bool)?
 
     override func bell(source: Terminal) {
         onBell?()
@@ -19,12 +17,6 @@ final class SmartTerminalView: LocalProcessTerminalView {
         super.viewDidMoveToWindow()
         let bg = nativeBackgroundColor
         nativeBackgroundColor = bg
-    }
-
-    /// ⌘-click on a link: web pages go to the tab's browser pane, the rest to macOS.
-    override func requestOpenLink(source: TerminalView, link: String, params: [String: String]) {
-        if BrowserAddress.isWeb(link), let url = URL(string: link), onOpenWebLink?(url) == true { return }
-        super.requestOpenLink(source: source, link: link, params: params)
     }
 
     private var lastOutputSignal = Date.distantPast

@@ -198,61 +198,6 @@ It's always there, so Claude starting or quitting never resizes the terminal.
 It's all read from Claude Code's own session file and transcript. Each transcript is
 read once in full, in the background, and then followed as it grows.
 
-### Browser
-
-Each tab can have its own browser, in a pane beside its terminal, so a page Claude
-opens stays with the session that opened it.
-
-![A Claude Code session on the left, and the page it opened in the same tab's browser pane on the right](assets/screenshot-browser.png)
-
-- **`open https://…`** in a tab shows the page there, including when Claude Code runs
-  it (ask it to "open the PR"). Any other use of `open` goes to macOS as before.
-- **⌘-click a web link** in the terminal. Other links (mail, files, apps) still go to macOS.
-- **The globe** in the window's top right, or `⇧⌘B`, shows or hides the tab's browser,
-  opening an empty one ready for an address if it has none. Hiding keeps the page.
-
-The pane has back and forward (`⌘[` `⌘]`, or swipe), reload (`⌘R`), an address bar
-that takes a URL, a host such as `localhost:3000`, or words to search for, the **Web
-Inspector** (the hammer, `⌥⌘I`, or right-click → *Inspect Element*), and a button to
-open the page in your default browser. Drag its left edge to resize it. Each tab keeps
-its own page, history and width; logins are shared between tabs and kept across
-launches. It uses WebKit, Safari's engine, so the pane also shows up in Safari's
-**Develop** menu.
-
-`open` comes from zsh shell integration (see [How it works](#how-it-works)). Inside
-tmux, the page opens in the tab you're looking at.
-
-#### Agents drive a Chromium in the pane
-
-An agent can use the pane too, with Google's full DevTools toolset. Run
-[devtools-fleet-mcp](https://github.com/pluginslab/devtools-fleet-mcp) (a Claude Code
-plugin around [chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp))
-in a Smart Terminal tab and its browser *is* that tab's pane: navigation, snapshots,
-clicks, screenshots, console and network, performance traces, Lighthouse. You watch the
-agent work beside the session it belongs to, and can take over to log in or solve a
-captcha. The pane shows an orange **Agent** badge, and a menu of the agent's pages
-when it has more than one.
-
-- The pane runs **Chromium** for this, inside the app, as a native view: nothing is
-  streamed. It starts the first time an agent asks; until then the app doesn't load it.
-- **Each agent sees its own pages only.** It gets a fresh in-memory profile and a
-  DevTools connection that passes through a gate in the app: none of your pages,
-  cookies or logins, and none of another agent's. Saved logins from devtools-fleet
-  load into that profile.
-- Several agents can share a tab; the pane shows the newest, and the others keep
-  running out of sight. Pages in a tab you're not looking at keep rendering.
-- **Desktop or mobile.** Agents' pages get a desktop layout, 1366 CSS px zoomed to fit
-  the pane. The phone/computer button beside the address switches the pane to an
-  iPhone layout (390 px, touch, Safari's iPhone user agent) and back; an agent does the
-  same with chrome-devtools-mcp's `emulate`.
-- **A real Chrome instead,** when a site turns embedded browsers away (Google sign-in)
-  or you'd rather watch it there: ask the agent, and devtools-fleet (0.3.0 and later)
-  calls `browser_start({ chrome: true })`, or `browser_restart({ chrome: true })` to move a
-  running browser out of the pane with its cookies and tabs.
-
-**View ▸ Browser Engine** sets which engine the panes *you* open use: WebKit (the
-default) or Chromium. Agent panes are always Chromium.
-
 ### Sidebar: clipboard history
 
 `⌃⌘S`, or the sidebar button at the top right of the window, opens a panel on the
@@ -338,12 +283,11 @@ busy, `✳` when idle). The working folder, command line and newest child proces
 from the kernel (`libproc`, `sysctl`), so none of that needs shell integration or
 rc-file changes.
 
-The browser's `open` is the one piece of shell integration, for zsh only, and still
-without touching your files. Like VS Code's terminal, each tab's zsh starts with
-`ZDOTDIR` pointing at a small folder of startup files that source your own, then
-define `open`. For a single web URL it drops the URL in an inbox folder the app
-watches; anything else goes to `command open`. `ZDOTDIR` stays set for child shells,
-which is how Claude Code's Bash tool, a fresh zsh, gets it too.
+The one piece of shell integration is for zsh only, and still doesn't touch your
+files. Like VS Code's terminal, each tab's zsh starts with `ZDOTDIR` pointing at a
+small folder of startup files that source your own. In a tab opened for a command
+Claude proposed, it reports back when that command ends: its exit status and the line
+as it ran, as a file in a folder the app watches.
 
 The git line in each session row comes from `git status --porcelain=v2 --branch` and
 `git diff --shortstat HEAD`, run once per folder (tabs in the same repository share
@@ -356,8 +300,7 @@ Claude, and `tmux list-clients` to map a tty to a tmux session.
 ### Privacy
 
 Everything stays on your Mac. **Smart Terminal makes no network requests of its own.**
-The browser pane loads the pages you open in it, and nothing else. Notifications are
-local, and links open only when you click them. The clipboard
+Notifications are local, and links open only when you click them. The clipboard
 history is kept in memory. An image is written to a temporary file only when you paste
 it into a tab. What it reads,
 writes and runs is listed in [SECURITY.md](SECURITY.md).

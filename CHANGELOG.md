@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.16.0] - 2026-11-11
+- Removed: the browser pane. Both engines (WebKit and the bundled Chromium), the globe button and `⇧⌘B`, View ▸ Browser Engine, the `open <url>` shell function, and the DevTools gate agent tools (devtools-fleet) drove the pane through. It didn't work well enough to keep. Web links you ⌘-click, and `open https://…` in a tab, go to your default browser again; devtools-fleet 0.4.0 always launches Chrome. The app is over 300 MB smaller without Chromium and its five helper apps.
+- The local gate stays for `smart-terminal-mcp`'s proposed commands and keeps its file name (`chromium-gate.json`), so shells in tmux sessions that outlive the app still find it. Only `/v1/commands` is left on it.
+- The Chromium profile the pane kept in Application Support (logins, cache) is deleted at launch. The app no longer declares itself a web browser to macOS, and drops the JIT entitlement Chromium needed.
+
 ## [0.15.6] - 2026-11-10
 - Fixed: the app could lay its windows out over and over (two minutes at two-thirds of a core on 0.15.4) until AppKit threw and it quit. Whether the groups column is collapsed was read from layout and set as state inside that same layout pass, and the room it then made for the traffic lights could move the column and flip the answer back. The column now has to clearly cross over, and the change waits for the next run-loop turn.
 - Fixed: a working Claude's title frames, several a second per tab, each wrote to state every window watches (since 0.15.3), redrawing them all for nothing.

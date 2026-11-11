@@ -54,7 +54,6 @@ final class DebugChannel {
         guard let cmd = args.first else { return }
         let a1 = args.count > 1 ? args[1] : ""
         let a2 = args.count > 2 ? args[2] : ""
-        let a3 = args.count > 3 ? args[3] : ""
         switch cmd {
         case "snapshot":
             snapshot(to: a1)
@@ -64,45 +63,6 @@ final class DebugChannel {
             if let g = activeTab?.groupID { model.newTab(inGroup: g) }
         case "sidebar":
             if let w = keyWindowID { model.toggleSidebar(w) }
-        case "browserToggle":
-            if let t = activeTab { model.browsers.toggle(t.id) }
-        case "userAgent":
-            // Writes the active tab's browser user agent to a file: userAgent <path>
-            model.browsers.browser(for: activeTab?.id)?.current?.engine.evaluate("navigator.userAgent") { ua in
-                try? (ua ?? "").write(toFile: a1, atomically: true, encoding: .utf8)
-            }
-        case "engine":
-            // Which engine new browser panes use: engine webKit|chromium
-            if let e = BrowserEngine(rawValue: a1) { BrowserEngine.preferred = e }
-        case "cdp":
-            // One DevTools command over the app's pipe: cdp <method> <path> [params json]
-            let params = (try? JSONSerialization.jsonObject(with: Data(a3.utf8))) as? [String: Any] ?? [:]
-            let path = a2
-            DevToolsConnection.shared.send(method: a1, params: params) { reply in
-                let data = (try? JSONSerialization.data(withJSONObject: reply, options: [.prettyPrinted, .sortedKeys])) ?? Data()
-                try? data.write(to: URL(fileURLWithPath: path))
-            }
-        case "cdpSession":
-            // A command on a DevTools session: cdpSession <sessionId> <method> <path> [params json]
-            let params = (try? JSONSerialization.jsonObject(with: Data((args.count > 4 ? args[4] : "").utf8))) as? [String: Any] ?? [:]
-            let path = a3
-            DevToolsConnection.shared.send(method: a2, params: params, sessionId: a1) { reply in
-                let data = (try? JSONSerialization.data(withJSONObject: reply, options: [.prettyPrinted, .sortedKeys])) ?? Data()
-                try? data.write(to: URL(fileURLWithPath: path))
-            }
-        case "mobile":
-            // The pane's Desktop / Mobile switch on the active tab's page: mobile on|off
-            if let page = model.browsers.browser(for: activeTab?.id)?.current { page.engine.setMobile(a1 == "on") }
-        case "chromium":
-            // Chromium's state and DevTools endpoint: chromium <path>
-            let line = "running=\(ChromiumRuntime.isRunning) pipe=\(DevToolsPipe.isReserved) devtools=\(ChromiumRuntime.debuggingURL?.absoluteString ?? "-") error=\(ChromiumRuntime.startError ?? "-")"
-            try? line.write(toFile: a1, atomically: true, encoding: .utf8)
-        case "inspect":
-            // The active tab's browser opens its Web Inspector.
-            model.browsers.browser(for: activeTab?.id)?.showInspector()
-        case "openURL":
-            // As the shell's `open` would: openURL <url> [tab id]; no id means the active tab.
-            if let url = URL(string: a1) { model.openInBrowser(url, tabID: UUID(uuidString: a2) ?? activeTab?.id) }
         case "toggleGroups":
             // The toolbar's sidebar toggle, without a click.
             // Up the dev window's own responder chain, whichever app has focus.

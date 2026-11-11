@@ -5,8 +5,6 @@
 # Claude Code tab at work with subagents running, its status bar under the terminal.
 #
 #   scripts/demo-screenshot.sh
-#   DEMO_BROWSER=https://… DEMO_OUT=assets/screenshot-browser.png scripts/demo-screenshot.sh
-#       the same scene with that page open in the Claude tab's browser, in a wider window
 #
 # Everything shown is invented: the three demo folders become throwaway git repos for
 # the length of the run (removed afterwards), a demo copy of the app runs with HOME=demo/home (a
@@ -18,7 +16,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 # Run from a Smart Terminal tab, the instance would inherit that tab's shell setup
-# (its zsh shim, your dotfiles' folder) and its tab and browser gate.
+# (its zsh shim, your dotfiles' folder) and its tab and agent gate.
 unset ZDOTDIR SMART_TERMINAL_USER_ZDOTDIR SMART_TERMINAL_TAB SMART_TERMINAL_GATE
 REPO="$PWD"
 
@@ -89,7 +87,7 @@ PID="$(pgrep -f "^$APP/Contents/MacOS/SmartTerminal")"
 
 st() { "$HELPER" post $CHANNEL "$@"; }
 OUT="${DEMO_OUT:-assets/screenshot.png}"
-if [[ -n "${DEMO_BROWSER:-}" ]]; then st resize 1800 900; else st resize 1480 860; fi
+st resize 1480 860
 st activate
 sleep 1.5
 st type $'\x15clear\\n'   # ^U first: drop anything that reached the prompt at startup
@@ -117,8 +115,6 @@ sleep 1.0; st type 'cd ~/code/infra\n'
 sleep 0.4; st select 1
 sleep 0.4; st type 'claude\n'
 sleep 1.0
-# As if Claude had run `open <url>` in this tab: the page loads in its browser pane.
-[[ -n "${DEMO_BROWSER:-}" ]] && st openURL "$DEMO_BROWSER"
 # The fake launches three subagents ~5 s in; ~13 s in, one is done and two still run.
 sleep 10.8
 st activate

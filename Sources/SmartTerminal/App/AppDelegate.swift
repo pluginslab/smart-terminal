@@ -16,9 +16,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         model.notifier = Notifier(model: model)
         NSApp.mainMenu = MainMenu.build(target: self)
         model.restoreOrCreate()
-        // Agent tools find it through chromium-gate.json; Chromium starts on their first request.
-        ChromiumGate.shared.model = model
-        ChromiumGate.shared.start()
+        // smart-terminal-mcp finds it through SMART_TERMINAL_GATE.
+        AgentGate.shared.model = model
+        AgentGate.shared.start()
         #if DEBUG
         debug = DebugChannel(model: model, app: self)
         #endif
@@ -28,14 +28,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
     /// Coming back to the app counts as seeing the front tab of the key window.
     func applicationDidBecomeActive(_ notification: Notification) {
         if let t = activeTabID { model.clearIndicators(t, reason: "app activated") }
-    }
-
-    /// A web link handed to the app (if you made it your browser, or `open -a`): it
-    /// shows in the browser of the tab in front.
-    func application(_ application: NSApplication, open urls: [URL]) {
-        for url in urls where ["http", "https"].contains(url.scheme?.lowercased() ?? "") {
-            model.openInBrowser(url, tabID: nil)
-        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
@@ -51,8 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         isTerminating = true
         model.saveNow()
         model.sessions.terminateAll()
-        ChromiumGate.shared.stop()
-        ChromiumRuntime.shutdown()
+        AgentGate.shared.stop()
         return .terminateNow
     }
 
@@ -246,15 +237,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         if let id = keyWindowID { model.toggleSidebar(id) }
     }
 
-    @objc func toggleBrowser(_ sender: Any?) {
-        if let t = activeTabID { model.browsers.toggle(t) }
-    }
-
-    /// View ▸ Browser Engine: which engine new browser panes use (tag = index in `BrowserEngine.allCases`).
-    @objc func setBrowserEngine(_ sender: NSMenuItem) {
-        BrowserEngine.preferred = BrowserEngine.allCases[sender.tag]
-    }
-
     @objc func toggleTabLayout(_ sender: Any?) {
         UserDefaults.standard.set((TabLayout.current == .strip ? TabLayout.sidebar : .strip).rawValue, forKey: TabLayout.defaultsKey)
     }
@@ -272,12 +254,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         case #selector(toggleSidebar(_:)):
             item.title = wid.map(model.isSidebarOpen) == true ? "Hide Sidebar" : "Show Sidebar"
             return wid != nil
-        case #selector(toggleBrowser(_:)):
-            item.title = model.browsers.visibleBrowser(for: activeTabID) != nil ? "Hide Browser" : "Show Browser"
-            return activeTabID != nil
-        case #selector(setBrowserEngine(_:)):
-            item.state = BrowserEngine.allCases[item.tag] == .preferred ? .on : .off
-            return true
         case #selector(toggleTabLayout(_:)):
             item.state = TabLayout.current == .sidebar ? .on : .off
             return true

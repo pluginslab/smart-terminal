@@ -65,8 +65,7 @@ final class AppModel {
     @ObservationIgnored let sessions = SessionRegistry()
     @ObservationIgnored let clipboard = ClipboardHistory()
     @ObservationIgnored let git = GitStatusStore()
-    @ObservationIgnored let browsers = BrowserStore()
-    @ObservationIgnored private var browserInbox: BrowserInbox?
+    @ObservationIgnored private var inbox: ShellInbox?
     @ObservationIgnored weak var windows: WindowManaging?
     @ObservationIgnored var notifier: Notifier?
     @ObservationIgnored private let store: LayoutStore
@@ -82,37 +81,15 @@ final class AppModel {
         }
         clipboard.start()
         ShellIntegration.install() // before any tab's shell starts, and before the inbox is watched
-        browserInbox = BrowserInbox(handle: { [weak self] request in self?.openInBrowser(request.url, tabID: request.tabID) },
-                                    finished: { [weak self] id, text in self?.proposalFinished(id: id, report: text) })
+        inbox = ShellInbox { [weak self] id, text in self?.proposalFinished(id: id, report: text) }
     }
 
-    // MARK: - Browser
-
-    /// Shows a page in a tab's browser pane: the tab that asked (⌘-click, or `open`
-    /// in its shell), else the key window's active tab. A request from a tab that no
-    /// longer exists, or with no window open, goes to the default browser.
-    func openInBrowser(_ url: URL, tabID: UUID?) {
-        let keyTab = (NSApp.keyWindow as? TerminalWindow).flatMap { window($0.windowID)?.activeTabID }
-        guard let target = tabID.flatMap({ windowID(containingTab: $0) != nil ? $0 : nil }) ?? keyTab else {
-            NSWorkspace.shared.open(url)
-            return
-        }
-        browsers.open(url, in: target)
-    }
+    // MARK: - Agent tools
 
     /// The tab an agent tool named: its `SMART_TERMINAL_TAB`, or "-" or nothing for
     /// the tab you're in (a tool inside tmux can't know its tab).
-    /// `tmux`: the tmux session the tool runs in, when it couldn't name its tab: the tab
-    /// showing that session (or last showing it) is the one.
-    func agentTab(_ name: String?, tmux: (socket: String, session: String)? = nil) -> UUID? {
+    func agentTab(_ name: String?) -> UUID? {
         if let name, let id = UUID(uuidString: name), windowID(containingTab: id) != nil { return id }
-        if let tmux {
-            if let live = liveTmux.first(where: { $0.value.matches(socketPath: tmux.socket, session: tmux.session) })?.key,
-               windowID(containingTab: live) != nil { return live }
-            if let saved = layout.windows.flatMap(\.tabs).first(where: {
-                $0.tmuxSession?.matches(socketPath: tmux.socket, session: tmux.session) == true
-            }) { return saved.id }
-        }
         let key = (NSApp.keyWindow as? TerminalWindow).flatMap { window($0.windowID)?.activeTabID }
         return key ?? layout.windows.first?.activeTabID
     }
@@ -195,6 +172,14 @@ final class AppModel {
         try? FileManager.default.removeItem(at: store.url.deletingLastPathComponent().appendingPathComponent("claude-sessions.json"))
     }
 
+    /// Removes the Chromium profile the browser pane kept until 0.15.6 (its logins,
+    /// cache: easily 100+ MB). The pane is gone since 0.16.0. In the background: it's big.
+    func removeOldBrowserData() {
+        let dir = ShellIntegration.supportDir.appendingPathComponent("Chromium", isDirectory: true)
+        guard FileManager.default.fileExists(atPath: dir.path) else { return }
+        Task.detached(priority: .background) { try? FileManager.default.removeItem(at: dir) }
+    }
+
     // MARK: - Windows
 
     /// Makes sure there is at least one window with one tab; opens all windows.
@@ -209,6 +194,7 @@ final class AppModel {
             windows?.openWindow(for: w.id)
         }
         removeOldSessionIndex()
+        removeOldBrowserData()
     }
 
     @discardableResult
@@ -270,7 +256,6 @@ final class AppModel {
         guard let wid = windowID(containingTab: tabID) else { return }
         proposalTabClosed(tabID)
         sessions.terminate(tabID)
-        browsers.close(tabID)
         clearIndicators(tabID)
         agents[tabID] = nil
         liveTmux[tabID] = nil
