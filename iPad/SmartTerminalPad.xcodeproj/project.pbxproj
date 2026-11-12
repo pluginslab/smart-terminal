@@ -1,0 +1,467 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		262B20750787027F12B3F2D5 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = AEDB9C1EED79BC775D9FDE38 /* SwiftTerm */; };
+		4A5E087247007B58A95386FA /* PadModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FEA3E12BFC282C776B7BC76 /* PadModel.swift */; };
+		5503157F4A85BE46674CF550 /* FiraCodeNerdFontMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = EC595A7DDCE47830D81010A8 /* FiraCodeNerdFontMono-Bold.ttf */; };
+		7B436C8607032E4FEAC38830 /* FiraCodeNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 9E9335DD7E9D8C006760247E /* FiraCodeNerdFontMono-Regular.ttf */; };
+		8286F816A71786F06A249095 /* SmartTerminalCore in Frameworks */ = {isa = PBXBuildFile; productRef = A343C546ED015E8ECCB778BC /* SmartTerminalCore */; };
+		92BA2C78F9CB4953789EC071 /* Host.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989223A389CEC5FD759C5ED5 /* Host.swift */; };
+		9EDECF1075B213543D67EC78 /* DeviceKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0494622D7FA96B753FFF4437 /* DeviceKey.swift */; };
+		BCC4AAA453C94F1E2121A23B /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24D9D0BB5A0AAE319FD096D2 /* App.swift */; };
+		C5FDD42DE62CED50400F91FC /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 931931A15DEC0621EB659D52 /* RootView.swift */; };
+		CFF862A69E253509C77CED7E /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF3E9F7A1E331F333BD8B402 /* Theme.swift */; };
+		D2835A1E8A6B6B5E657ADB01 /* TerminalPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 602BD97F985A2DCCB5D7447F /* TerminalPane.swift */; };
+		E14C373C23386A7A475FF558 /* DetailColumn.swift in Sources */ = {isa = PBXBuildFile; fileRef = C920E6640535FCC527E49D5A /* DetailColumn.swift */; };
+		FF8151B63A67F3576992991F /* Citadel in Frameworks */ = {isa = PBXBuildFile; productRef = 1AC395EA2657D64D86C13922 /* Citadel */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0494622D7FA96B753FFF4437 /* DeviceKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceKey.swift; sourceTree = "<group>"; };
+		1FEA3E12BFC282C776B7BC76 /* PadModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PadModel.swift; sourceTree = "<group>"; };
+		24D9D0BB5A0AAE319FD096D2 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
+		38B5E2409CFAE415E84EBC2B /* smart-terminal */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "smart-terminal"; path = ..; sourceTree = SOURCE_ROOT; };
+		45D9FD13CFC2CAC6408746F7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		602BD97F985A2DCCB5D7447F /* TerminalPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalPane.swift; sourceTree = "<group>"; };
+		931931A15DEC0621EB659D52 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		989223A389CEC5FD759C5ED5 /* Host.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Host.swift; sourceTree = "<group>"; };
+		9E9335DD7E9D8C006760247E /* FiraCodeNerdFontMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "FiraCodeNerdFontMono-Regular.ttf"; sourceTree = "<group>"; };
+		C920E6640535FCC527E49D5A /* DetailColumn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailColumn.swift; sourceTree = "<group>"; };
+		E2E817A0E752F5A4D2B725ED /* SmartTerminalPad.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SmartTerminalPad.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		EC595A7DDCE47830D81010A8 /* FiraCodeNerdFontMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "FiraCodeNerdFontMono-Bold.ttf"; sourceTree = "<group>"; };
+		EF3E9F7A1E331F333BD8B402 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		54351478E43360298FACB889 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8286F816A71786F06A249095 /* SmartTerminalCore in Frameworks */,
+				262B20750787027F12B3F2D5 /* SwiftTerm in Frameworks */,
+				FF8151B63A67F3576992991F /* Citadel in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		190DB929428109E14978E93A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				E2E817A0E752F5A4D2B725ED /* SmartTerminalPad.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		730D1DD5A94CFF082B4BE22E /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				EC595A7DDCE47830D81010A8 /* FiraCodeNerdFontMono-Bold.ttf */,
+				9E9335DD7E9D8C006760247E /* FiraCodeNerdFontMono-Regular.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
+		81763562558A601D403AE6EC /* SmartTerminalPad */ = {
+			isa = PBXGroup;
+			children = (
+				24D9D0BB5A0AAE319FD096D2 /* App.swift */,
+				45D9FD13CFC2CAC6408746F7 /* Info.plist */,
+				730D1DD5A94CFF082B4BE22E /* Fonts */,
+				9E5A4C095E75D5300BCBD1A9 /* Model */,
+				8E848890F55D407AC487BC93 /* Remote */,
+				BBD0C2C7491FB5CBC6E66AEE /* Views */,
+			);
+			path = SmartTerminalPad;
+			sourceTree = "<group>";
+		};
+		8E848890F55D407AC487BC93 /* Remote */ = {
+			isa = PBXGroup;
+			children = (
+				0494622D7FA96B753FFF4437 /* DeviceKey.swift */,
+				989223A389CEC5FD759C5ED5 /* Host.swift */,
+				602BD97F985A2DCCB5D7447F /* TerminalPane.swift */,
+			);
+			path = Remote;
+			sourceTree = "<group>";
+		};
+		9E5A4C095E75D5300BCBD1A9 /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				1FEA3E12BFC282C776B7BC76 /* PadModel.swift */,
+				EF3E9F7A1E331F333BD8B402 /* Theme.swift */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
+		ABEA073AEB5E151A61017C20 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				38B5E2409CFAE415E84EBC2B /* smart-terminal */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		B9E09BE5E1A69B0F7BE6DAA6 = {
+			isa = PBXGroup;
+			children = (
+				ABEA073AEB5E151A61017C20 /* Packages */,
+				81763562558A601D403AE6EC /* SmartTerminalPad */,
+				190DB929428109E14978E93A /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		BBD0C2C7491FB5CBC6E66AEE /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				C920E6640535FCC527E49D5A /* DetailColumn.swift */,
+				931931A15DEC0621EB659D52 /* RootView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		86AF97058937570077BD420F /* SmartTerminalPad */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 22838A0B01C6EED9E07561D0 /* Build configuration list for PBXNativeTarget "SmartTerminalPad" */;
+			buildPhases = (
+				77370DEEAEC6A692E05BB39B /* Sources */,
+				549B024514549281D28AE269 /* Resources */,
+				54351478E43360298FACB889 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SmartTerminalPad;
+			packageProductDependencies = (
+				A343C546ED015E8ECCB778BC /* SmartTerminalCore */,
+				AEDB9C1EED79BC775D9FDE38 /* SwiftTerm */,
+				1AC395EA2657D64D86C13922 /* Citadel */,
+			);
+			productName = SmartTerminalPad;
+			productReference = E2E817A0E752F5A4D2B725ED /* SmartTerminalPad.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		47B368DE3C3889091EA7F3D2 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					86AF97058937570077BD420F = {
+						DevelopmentTeam = MUDZ38WC7Q;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 823052A66D8C7E241FFF668D /* Build configuration list for PBXProject "SmartTerminalPad" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = B9E09BE5E1A69B0F7BE6DAA6;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				835439B1C512C5017742985D /* XCRemoteSwiftPackageReference "Citadel" */,
+				81669DFF1B9849082650BCEC /* XCRemoteSwiftPackageReference "SwiftTerm" */,
+				FDA46C6D5CE0C05A0F96D188 /* XCLocalSwiftPackageReference ".." */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 190DB929428109E14978E93A /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				86AF97058937570077BD420F /* SmartTerminalPad */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		549B024514549281D28AE269 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5503157F4A85BE46674CF550 /* FiraCodeNerdFontMono-Bold.ttf in Resources */,
+				7B436C8607032E4FEAC38830 /* FiraCodeNerdFontMono-Regular.ttf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		77370DEEAEC6A692E05BB39B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BCC4AAA453C94F1E2121A23B /* App.swift in Sources */,
+				E14C373C23386A7A475FF558 /* DetailColumn.swift in Sources */,
+				9EDECF1075B213543D67EC78 /* DeviceKey.swift in Sources */,
+				92BA2C78F9CB4953789EC071 /* Host.swift in Sources */,
+				4A5E087247007B58A95386FA /* PadModel.swift in Sources */,
+				C5FDD42DE62CED50400F91FC /* RootView.swift in Sources */,
+				D2835A1E8A6B6B5E657ADB01 /* TerminalPane.swift in Sources */,
+				CFF862A69E253509C77CED7E /* Theme.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		01777631E8640A90147B3D4E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = MUDZ38WC7Q;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SmartTerminalPad/Info.plist;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Smart Terminal connects to your hosts over SSH.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pluginslab.smartterminal.pad;
+				PRODUCT_NAME = "Smart Terminal";
+				SDKROOT = iphoneos;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 2;
+			};
+			name = Release;
+		};
+		2781850712B882A951BC3454 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		C674B6A1A179F00A304CE160 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = MUDZ38WC7Q;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SmartTerminalPad/Info.plist;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Smart Terminal connects to your hosts over SSH.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pluginslab.smartterminal.pad;
+				PRODUCT_NAME = "Smart Terminal";
+				SDKROOT = iphoneos;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 2;
+			};
+			name = Debug;
+		};
+		DD13F23EF94B1A09E12A43D4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		22838A0B01C6EED9E07561D0 /* Build configuration list for PBXNativeTarget "SmartTerminalPad" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C674B6A1A179F00A304CE160 /* Debug */,
+				01777631E8640A90147B3D4E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		823052A66D8C7E241FFF668D /* Build configuration list for PBXProject "SmartTerminalPad" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DD13F23EF94B1A09E12A43D4 /* Debug */,
+				2781850712B882A951BC3454 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		FDA46C6D5CE0C05A0F96D188 /* XCLocalSwiftPackageReference ".." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ..;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		81669DFF1B9849082650BCEC /* XCRemoteSwiftPackageReference "SwiftTerm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/migueldeicaza/SwiftTerm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.20.0;
+			};
+		};
+		835439B1C512C5017742985D /* XCRemoteSwiftPackageReference "Citadel" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/orlandos-nl/Citadel.git";
+			requirement = {
+				kind = exactVersion;
+				version = 0.12.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		1AC395EA2657D64D86C13922 /* Citadel */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 835439B1C512C5017742985D /* XCRemoteSwiftPackageReference "Citadel" */;
+			productName = Citadel;
+		};
+		A343C546ED015E8ECCB778BC /* SmartTerminalCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SmartTerminalCore;
+		};
+		AEDB9C1EED79BC775D9FDE38 /* SwiftTerm */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 81669DFF1B9849082650BCEC /* XCRemoteSwiftPackageReference "SwiftTerm" */;
+			productName = SwiftTerm;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 47B368DE3C3889091EA7F3D2 /* Project object */;
+}
