@@ -64,14 +64,14 @@ class AppLock(private val context: Context) {
     fun didBecomeActive() {
         val t = backgroundedAt
         backgroundedAt = null
-        if (isRequired && t != null && SystemClock.elapsedRealtime() - t > GRACE_MS) lock()
+        if (isRequired && t != null && SystemClock.elapsedRealtime() - t > GRACE_MS) { locked = true; message = null }
     }
 
     /** The lock was switched off for this run (debug `nolock`). */
     fun onUnlockSkipped() { locked = false }
 
+    /** The lock button: always locks, even where the lock isn't required (debug `nolock`). */
     fun lock() {
-        if (!isRequired) return
         locked = true
         message = null
     }

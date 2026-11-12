@@ -90,6 +90,12 @@ private fun Header(model: PadModel, portrait: Boolean, name: String?, onLock: ()
                 HeaderButton(Icons.Outlined.ViewSidebar, "Show Sessions") { model.listsOpen = true }
                 Spacer(Modifier.width(12.dp))
             } else Spacer(Modifier.width(8.dp))
+            // Debug builds say so, so they aren't mistaken for the real app (no lock in tests).
+            if (com.pluginslab.smartterminal.pad.BuildConfig.DEBUG) {
+                Text("DEV", color = Palette.onSelection, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clip(RoundedCornerShape(50)).background(Palette.selection).padding(horizontal = 7.dp, vertical = 2.dp))
+                Spacer(Modifier.width(10.dp))
+            }
             Column(Modifier.weight(1f)) {
                 if (s != null) {
                     Text(model.title(s), color = Palette.text, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
