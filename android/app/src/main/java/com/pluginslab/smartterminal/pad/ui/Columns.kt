@@ -44,6 +44,9 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.ui.unit.em
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -229,16 +232,18 @@ private fun SessionRow(model: PadModel, s: RemoteSession, showGroup: Boolean, is
     val dimmer = if (isActive) Palette.onSelection.copy(alpha = 0.7f) else Palette.tertiary
     Box {
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 72.dp).clip(RoundedCornerShape(10.dp))
+            Modifier.fillMaxWidth().heightIn(min = 60.dp).clip(RoundedCornerShape(10.dp))
                 .background(if (isActive) Palette.selection else Color.Transparent)
                 .combinedClickable(onLongClick = { menu = true }) { model.select(s.name) }
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             if (showGroup && group != null) {
-                Box(Modifier.width(3.dp).height(52.dp).clip(RoundedCornerShape(2.dp)).background(Color(group.color.argb)))
+                Box(Modifier.width(3.dp).height(46.dp).clip(RoundedCornerShape(2.dp)).background(Color(group.color.argb)))
                 Spacer(Modifier.width(8.dp))
             }
-            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            // Tight lines, as Mail's rows: Material's default line height is 1.5× the font.
+            ProvideTextStyle(LocalTextStyle.current.copy(lineHeight = 1.2.em)) {
+            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     s.agent?.let { ClaudeGlyph(it, onAccent = isActive); Spacer(Modifier.width(6.dp)) }
                     Text(model.title(s), color = fg, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
@@ -250,6 +255,7 @@ private fun SessionRow(model: PadModel, s: RemoteSession, showGroup: Boolean, is
                 if (git != null) GitLine(git, folder, isActive)
                 else Text(folder ?: " ", color = dim, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(detail(model, s), color = dimmer, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
             }
         }
         DropdownMenu(menu, { menu = false }, containerColor = Palette.head) {
