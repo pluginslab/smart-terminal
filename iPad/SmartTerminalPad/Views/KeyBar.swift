@@ -76,7 +76,9 @@ struct KeyBar: View {
             DictationButton(model: model, session: session, large: true)
         }
         .animation(.snappy(duration: 0.2), value: busy)
-        .padding(.horizontal, 12).padding(.top, 8).padding(.bottom, 12)
+        // Clear of the home indicator: in portrait, taps right above it reached the
+        // system (repeated ones woke Siri), so the keys sit higher there.
+        .padding(.horizontal, 12).padding(.top, 8).padding(.bottom, model.portrait ? 30 : 12)
         .background(Theme.bar)
         .overlay(alignment: .top) { Divider().overlay(Theme.line) }
     }

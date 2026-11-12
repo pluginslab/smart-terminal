@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Observation
 import SmartTerminalCore
 
@@ -21,6 +22,9 @@ final class PadModel {
     var category: TabCategory = .all
     var selected: String?
     var renaming: String?
+    /// Which list columns show; RootView switches it with the orientation.
+    var columns: NavigationSplitViewVisibility = .all
+    var portrait = false
 
     private var panes: [String: TerminalPane] = [:]
     let dictation = Dictation()

@@ -2,32 +2,59 @@ import SwiftUI
 import SmartTerminalCore
 
 /// The Mac's Mail-style columns: groups | sessions | terminal.
+///
+/// Landscape shows the columns side by side. Portrait gives the terminal the whole
+/// screen, as Mail does with a message: the lists slide in over it (swipe from the
+/// left edge, or the button in the terminal header) and go away when you pick a
+/// session. Laid over, not beside, so tmux doesn't reflow each time they appear.
 struct RootView: View {
     @Bindable var model: PadModel
-    @State private var columns: NavigationSplitViewVisibility = .all
+    /// Landscape's own choice (groups shown or not), kept while in portrait.
+    @State private var landscapeColumns: NavigationSplitViewVisibility = .all
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $columns) {
+        NavigationSplitView(columnVisibility: $model.columns) {
             CategoryList(model: model)
                 .navigationSplitViewColumnWidth(min: 180, ideal: 210, max: 280)
                 .toolbar(.hidden, for: .navigationBar)
         } content: {
-            SessionList(model: model, columns: $columns)
+            SessionList(model: model, columns: $model.columns)
                 .navigationSplitViewColumnWidth(min: 260, ideal: 320, max: 440)
                 .toolbar(.hidden, for: .navigationBar)
         } detail: {
             DetailColumn(model: model)
                 .toolbar(.hidden, for: .navigationBar)
         }
-        .navigationSplitViewStyle(.balanced)
+        .modifier(SplitStyle(overlay: model.portrait))
         .background(Theme.list.ignoresSafeArea())
         .preferredColorScheme(.dark)
         .tint(Theme.selection)
+        .onGeometryChange(for: Bool.self) { $0.size.height > $0.size.width } action: { portrait in
+            guard portrait != model.portrait else { return }
+            if portrait { landscapeColumns = model.columns }
+            model.portrait = portrait
+            model.columns = portrait ? .detailOnly : landscapeColumns
+        }
+        .onChange(of: model.selected) { _, _ in
+            // Picking a session in portrait puts the lists away, as Mail does.
+            if model.portrait, model.columns != .detailOnly {
+                withAnimation(.snappy) { model.columns = .detailOnly }
+            }
+        }
         .onChange(of: model.category) { _, new in
             // Picking a category shows one of its sessions, so the terminal matches the list.
             let list = model.sessions(in: new)
             if !list.contains(where: { $0.name == model.selected }) { model.selected = list.first?.name }
         }
+    }
+}
+
+/// Side by side in landscape, laid over the terminal in portrait.
+private struct SplitStyle: ViewModifier {
+    let overlay: Bool
+    func body(content: Content) -> some View {
+        if overlay { content.navigationSplitViewStyle(.prominentDetail) }
+        else { content.navigationSplitViewStyle(.balanced) }
     }
 }
 

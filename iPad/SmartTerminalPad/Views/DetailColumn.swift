@@ -41,6 +41,18 @@ struct DetailColumn: View {
     private var header: some View {
         let s = model.sessions.first { $0.name == model.selected }
         return HStack(alignment: .center, spacing: 10) {
+            // Portrait: the lists are put away; this brings them back (so does a
+            // swipe from the left edge).
+            if model.portrait, model.columns == .detailOnly {
+                Button { withAnimation(.snappy) { model.columns = .doubleColumn } } label: {
+                    Image(systemName: "sidebar.left")
+                        .font(.system(size: 15, weight: .medium))
+                        .frame(width: 36, height: 32)
+                }
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: .capsule)
+                .accessibilityLabel("Show Sessions")
+            }
             VStack(alignment: .leading, spacing: 1) {
                 if let s {
                     Text(model.title(of: s)).font(.title3.weight(.bold)).lineLimit(1).truncationMode(.middle)
@@ -101,25 +113,16 @@ private struct TerminalHost: UIViewRepresentable {
     let model: PadModel
     let session: String
 
-    func makeUIView(context: Context) -> UIView {
-        let container = UIView()
+    func makeUIView(context: Context) -> PaneContainer {
+        let container = PaneContainer()
         container.backgroundColor = Theme.background
         return container
     }
 
-    func updateUIView(_ container: UIView, context: Context) {
+    func updateUIView(_ container: PaneContainer, context: Context) {
         let pane = model.pane(for: session)
-        if pane.view.superview !== container {
-            container.subviews.forEach { $0.removeFromSuperview() }
-            pane.view.translatesAutoresizingMaskIntoConstraints = false
-            container.addSubview(pane.view)
-            NSLayoutConstraint.activate([
-                pane.view.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 6),
-                pane.view.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -6),
-                pane.view.topAnchor.constraint(equalTo: container.topAnchor, constant: 4),
-                pane.view.bottomAnchor.constraint(equalTo: container.keyboardLayoutGuide.topAnchor),
-            ])
-        }
+        container.pane = pane
+        container.claim()
         if pane.state == .idle || pane.state == .ended, let client = model.host.client {
             if pane.state == .ended { pane.detach() }
             pane.attach(using: client)
@@ -130,6 +133,36 @@ private struct TerminalHost: UIViewRepresentable {
         if GCKeyboard.coalesced != nil {
             DispatchQueue.main.async { _ = pane.view.becomeFirstResponder() }
         }
+    }
+}
+
+/// Holds a session's terminal view, but only while it is on screen. Rotating
+/// switches the split view's style, and SwiftUI builds the column anew: for a
+/// moment the old container and the new one both exist and both get updated. If
+/// the old one took the view back last, it left with it and the terminal went
+/// blank. A container off screen never takes it; one coming on screen does.
+final class PaneContainer: UIView {
+    var pane: TerminalPane?
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        claim()
+    }
+
+    func claim() {
+        guard window != nil, let pane, pane.view.superview !== self else { return }
+        subviews.forEach { $0.removeFromSuperview() }
+        let v = pane.view
+        v.removeFromSuperview()
+        v.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(v)
+        NSLayoutConstraint.activate([
+            v.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 6),
+            v.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
+            v.topAnchor.constraint(equalTo: topAnchor, constant: 4),
+            v.bottomAnchor.constraint(equalTo: keyboardLayoutGuide.topAnchor),
+        ])
+        v.setNeedsDisplay()
     }
 }
 
