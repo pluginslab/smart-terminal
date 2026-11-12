@@ -16,6 +16,7 @@
 		72607D5BB0505FBDE696F433 /* Dictation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4661658435A90EFB4BBE564 /* Dictation.swift */; };
 		7B436C8607032E4FEAC38830 /* FiraCodeNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 9E9335DD7E9D8C006760247E /* FiraCodeNerdFontMono-Regular.ttf */; };
 		8286F816A71786F06A249095 /* SmartTerminalCore in Frameworks */ = {isa = PBXBuildFile; productRef = A343C546ED015E8ECCB778BC /* SmartTerminalCore */; };
+		8BB8B837B145CA4CE0B52F38 /* KeyBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B77E9B2D66FB8769F7C9183 /* KeyBar.swift */; };
 		92BA2C78F9CB4953789EC071 /* Host.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989223A389CEC5FD759C5ED5 /* Host.swift */; };
 		9EDECF1075B213543D67EC78 /* DeviceKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0494622D7FA96B753FFF4437 /* DeviceKey.swift */; };
 		BCC4AAA453C94F1E2121A23B /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24D9D0BB5A0AAE319FD096D2 /* App.swift */; };
@@ -24,6 +25,7 @@
 		CFF862A69E253509C77CED7E /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF3E9F7A1E331F333BD8B402 /* Theme.swift */; };
 		D2835A1E8A6B6B5E657ADB01 /* TerminalPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 602BD97F985A2DCCB5D7447F /* TerminalPane.swift */; };
 		E14C373C23386A7A475FF558 /* DetailColumn.swift in Sources */ = {isa = PBXBuildFile; fileRef = C920E6640535FCC527E49D5A /* DetailColumn.swift */; };
+		F9ACC86B70935823D56FE2E0 /* SnapshotHook.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5F01A9C5FA2D6E9BD73F3DF /* SnapshotHook.swift */; };
 		FF8151B63A67F3576992991F /* Citadel in Frameworks */ = {isa = PBXBuildFile; productRef = 1AC395EA2657D64D86C13922 /* Citadel */; };
 /* End PBXBuildFile section */
 
@@ -31,6 +33,7 @@
 		0494622D7FA96B753FFF4437 /* DeviceKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceKey.swift; sourceTree = "<group>"; };
 		1FEA3E12BFC282C776B7BC76 /* PadModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PadModel.swift; sourceTree = "<group>"; };
 		24D9D0BB5A0AAE319FD096D2 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
+		2B77E9B2D66FB8769F7C9183 /* KeyBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyBar.swift; sourceTree = "<group>"; };
 		38B5E2409CFAE415E84EBC2B /* smart-terminal */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "smart-terminal"; path = ..; sourceTree = SOURCE_ROOT; };
 		45D9FD13CFC2CAC6408746F7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		602BD97F985A2DCCB5D7447F /* TerminalPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalPane.swift; sourceTree = "<group>"; };
@@ -43,6 +46,7 @@
 		C920E6640535FCC527E49D5A /* DetailColumn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailColumn.swift; sourceTree = "<group>"; };
 		E2E817A0E752F5A4D2B725ED /* SmartTerminalPad.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SmartTerminalPad.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E4661658435A90EFB4BBE564 /* Dictation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dictation.swift; sourceTree = "<group>"; };
+		E5F01A9C5FA2D6E9BD73F3DF /* SnapshotHook.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotHook.swift; sourceTree = "<group>"; };
 		E899548E1DAF1ECCCBA27F97 /* DictationButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationButton.swift; sourceTree = "<group>"; };
 		EC595A7DDCE47830D81010A8 /* FiraCodeNerdFontMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "FiraCodeNerdFontMono-Bold.ttf"; sourceTree = "<group>"; };
 		EF3E9F7A1E331F333BD8B402 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
@@ -81,6 +85,14 @@
 			path = Dictation;
 			sourceTree = "<group>";
 		};
+		40371EA648C048213BE84A31 /* Debug */ = {
+			isa = PBXGroup;
+			children = (
+				E5F01A9C5FA2D6E9BD73F3DF /* SnapshotHook.swift */,
+			);
+			path = Debug;
+			sourceTree = "<group>";
+		};
 		730D1DD5A94CFF082B4BE22E /* Fonts */ = {
 			isa = PBXGroup;
 			children = (
@@ -95,6 +107,7 @@
 			children = (
 				24D9D0BB5A0AAE319FD096D2 /* App.swift */,
 				45D9FD13CFC2CAC6408746F7 /* Info.plist */,
+				40371EA648C048213BE84A31 /* Debug */,
 				323A7E55E93F0B3437F33EFB /* Dictation */,
 				730D1DD5A94CFF082B4BE22E /* Fonts */,
 				9E5A4C095E75D5300BCBD1A9 /* Model */,
@@ -145,6 +158,7 @@
 			children = (
 				C920E6640535FCC527E49D5A /* DetailColumn.swift */,
 				E899548E1DAF1ECCCBA27F97 /* DictationButton.swift */,
+				2B77E9B2D66FB8769F7C9183 /* KeyBar.swift */,
 				931931A15DEC0621EB659D52 /* RootView.swift */,
 			);
 			path = Views;
@@ -238,9 +252,11 @@
 				1DDF773ABE5B035D98E05692 /* DictationButton.swift in Sources */,
 				1C6A3201B7619C3EF8A6DE39 /* DictationConfig.swift in Sources */,
 				92BA2C78F9CB4953789EC071 /* Host.swift in Sources */,
+				8BB8B837B145CA4CE0B52F38 /* KeyBar.swift in Sources */,
 				4A5E087247007B58A95386FA /* PadModel.swift in Sources */,
 				CF58A99E5A768A9FB67C1B5B /* Recorder.swift in Sources */,
 				C5FDD42DE62CED50400F91FC /* RootView.swift in Sources */,
+				F9ACC86B70935823D56FE2E0 /* SnapshotHook.swift in Sources */,
 				D2835A1E8A6B6B5E657ADB01 /* TerminalPane.swift in Sources */,
 				CFF862A69E253509C77CED7E /* Theme.swift in Sources */,
 				03F5EC228E49A0CB42C0D7CC /* Transcriber.swift in Sources */,

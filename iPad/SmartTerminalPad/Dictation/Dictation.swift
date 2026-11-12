@@ -25,6 +25,10 @@ final class Dictation {
     private var configTask: Task<Void, Never>?
     private var clearTask: Task<Void, Never>?
 
+    /// Recent loudness (0...1, newest last) for the key bar's waveform; cleared per recording.
+    private(set) var levels: [Float] = []
+    private static let maxLevels = 400
+
     var isActive: Bool { state == .recording || state == .transcribing || state == .starting }
 
     func toggle(host: Host, pane: TerminalPane) {
@@ -48,6 +52,14 @@ final class Dictation {
             }
             glossary = parts.count > 1 ? DictationConfig.glossary(from: parts[1]) : []
             Self.log.info("host config: \(self.config == nil ? "missing" : "ok", privacy: .public), glossary \(self.glossary.count) terms")
+        }
+        levels = []
+        recorder.onLevel = { [weak self] level in
+            Task { @MainActor in
+                guard let self else { return }
+                self.levels.append(level)
+                if self.levels.count > Self.maxLevels { self.levels.removeFirst(self.levels.count - Self.maxLevels) }
+            }
         }
         Task {
             do {

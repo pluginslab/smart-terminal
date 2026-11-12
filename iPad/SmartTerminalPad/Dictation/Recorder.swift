@@ -21,6 +21,11 @@ final class Recorder {
     private let target = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 16_000, channels: 1, interleaved: true)!
 
     private(set) var isRecording = false
+    /// Loudness, 0...1, about 20 times a second while recording (on the audio thread).
+    var onLevel: ((Float) -> Void)?
+    /// Samples since the last level, and their sum of squares.
+    private var levelCount = 0
+    private var levelSum: Double = 0
 
     func start() async throws {
         guard await AVAudioApplication.requestRecordPermission() else { throw RecorderError.denied }
@@ -69,8 +74,25 @@ final class Recorder {
             return buffer
         }
         guard error == nil, out.frameLength > 0, let ch = out.int16ChannelData else { return }
+        meter(ch[0], count: Int(out.frameLength))
         let bytes = Data(bytes: UnsafeRawPointer(ch[0]), count: Int(out.frameLength) * 2)
         lock.lock(); pcm.append(bytes); lock.unlock()
+    }
+
+    /// RMS over 50 ms slices (800 samples at 16 kHz), mapped from -50…0 dBFS to 0…1.
+    private func meter(_ samples: UnsafePointer<Int16>, count: Int) {
+        for i in 0..<count {
+            let v = Double(samples[i]) / 32768
+            levelSum += v * v
+            levelCount += 1
+            if levelCount == 800 {
+                let rms = (levelSum / 800).squareRoot()
+                let db = 20 * log10(max(rms, 1e-6))
+                onLevel?(Float(min(1, max(0, (db + 50) / 50))))
+                levelCount = 0
+                levelSum = 0
+            }
+        }
     }
 
     static func wav(pcm16: Data) -> Data {

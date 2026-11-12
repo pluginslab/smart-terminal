@@ -1,10 +1,12 @@
 import SwiftUI
 
-/// The microphone in the terminal header. Tap to start, tap to stop (⌘⇧D as well);
+/// The microphone in the key bar under the terminal. Tap to start, tap to stop (⌘⇧D as well);
 /// red while recording, a spinner while the server works, and the reason when it fails.
 struct DictationButton: View {
     @Bindable var model: PadModel
     let session: String
+    /// The key bar's big mic; the plain size elsewhere.
+    var large = false
 
     var body: some View {
         let d = model.dictation
@@ -22,12 +24,12 @@ struct DictationButton: View {
                         ProgressView().controlSize(.small).tint(Theme.selection)
                     } else {
                         Image(systemName: icon)
-                            .font(.system(size: 15, weight: .medium))
+                            .font(.system(size: large ? 20 : 15, weight: .medium))
                             .foregroundStyle(tint)
                             .symbolEffect(.pulse, options: .repeating, isActive: d.state == .recording)
                     }
                 }
-                .frame(width: 36, height: 32)
+                .frame(width: large ? 64 : 36, height: large ? 44 : 32)
             }
             .buttonStyle(.plain)
             .glassEffect(d.state == .recording ? .regular.tint(.red.opacity(0.35)).interactive() : .regular.interactive(), in: .capsule)

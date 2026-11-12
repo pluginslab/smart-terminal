@@ -12,7 +12,7 @@ struct RootView: View {
                 .navigationSplitViewColumnWidth(min: 180, ideal: 210, max: 280)
                 .toolbar(.hidden, for: .navigationBar)
         } content: {
-            SessionList(model: model)
+            SessionList(model: model, columns: $columns)
                 .navigationSplitViewColumnWidth(min: 260, ideal: 320, max: 440)
                 .toolbar(.hidden, for: .navigationBar)
         } detail: {
@@ -168,11 +168,25 @@ private struct CategoryRow: View {
 
 private struct SessionList: View {
     @Bindable var model: PadModel
+    @Binding var columns: NavigationSplitViewVisibility
 
     var body: some View {
         let list = model.sessions(in: model.category)
         VStack(spacing: 0) {
             HStack(alignment: .center, spacing: 8) {
+                // The groups column's toggle (the system one lives in the hidden nav bar).
+                Button {
+                    withAnimation(.snappy) { columns = groupsShown ? .doubleColumn : .all }
+                } label: {
+                    Image(systemName: "sidebar.left")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(groupsShown ? Theme.selection : Color.primary)
+                        .frame(width: 36, height: 32)
+                }
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: .capsule)
+                .keyboardShortcut("s", modifiers: [.control, .command])
+                .accessibilityLabel(groupsShown ? "Hide Groups" : "Show Groups")
                 VStack(alignment: .leading, spacing: 1) {
                     Text(title).font(.title3.weight(.bold)).lineLimit(1)
                     Text(list.count == 1 ? "1 session" : "\(list.count) sessions")
@@ -204,6 +218,9 @@ private struct SessionList: View {
         }
         .background(Theme.list.ignoresSafeArea())
     }
+
+    /// `.automatic` is what the system picks: groups shown in landscape, hidden in portrait.
+    private var groupsShown: Bool { columns == .all }
 
     private var title: String {
         switch model.category {

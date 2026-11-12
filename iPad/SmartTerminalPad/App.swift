@@ -13,6 +13,7 @@ struct SmartTerminalPadApp: App {
                     print("SMART_TERMINAL_PUBKEY \(DeviceKey.publicKeyLine)")
                     model.host.connect()
                     #if DEBUG
+                    SnapshotHook.start()
                     // `-select <session>` at launch opens that session (screenshots).
                     if let s = UserDefaults.standard.string(forKey: "select") { model.selected = s }
                     // `-dictate <start> -dictateSeconds <length>` records into the selected

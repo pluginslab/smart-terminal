@@ -9,3 +9,6 @@ demo/home/Library/
 demo/home/.zcompdump*
 demo/home/.zsh_sessions/
 demo/home/.zsh_history
+
+# Xcode per-user state (iPad/)
+xcuserdata/

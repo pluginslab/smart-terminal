@@ -3,7 +3,11 @@ import PackageDescription
 
 let package = Package(
     name: "SmartTerminal",
-    platforms: [.macOS(.v26)],
+    platforms: [.macOS(.v26), .iOS(.v26)],
+    products: [
+        // The iPad app (iPad/, an Xcode project) uses the Core through this.
+        .library(name: "SmartTerminalCore", targets: ["SmartTerminalCore"]),
+    ],
     dependencies: [
         .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", from: "1.20.0"),
     ],

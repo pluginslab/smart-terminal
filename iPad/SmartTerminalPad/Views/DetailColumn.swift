@@ -23,8 +23,16 @@ struct DetailColumn: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color(uiColor: Theme.background))
+            // Hidden while the on-screen keyboard is up: SwiftTerm's own key row sits on it then.
+            if case .connected = model.host.state, let name = model.selected,
+               model.sessions.contains(where: { $0.name == name }), !KeyboardWatcher.shared.visible {
+                KeyBar(model: model, session: name)
+            }
         }
         .background(Theme.head.ignoresSafeArea())
+        // Down to the screen edge: the key bar uses the home indicator's band instead
+        // of leaving it empty under the buttons. (The keyboard's area still applies.)
+        .ignoresSafeArea(.container, edges: .bottom)
         .alert("Rename", isPresented: renamingBinding) {
             RenameField(model: model)
         }
@@ -44,15 +52,10 @@ struct DetailColumn: View {
                 }
             }
             Spacer(minLength: 8)
-            if let s {
-                DictationButton(model: model, session: s.name)
-                Button { model.close(s.name) } label: {
-                    Image(systemName: "xmark").font(.system(size: 14, weight: .medium)).frame(width: 36, height: 32)
-                }
-                .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: .capsule)
-                .keyboardShortcut("w", modifiers: .command)
-            }
+            // No close button here: closing kills the tmux session on the host (and the
+            // Claude in it), too much for a single tap. The session row's context menu
+            // has Close Session. The mic moved to the key bar under the terminal.
+
         }
         .padding(.leading, 20).padding(.trailing, 12)
         .frame(height: 64)

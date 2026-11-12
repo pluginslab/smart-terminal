@@ -42,9 +42,18 @@ final class TerminalPane: NSObject, TerminalViewDelegate {
         task = Task { [weak self] in
             do {
                 try await client.withPTY(request) { inbound, outbound in
-                    await MainActor.run {
+                    let size = await MainActor.run { () -> (Int, Int)? in
                         self?.writer = outbound
                         self?.state = .attached
+                        guard let t = self?.view.getTerminal() else { return nil }
+                        return (t.cols, t.rows)
+                    }
+                    // The PTY was asked for with the size the view had before layout;
+                    // resizes in between found no channel yet. Send the real size now,
+                    // or tmux draws wider than the view (lines off the edge, status
+                    // bar wrapped onto two lines).
+                    if let (cols, rows) = size {
+                        try? await outbound.changeSize(cols: cols, rows: rows, pixelWidth: 0, pixelHeight: 0)
                     }
                     // The PTY starts a login shell; hand it over to tmux straight away.
                     // `-A` attaches when the session exists, creates it otherwise.
