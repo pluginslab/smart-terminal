@@ -25,6 +25,26 @@ final class PadModel {
     /// Which list columns show; RootView switches it with the orientation.
     var columns: NavigationSplitViewVisibility = .all
     var portrait = false
+    /// Landscape with the lists put away, as in portrait: they come back laid over
+    /// the terminal and go again when you pick a session. Pin puts them back beside it.
+    var listsHidden = false
+    /// Landscape's own choice (groups shown or not), kept while the lists are away.
+    var landscapeColumns: NavigationSplitViewVisibility = .all
+
+    /// The lists sit over the terminal rather than beside it.
+    var overlaid: Bool { portrait || listsHidden }
+
+    func hideLists() {
+        if columns != .detailOnly { landscapeColumns = columns }
+        listsHidden = true
+        columns = .detailOnly
+    }
+
+    /// Keeps what's laid over now (sessions only, unless you opened the groups too).
+    func pinLists() {
+        listsHidden = false
+        if columns == .detailOnly { columns = landscapeColumns } else { landscapeColumns = columns }
+    }
 
     private var panes: [String: TerminalPane] = [:]
     let dictation = Dictation()

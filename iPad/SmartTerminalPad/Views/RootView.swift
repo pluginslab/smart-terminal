@@ -9,8 +9,6 @@ import SmartTerminalCore
 /// session. Laid over, not beside, so tmux doesn't reflow each time they appear.
 struct RootView: View {
     @Bindable var model: PadModel
-    /// Landscape's own choice (groups shown or not), kept while in portrait.
-    @State private var landscapeColumns: NavigationSplitViewVisibility = .all
 
     var body: some View {
         NavigationSplitView(columnVisibility: $model.columns) {
@@ -25,19 +23,19 @@ struct RootView: View {
             DetailColumn(model: model)
                 .toolbar(.hidden, for: .navigationBar)
         }
-        .modifier(SplitStyle(overlay: model.portrait))
+        .modifier(SplitStyle(overlay: model.overlaid))
         .background(Theme.list.ignoresSafeArea())
         .preferredColorScheme(.dark)
         .tint(Theme.selection)
         .onGeometryChange(for: Bool.self) { $0.size.height > $0.size.width } action: { portrait in
             guard portrait != model.portrait else { return }
-            if portrait { landscapeColumns = model.columns }
+            if portrait, !model.listsHidden, model.columns != .detailOnly { model.landscapeColumns = model.columns }
             model.portrait = portrait
-            model.columns = portrait ? .detailOnly : landscapeColumns
+            model.columns = portrait || model.listsHidden ? .detailOnly : model.landscapeColumns
         }
         .onChange(of: model.selected) { _, _ in
-            // Picking a session in portrait puts the lists away, as Mail does.
-            if model.portrait, model.columns != .detailOnly {
+            // Picking a session puts laid-over lists away, as Mail does in portrait.
+            if model.overlaid, model.columns != .detailOnly {
                 withAnimation(.snappy) { model.columns = .detailOnly }
             }
         }
@@ -220,6 +218,20 @@ private struct SessionList: View {
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 4)
+                if !model.portrait {
+                    // Landscape: put the lists away (the terminal gets the width), or,
+                    // while they're laid over it, pin them back beside it.
+                    Button {
+                        withAnimation(.snappy) { model.listsHidden ? model.pinLists() : model.hideLists() }
+                    } label: {
+                        Image(systemName: model.listsHidden ? "pin" : "arrow.up.left.and.arrow.down.right")
+                            .font(.system(size: 14, weight: .medium)).frame(width: 36, height: 32)
+                    }
+                    .buttonStyle(.plain)
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                    .keyboardShortcut("f", modifiers: [.shift, .command])
+                    .accessibilityLabel(model.listsHidden ? "Keep Lists Beside the Terminal" : "Hide Lists")
+                }
                 Button { model.newSession() } label: {
                     Image(systemName: "plus").font(.system(size: 15, weight: .medium)).frame(width: 36, height: 32)
                 }
@@ -229,22 +241,45 @@ private struct SessionList: View {
             }
             .padding(.leading, 20).padding(.trailing, 12)
             .frame(height: 64)
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(Array(list.enumerated()), id: \.element.id) { i, s in
-                        let active = model.selected == s.name
-                        SessionRow(model: model, session: s, showGroup: model.category == .all, isActive: active)
-                        if i + 1 < list.count, !active, model.selected != list[i + 1].name {
-                            Divider().overlay(Theme.line).padding(.horizontal, 12)
+            // A List, not a LazyVStack, for the swipe actions; styled to look the same.
+            List {
+                ForEach(Array(list.enumerated()), id: \.element.id) { i, s in
+                    let active = model.selected == s.name
+                    let divider = i + 1 < list.count && !active && model.selected != list[i + 1].name
+                    SessionRow(model: model, session: s, showGroup: model.category == .all, isActive: active,
+                               onClose: { closing = s })
+                        .overlay(alignment: .bottom) {
+                            if divider { Divider().overlay(Theme.line).padding(.horizontal, 12) }
                         }
-                    }
+                        .listRowInsets(EdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            // No .destructive role: that drops the row before the confirmation.
+                            Button { closing = s } label: { Label("Close", systemImage: "xmark") }
+                                .tint(.red)
+                        }
                 }
-                .padding(.horizontal, 10).padding(.top, 4).padding(.bottom, 8)
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .environment(\.defaultMinListRowHeight, 0)
+            .contentMargins(.top, 4, for: .scrollContent)
+            .contentMargins(.bottom, 8, for: .scrollContent)
             .refreshable { await model.host.refresh() }
         }
         .background(Theme.list.ignoresSafeArea())
+        .alert(closing.map { "Close \u{201C}\(model.title(of: $0))\u{201D}?" } ?? "",
+               isPresented: Binding(get: { closing != nil }, set: { if !$0 { closing = nil } }),
+               presenting: closing) { s in
+            Button("Close Session", role: .destructive) { model.close(s.name) }
+            Button("Cancel", role: .cancel) {}
+        } message: { s in
+            Text("This kills the tmux session \(s.name) on the host. Whatever runs in it stops.")
+        }
     }
+
+    @State private var closing: RemoteSession?
 
     /// `.automatic` is what the system picks: groups shown in landscape, hidden in portrait.
     private var groupsShown: Bool { columns == .all }
@@ -264,6 +299,8 @@ private struct SessionRow: View {
     let session: RemoteSession
     let showGroup: Bool
     let isActive: Bool
+    /// Asks before closing: closing kills the tmux session.
+    let onClose: () -> Void
 
     private var onAccent: Color { Theme.onSelection }
 
@@ -319,7 +356,7 @@ private struct SessionRow: View {
                 if group != nil { Button("Remove from Group") { model.move(session.name, to: nil) } }
             }
             Divider()
-            Button("Close Session", role: .destructive) { model.close(session.name) }
+            Button("Close Session…", role: .destructive) { onClose() }
         }
     }
 

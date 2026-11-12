@@ -41,9 +41,9 @@ struct DetailColumn: View {
     private var header: some View {
         let s = model.sessions.first { $0.name == model.selected }
         return HStack(alignment: .center, spacing: 10) {
-            // Portrait: the lists are put away; this brings them back (so does a
-            // swipe from the left edge).
-            if model.portrait, model.columns == .detailOnly {
+            // Portrait, or landscape with the lists hidden: this brings them back
+            // over the terminal (so does a swipe from the left edge).
+            if model.overlaid, model.columns == .detailOnly {
                 Button { withAnimation(.snappy) { model.columns = .doubleColumn } } label: {
                     Image(systemName: "sidebar.left")
                         .font(.system(size: 15, weight: .medium))
@@ -51,6 +51,7 @@ struct DetailColumn: View {
                 }
                 .buttonStyle(.plain)
                 .glassEffect(.regular.interactive(), in: .capsule)
+                .keyboardShortcut("f", modifiers: [.shift, .command])
                 .accessibilityLabel("Show Sessions")
             }
             VStack(alignment: .leading, spacing: 1) {

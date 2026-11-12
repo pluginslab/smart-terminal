@@ -1,5 +1,10 @@
 # Changelog
 
+## [iPad 0.3.0] - 2026-11-12
+- iPad: swipe a session left to close it, or all the way across. Closing asks first (from the swipe and from the long-press menu), since it kills the tmux session on the host and whatever runs in it.
+- iPad: hide the lists in landscape as in portrait: the button in the sessions header (⇧⌘F) gives the terminal the full width. The sidebar button, ⇧⌘F or a swipe from the left edge lays them over the terminal, picking a session puts them away again, and the pin puts the sessions column back beside the terminal (the groups column only if you opened it).
+- iPad: the YubiKey sheet comes up only when you tap Unlock with YubiKey, not on its own at launch.
+
 ## [0.17.1] - 2026-11-12
 - Fixed: locking by hand (⇧⌘L or the lock button) unlocked again at once when a YubiKey that needs no touch was plugged in, and so did a screen lock while the Mac's screen was still locked. The key is now asked on its own only at launch and after the Mac's screen unlocks; after a manual lock, unlock with Return or the YubiKey button.
 
