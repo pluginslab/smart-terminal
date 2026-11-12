@@ -232,18 +232,18 @@ private fun SessionRow(model: PadModel, s: RemoteSession, showGroup: Boolean, is
     val dimmer = if (isActive) Palette.onSelection.copy(alpha = 0.7f) else Palette.tertiary
     Box {
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 60.dp).clip(RoundedCornerShape(10.dp))
+            Modifier.fillMaxWidth().heightIn(min = 64.dp).clip(RoundedCornerShape(10.dp))
                 .background(if (isActive) Palette.selection else Color.Transparent)
                 .combinedClickable(onLongClick = { menu = true }) { model.select(s.name) }
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = 12.dp, vertical = 9.dp),
         ) {
             if (showGroup && group != null) {
                 Box(Modifier.width(3.dp).height(46.dp).clip(RoundedCornerShape(2.dp)).background(Color(group.color.argb)))
                 Spacer(Modifier.width(8.dp))
             }
             // Tight lines, as Mail's rows: Material's default line height is 1.5× the font.
-            ProvideTextStyle(LocalTextStyle.current.copy(lineHeight = 1.2.em)) {
-            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            ProvideTextStyle(LocalTextStyle.current.copy(lineHeight = 1.3.em)) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     s.agent?.let { ClaudeGlyph(it, onAccent = isActive); Spacer(Modifier.width(6.dp)) }
                     Text(model.title(s), color = fg, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
