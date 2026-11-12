@@ -57,6 +57,8 @@ final class DebugChannel {
         switch cmd {
         case "snapshot":
             snapshot(to: a1)
+        case "lock":
+            AppLock.shared.lock()
         case "newTab":
             if let w = keyWindowID { model.newTab(in: w, nextToActive: a1 != "end") }
         case "newTabInGroup":

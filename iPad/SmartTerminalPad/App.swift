@@ -3,7 +3,7 @@ import SwiftUI
 @main
 struct SmartTerminalPadApp: App {
     @State private var model = PadModel()
-    @State private var lock = AppLock()
+    @State private var lock = AppLock.shared
     @Environment(\.scenePhase) private var phase
 
     var body: some Scene {

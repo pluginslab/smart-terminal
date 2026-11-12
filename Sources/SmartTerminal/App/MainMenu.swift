@@ -28,6 +28,8 @@ enum MainMenu {
         _ = submenu(appName, [
             item("About \(appName)", #selector(AppDelegate.showAbout(_:))),
             .separator(),
+            item("Lock \(appName)", #selector(AppDelegate.lockApp(_:)), "l", [.shift, .command]),
+            .separator(),
             item("Hide \(appName)", #selector(NSApplication.hide(_:)), "h", to: nil),
             item("Hide Others", #selector(NSApplication.hideOtherApplications(_:)), "h", [.command, .option], to: nil),
             item("Show All", #selector(NSApplication.unhideAllApplications(_:)), to: nil),

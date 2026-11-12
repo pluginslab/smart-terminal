@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.17.0] - 2026-11-12
+- New: a lock. At launch, and whenever the screen locks or the Mac sleeps, every window shows the lock instead of its terminals until you unlock; shells, tmux and Claude keep running behind it, but nothing of them shows, keys meant for a terminal are dropped, the menus are off and the window title says Locked. Lock by hand with ⇧⌘L, Smart Terminal ▸ Lock Smart Terminal, or the lock button next to the sidebar button.
+- Unlock with a YubiKey you already use for SSH: any `~/.ssh/id_*_sk*` key. `ssh-keygen -Y sign` signs a fresh random challenge on the key and `ssh-keygen -Y verify` checks it against the key's `.pub` (Homebrew's OpenSSH, which talks to FIDO keys). Keys made without a touch are tried first, so one left plugged in (a Nano) unlocks at once; one that needs a touch is asked for next. Or Touch ID, with the login password as fallback.
+- Only the installed app locks; dev and test builds don't, unless `SMART_TERMINAL_LOCK=1` (`SMART_TERMINAL_LOCK_NOKEY=1` hides the keys, for tests). With no key file and no Touch ID or password policy it doesn't lock at all, so it can't shut you out.
+- `scripts/test-run.sh` launches the test instance in the background, so it never takes the keyboard from what you are typing in.
+
+## [iPad 0.2.1] - 2026-11-12
+- iPad: a lock button at the right of the terminal header (⇧⌘L on a keyboard), to lock before walking away.
+
 ## [iPad 0.2.0] - 2026-11-12
 - iPad: a lock before anything starts, at launch and after more than two minutes away; nothing connects to the host until it is open. Unlock with a YubiKey (or another FIDO key) over USB-C, set up once on the device, or with Touch ID and the passcode. The key goes through Apple's passkey API: its public key is kept on the iPad and each unlock checks the key's signature over a fresh challenge, on the device. The API needs a web domain tied to the app, so pluginslab.com serves `/.well-known/apple-app-site-association` naming it (`webcredentials`), and the app has the associated-domains entitlement. No lock in the simulator or on an iPhone for now. Debug builds: `-nolock YES` skips it.
 - iPad: the Streamline icon, the same as the Mac's.

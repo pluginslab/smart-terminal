@@ -4,6 +4,15 @@ import SmartTerminalCore
 
 final class TerminalWindow: NSWindow {
     var windowID: UUID!
+
+    /// Locked: the lock lies over the window, and a key aimed at a terminal behind
+    /// it is dropped here (SwiftTerm's own key handling can't be overridden).
+    override func sendEvent(_ event: NSEvent) {
+        if AppLock.shared.locked, [.keyDown, .keyUp].contains(event.type), firstResponder is SmartTerminalView {
+            return
+        }
+        super.sendEvent(event)
+    }
 }
 
 /// One per layout window. Keeps the NSWindow title and frame in sync with the model.
@@ -31,7 +40,7 @@ final class WindowController: NSWindowController, NSWindowDelegate, NSToolbarDel
             window.isOpaque = false
             window.backgroundColor = .clear
         }
-        let host = NSHostingView(rootView: WindowContentView(windowID: windowID, model: model))
+        let host = NSHostingView(rootView: LockGate(windowID: windowID, model: model))
         // No SwiftUI-made toolbar: it can't place items per split-view column, so the
         // columns layout draws its own header under a transparent title bar instead.
         host.sceneBridgingOptions = []
@@ -68,6 +77,13 @@ final class WindowController: NSWindowController, NSWindowDelegate, NSToolbarDel
     }
 
     private func updateTitle() {
+        // Locked: the title would give away folders and what runs in them.
+        window?.toolbar?.isVisible = !AppLock.shared.locked
+        if AppLock.shared.locked {
+            window?.title = "Smart Terminal — Locked"
+            window?.makeFirstResponder(nil)
+            return
+        }
         guard let w = model.window(windowID), let tab = w.activeTab else { return }
         let group = tab.groupID.flatMap { w.group($0) }
         // Terminal.app's layout: folder — program title (verbatim, so Claude Code's ✳ / ◐◓◑◒

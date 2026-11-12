@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launches a separate, throwaway TEST instance (copy of the bundle, own layout dir,
+# Launches (in the background, never taking focus from what you type in) a separate, throwaway TEST instance (copy of the bundle, own layout dir,
 # debug channel "test") so automated checks never touch a dev instance in use.
 #   scripts/test-run.sh            # rebuild + fresh test instance
 #   scripts/test-run.sh --keep     # relaunch, keeping the test layout (restart/restore tests)
@@ -17,5 +17,5 @@ pkill -f "^$APP/Contents/MacOS/SmartTerminal" 2>/dev/null || true
 [[ "${1:-}" == "--keep" ]] || rm -rf "$SUPPORT"
 mkdir -p "$SUPPORT"
 SMART_TERMINAL_APP="$APP" scripts/bundle.sh >/dev/null
-open -n --env SMART_TERMINAL_SUPPORT_DIR="$SUPPORT" --env SMART_TERMINAL_DEBUG=1 --env SMART_TERMINAL_DEBUG_ID=test --env SMART_TERMINAL_TEST_POPUPS="${SMART_TERMINAL_TEST_POPUPS:-0}" --env SMART_TERMINAL_LOG_OUTPUT="${SMART_TERMINAL_LOG_OUTPUT:-0}" "$APP"
+open -n -g --env SMART_TERMINAL_SUPPORT_DIR="$SUPPORT" --env SMART_TERMINAL_DEBUG=1 --env SMART_TERMINAL_DEBUG_ID=test --env SMART_TERMINAL_TEST_POPUPS="${SMART_TERMINAL_TEST_POPUPS:-0}" --env SMART_TERMINAL_LOG_OUTPUT="${SMART_TERMINAL_LOG_OUTPUT:-0}" --env SMART_TERMINAL_LOCK="${SMART_TERMINAL_LOCK:-0}" --env SMART_TERMINAL_LOCK_NOKEY="${SMART_TERMINAL_LOCK_NOKEY:-0}" "$APP"
 echo "launched test instance (support dir: $SUPPORT)"

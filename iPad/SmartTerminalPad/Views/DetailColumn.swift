@@ -64,6 +64,17 @@ struct DetailColumn: View {
                 }
             }
             Spacer(minLength: 8)
+            if AppLock.isRequired {
+                Button { AppLock.shared.lock() } label: {
+                    Image(systemName: "lock")
+                        .font(.system(size: 15, weight: .medium))
+                        .frame(width: 36, height: 32)
+                }
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: .capsule)
+                .keyboardShortcut("l", modifiers: [.shift, .command])
+                .accessibilityLabel("Lock Smart Terminal")
+            }
             // No close button here: closing kills the tmux session on the host (and the
             // Claude in it), too much for a single tap. The session row's context menu
             // has Close Session. The mic moved to the key bar under the terminal.

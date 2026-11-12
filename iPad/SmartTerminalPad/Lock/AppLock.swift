@@ -20,6 +20,7 @@ import os
 /// `webcredentials`, and the app has the matching associated-domains entitlement.
 @MainActor @Observable
 final class AppLock: NSObject {
+    static let shared = AppLock()
     static let relyingParty = "pluginslab.com"
     nonisolated static let log = Logger(subsystem: "com.pluginslab.smartterminal.pad", category: "lock")
     /// Away longer than this locks again.
@@ -128,6 +129,13 @@ final class AppLock: NSObject {
     }
 
     func forgetSecurityKey() { registration = nil }
+
+    /// Lock now, before handing the iPad to someone or walking away.
+    func lock() {
+        guard Self.isRequired else { return }
+        locked = true
+        message = nil
+    }
 
     #if DEBUG
     func debugUnlock() { locked = false }

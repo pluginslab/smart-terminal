@@ -342,6 +342,9 @@ private struct DetailHeader: View {
             Spacer(minLength: 8)
             let open = model.isSidebarOpen(windowID)
             GlassGroup {
+                if AppLock.shared.enabled {
+                    HeaderButton(symbol: "lock", help: "Lock Smart Terminal (⇧⌘L)") { AppLock.shared.lock() }
+                }
                 HeaderButton(symbol: "sidebar.right", help: open ? "Hide Sidebar (⌃⌘S)" : "Show Sidebar (⌃⌘S)",
                              highlighted: open) { model.toggleSidebar(windowID) }
             }

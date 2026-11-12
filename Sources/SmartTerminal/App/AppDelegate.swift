@@ -247,7 +247,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         s.view.send(txt: "\u{0C}") // ^L: let the shell redraw its prompt
     }
 
+    /// Lock now, before walking away (the lock also comes on its own with the screen's).
+    @objc func lockApp(_ sender: Any?) { AppLock.shared.lock() }
+
     func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        // Locked: nothing that opens, closes or shows a tab.
+        if AppLock.shared.locked { return item.action == #selector(showAbout(_:)) }
+        if item.action == #selector(lockApp(_:)) { return AppLock.shared.enabled }
         let wid = keyWindowID
         let tab = activeTabID.flatMap { t in wid.flatMap { model.window($0)?.tab(t) } }
         switch item.action {
