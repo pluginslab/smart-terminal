@@ -6,7 +6,7 @@ The first Android version, for the Xiaomi Pad 8 Pro (HyperOS 3, Android 16), ins
 - Rows as on the iPad: Claude's state and title, the folder's git state, last activity, "also open elsewhere". Groups, names and membership are kept on the tablet. New sessions are `android-N`; closing (it kills the tmux session) is in the row's long-press menu only.
 - The terminal is Termux's emulator and view (Apache-2.0, vendored in `android/terminal/`, fed by an SSH channel). A swipe scrolls tmux (wheel events, at the iPad's speed), long-press selects, only a tap on the terminal raises the keyboard. Each tab's terminal lives as long as the app, so rotation and resizing HyperOS's floating window keep the screen; tmux gets the real size on attach and on every change.
 - SSH is sshj. The tablet makes its own ecdsa-sha2-nistp256 key, kept encrypted under an Android Keystore key, and pins the host's key on first connect. `supermaschine` needs Tailscale; at home it falls back to the LAN address.
-- Key bar: keyboard, esc, ⇧tab, tab, ^C, one swipe arrow key with haptics, return, and the microphone at the right edge, clear of the gesture bar. Hidden while the on-screen keyboard is up. Dictation as on the iPad, through the host's Glossa config; the keys grey out and a waveform shows while recording.
+- Key bar: keyboard, esc, ⇧tab, tab, ^C, one swipe arrow key with haptics, return, and the microphone at the right edge, clear of the gesture bar. Hidden while the on-screen keyboard is up. Dictation as on the iPad, through the host's Glossa config; the keys grey out and a waveform shows while recording, scaled to the recording's own loudest level (Android's voice input comes in much quieter than the iPad's).
 - The Streamline icon, as an adaptive icon.
 
 ## [0.17.0] - 2026-11-12

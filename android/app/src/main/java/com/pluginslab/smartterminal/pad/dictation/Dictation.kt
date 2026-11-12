@@ -92,6 +92,11 @@ class Dictation(private val context: Context) {
         state = State.Recording
         recorder = Thread({
             val buf = ShortArray(800)   // 50 ms at 16 kHz, one waveform bar each
+            // Android's voice-recognition input comes in much quieter than the iPad's (no
+            // gain), so a fixed -50…0 dBFS scale barely moved. The bars follow the loudest
+            // level so far instead (falling back slowly), over a -60 dBFS floor.
+            var peak = -30.0
+            var loudest = -120.0
             val bytes = ByteBuffer.allocate(buf.size * 2).order(ByteOrder.LITTLE_ENDIAN)
             while (recording) {
                 val n = rec.read(buf, 0, buf.size)
@@ -101,10 +106,13 @@ class Dictation(private val context: Context) {
                 for (i in 0 until n) { val v = buf[i] / 32768.0; sum += v * v; bytes.putShort(buf[i]) }
                 synchronized(pcm) { pcm.write(bytes.array(), 0, n * 2) }
                 val db = 20 * log10(maxOf(sqrt(sum / n), 1e-6))
-                val level = ((db + 50) / 50).coerceIn(0.0, 1.0).toFloat()
+                loudest = maxOf(loudest, db)
+                peak = maxOf(db, peak - 0.05, -30.0)
+                val level = ((db + 60) / (peak + 60)).coerceIn(0.0, 1.0).let { it * it }.toFloat()
                 main.post { levels.add(level); if (levels.size > 400) levels.removeRange(0, levels.size - 400) }
             }
             rec.stop(); rec.release()
+            Log.i(TAG, "loudest %.1f dBFS".format(loudest))
         }, "dictation-rec").apply { start() }
     }
 
