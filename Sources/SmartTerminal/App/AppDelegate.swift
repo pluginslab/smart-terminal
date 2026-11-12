@@ -15,6 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         model.windows = self
         model.notifier = Notifier(model: model)
         NSApp.mainMenu = MainMenu.build(target: self)
+        KeyBindings.install()
         model.restoreOrCreate()
         // smart-terminal-mcp finds it through SMART_TERMINAL_GATE.
         AgentGate.shared.model = model

@@ -1,9 +1,10 @@
 import AppKit
 import SwiftTerm
+import SmartTerminalCore
 
 /// Look and feel of every terminal. By default it is imported from Terminal.app's
-/// default profile (font, colors, translucency, option-as-meta), so the app looks
-/// like the terminal the user already configured.
+/// default profile (font, colors, translucency, option-as-meta, Option key bindings),
+/// so the app looks and types like the terminal the user already configured.
 struct TerminalProfile {
     var name: String
     var font: NSFont
@@ -16,6 +17,7 @@ struct TerminalProfile {
     var ansi: [NSColor]?
     var blur: Bool
     var optionAsMeta: Bool
+    var keyMap: TerminalKeyMap
 
     var isTranslucent: Bool { background.alphaComponent < 0.999 }
 
@@ -33,7 +35,8 @@ struct TerminalProfile {
             boldText: nil,
             selection: dark ? NSColor(hex: 0x3F638B) : NSColor(hex: 0xB3D7FF),
             cursor: dark ? NSColor(hex: 0xA0A0A0) : NSColor(hex: 0x7F7F7F),
-            ansi: nil, blur: false, optionAsMeta: false)
+            ansi: nil, blur: false, optionAsMeta: false,
+            keyMap: TerminalAppImporter.factoryKeyMap())
     }
 
     func apply(to view: TerminalView, fontSize: CGFloat?) {
@@ -43,6 +46,7 @@ struct TerminalProfile {
         view.selectedTextBackgroundColor = selection
         view.caretColor = cursor
         view.optionAsMetaKey = optionAsMeta
+        (view as? SmartTerminalView)?.keyMap = keyMap
         if let ansi, ansi.count == 16 {
             view.installColors(ansi.map(\.swiftTermColor))
         }
@@ -87,6 +91,17 @@ enum TerminalAppImporter {
             cursor: color("CursorColor") ?? color("TextColor") ?? fallback.cursor,
             ansi: ansi,
             blur: ((p["BackgroundBlur"] as? Double) ?? 0) > 0,
-            optionAsMeta: (p["useOptionAsMetaKey"] as? Bool) ?? false)
+            optionAsMeta: (p["useOptionAsMetaKey"] as? Bool) ?? false,
+            // A profile's own bindings replace Terminal's, as they do in Terminal.app.
+            keyMap: (p["keyMapBoundKeys"] as? [String: String]).map(TerminalKeyMap.init(entries:)) ?? fallback.keyMap)
+    }
+
+    /// Terminal's own key bindings, which a profile without any of its own uses: they make
+    /// ⌥← and ⌥→ jump a word.
+    static func factoryKeyMap() -> TerminalKeyMap {
+        guard let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Terminal"),
+              let entries = NSDictionary(contentsOf: app.appendingPathComponent("Contents/Resources/keyMappings.plist"))
+                as? [String: String] else { return TerminalKeyMap() }
+        return TerminalKeyMap(entries: entries)
     }
 }

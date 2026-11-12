@@ -6,6 +6,8 @@ import SmartTerminalCore
 final class SmartTerminalView: LocalProcessTerminalView {
     var onBell: (() -> Void)?
     var onOutput: (() -> Void)?
+    /// Terminal.app's Option key bindings, applied by `KeyBindings`.
+    var keyMap = TerminalKeyMap()
 
     override func bell(source: Terminal) {
         onBell?()

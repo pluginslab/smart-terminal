@@ -250,8 +250,10 @@ over stops it mid-turn.
 ### Look and feel
 
 Smart Terminal reads your **Terminal.app default profile**: font, colors, the 16-color
-ANSI palette, background opacity and blur, and "Use Option as Meta key". If that
-profile can't be read, it falls back to a built-in dark or light theme.
+ANSI palette, background opacity and blur, "Use Option as Meta key", and the profile's
+key bindings with Option (Terminal's own when it has none), so ⌥← and ⌥→ jump a word
+while Option still types accents. If that profile can't be read, it falls back to a
+built-in dark or light theme.
 
 Your windows, groups (name, color, collapsed state), tab order, custom names and each
 tab's working folder are saved and restored at launch. Shells restart in the folder

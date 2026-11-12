@@ -28,7 +28,9 @@ Useful context if you are assessing risk.
 - Claude Code's `~/.claude.json`, only each project's `lastModelUsage`, to tell whether a
   folder last used the 1M-context model. At most once a minute per Claude tab.
 - Terminal.app's preferences (`com.apple.Terminal`), to copy your default profile's
-  font and colors.
+  font, colors and key bindings.
+- Terminal.app's own key bindings (`Contents/Resources/keyMappings.plist` inside
+  Terminal.app), when your default profile has none of its own.
 - Process information for processes in its own tabs, and, during an import, in
   Terminal.app's tabs: working folder, command line and foreground process group,
   via `libproc`, `sysctl` and `ps`.
