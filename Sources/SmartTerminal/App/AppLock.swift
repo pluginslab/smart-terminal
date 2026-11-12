@@ -45,6 +45,19 @@ final class AppLock {
         let ws = NSWorkspace.shared.notificationCenter
         ws.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main, using: lock)
         ws.addObserver(forName: NSWorkspace.screensDidSleepNotification, object: nil, queue: .main, using: lock)
+        // Ask the key on its own only where a login would: at launch and once the
+        // Mac's screen is unlocked. Never right after a lock — a key that answers
+        // without a touch would undo the lock at once.
+        guard !keys.isEmpty else { return }
+        DistributedNotificationCenter.default().addObserver(forName: .init("com.apple.screenIsUnlocked"),
+                                                            object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.askKeyIfLocked() }
+        }
+        DispatchQueue.main.async { [weak self] in self?.askKeyIfLocked() }
+    }
+
+    private func askKeyIfLocked() {
+        if locked { unlockWithSecurityKey() }
     }
 
     func lock() {

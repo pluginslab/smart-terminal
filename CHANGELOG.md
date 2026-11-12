@@ -3,6 +3,14 @@
 ## [Unreleased]
 - Fixed: Option keys do what they do in Terminal.app. The key bindings of your default profile (Settings > Profiles > Keyboard), or Terminal's own when the profile has none, are applied: ⌥← and ⌥→ jump a word, and a profile that binds ⌥⌫ to `\033\177` deletes one, while Option still types accents and ç. With Option not set as Meta (Terminal's default), ⌥← and ⌥⌫ sent nothing, ⌥⌦ deleted one character and ⌥P typed π. Only bindings with Option are applied: SwiftTerm already sends the same sequences for the others. The app's own shortcuts still come first (⌃⌥← moves a tab).
 
+## [iPad 0.3.0] - 2026-11-12
+- iPad: swipe a session left to close it, or all the way across. Closing asks first (from the swipe and from the long-press menu), since it kills the tmux session on the host and whatever runs in it.
+- iPad: hide the lists in landscape as in portrait: the button in the sessions header (⇧⌘F) gives the terminal the full width. The sidebar button, ⇧⌘F or a swipe from the left edge lays them over the terminal, picking a session puts them away again, and the pin puts the sessions column back beside the terminal (the groups column only if you opened it).
+- iPad: the YubiKey sheet comes up only when you tap Unlock with YubiKey, not on its own at launch.
+
+## [0.17.1] - 2026-11-12
+- Fixed: locking by hand (⇧⌘L or the lock button) unlocked again at once when a YubiKey that needs no touch was plugged in, and so did a screen lock while the Mac's screen was still locked. The key is now asked on its own only at launch and after the Mac's screen unlocks; after a manual lock, unlock with Return or the YubiKey button.
+
 ## [Android 0.2.0] - 2026-11-12
 - Android: a lock before anything starts, at launch and after more than two minutes away; nothing connects to the host until it is open. Unlock with a YubiKey over USB-C, set up once by touching it, or with the fingerprint, face or PIN (Android's own prompt). Unlike the iPad, the key is spoken to directly with FIDO2 through Yubico's SDK (yubikit 3.1.0; 3.2 needs compile SDK 37): its credential id and public key are kept on the tablet and each unlock checks the key's signature over a fresh challenge, on the device. No web domain or passkey service is involved. A key with a FIDO2 PIN isn't supported yet. A lock button sits in the terminal header; it locks even in a debug build started without the lock, and debug builds show a DEV badge in the header. Debug builds: `--ez nolock true` skips it.
 - Android: release builds keep the terminal out of the recents thumbnail (`FLAG_SECURE`), aren't debuggable, and are signed with the project's own key; the debug build is "Smart Terminal Dev" beside it.

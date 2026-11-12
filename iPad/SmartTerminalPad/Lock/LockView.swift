@@ -51,9 +51,6 @@ struct LockView: View {
             .padding(32)
         }
         .preferredColorScheme(.dark)
-        .task {
-            // Ask for the key at once, as a login prompt would.
-            if lock.hasSecurityKey { lock.unlockWithSecurityKey() }
-        }
+        // The key's sheet comes up only from the button, not on its own at launch.
     }
 }
