@@ -8,6 +8,8 @@ sshj = "0.41.2"
 bouncycastle = "1.84"
 annotation = "1.9.1"
 core = "1.16.0"
+yubikit = "3.1.0"  # 3.2+ needs compileSdk 37
+biometric = "1.1.0"
 
 [libraries]
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
@@ -22,6 +24,9 @@ sshj = { group = "com.hierynomus", name = "sshj", version.ref = "sshj" }
 bcprov = { group = "org.bouncycastle", name = "bcprov-jdk18on", version.ref = "bouncycastle" }
 bcpkix = { group = "org.bouncycastle", name = "bcpkix-jdk18on", version.ref = "bouncycastle" }
 androidx-core = { group = "androidx.core", name = "core-ktx", version.ref = "core" }
+yubikit-android = { group = "com.yubico.yubikit", name = "android", version.ref = "yubikit" }
+yubikit-fido = { group = "com.yubico.yubikit", name = "fido", version.ref = "yubikit" }
+androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
 androidx-annotation = { group = "androidx.annotation", name = "annotation", version.ref = "annotation" }
 
 [plugins]

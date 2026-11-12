@@ -11,8 +11,8 @@ android {
         applicationId = "com.pluginslab.smartterminal.pad"
         minSdk = 33
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
     }
     buildTypes {
         debug { applicationIdSuffix = ".dev" }
@@ -22,7 +22,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; buildConfig = true }
     packaging { resources.excludes += setOf("META-INF/*", "META-INF/versions/9/OSGI-INF/MANIFEST.MF") }
 }
 
@@ -37,6 +37,9 @@ dependencies {
     implementation(libs.sshj)
     implementation(libs.bcprov)
     implementation(libs.bcpkix)
+    implementation(libs.yubikit.android)
+    implementation(libs.yubikit.fido)
+    implementation(libs.androidx.biometric)
     testImplementation(libs.junit)
     testImplementation(libs.orgjson)  // Android's org.json is a stub in unit tests
 }

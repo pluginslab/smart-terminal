@@ -41,7 +41,7 @@ import java.util.UUID
  * (Not a left-edge swipe as on the iPad: on Android that is the back gesture.)
  */
 @Composable
-fun RootScreen(model: PadModel) {
+fun RootScreen(model: PadModel, onLock: () -> Unit) {
     BoxWithConstraints(Modifier.fillMaxSize().background(Palette.list)) {
         val portrait = maxHeight > maxWidth
         LaunchedEffect(portrait) { if (!portrait) model.listsOpen = false }
@@ -52,7 +52,7 @@ fun RootScreen(model: PadModel) {
                 if (model.groupsShown) GroupsColumn(model, Modifier.width(230.dp).fillMaxHeight())
                 SessionsColumn(model, portrait = false, Modifier.width(340.dp).fillMaxHeight())
             }
-            DetailColumn(model, portrait, Modifier.weight(1f).fillMaxHeight())
+            DetailColumn(model, portrait, onLock, Modifier.weight(1f).fillMaxHeight())
         }
         if (portrait) {
             AnimatedVisibility(model.listsOpen, enter = fadeIn(), exit = fadeOut()) {

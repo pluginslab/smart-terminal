@@ -1,6 +1,7 @@
 package com.pluginslab.smartterminal.pad
 
 import android.app.Application
+import com.pluginslab.smartterminal.pad.lock.AppLock
 import com.pluginslab.smartterminal.pad.model.PadModel
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.Security
@@ -8,6 +9,7 @@ import java.security.Security
 class PadApp : Application() {
     /** Process-scoped, so rotation and window resizes never rebuild a terminal or lose state. */
     val model by lazy { PadModel(this) }
+    val lock by lazy { AppLock(this) }
 
     override fun onCreate() {
         super.onCreate()

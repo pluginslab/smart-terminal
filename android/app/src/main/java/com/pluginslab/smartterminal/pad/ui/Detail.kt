@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dns
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.outlined.ViewSidebar
 import androidx.compose.material3.Button
@@ -57,12 +58,12 @@ import com.pluginslab.smartterminal.pad.remote.TerminalPane
  *  setup card while the host isn't reachable), and the key bar under it. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun DetailColumn(model: PadModel, portrait: Boolean, modifier: Modifier) {
+fun DetailColumn(model: PadModel, portrait: Boolean, onLock: () -> Unit, modifier: Modifier) {
     val host = model.host
     val name = model.selected?.takeIf { n -> model.sessions.any { it.name == n } }
     val connected = host.state == Host.State.Connected
     Column(modifier.background(Palette.head).windowInsetsPadding(WindowInsets.statusBars)) {
-        Header(model, portrait, name)
+        Header(model, portrait, name, onLock)
         Box(Modifier.weight(1f).fillMaxWidth().background(Palette.terminal), contentAlignment = Alignment.Center) {
             when {
                 connected && name != null -> key(name) { Terminal(model.pane(name)) }
@@ -81,7 +82,7 @@ fun DetailColumn(model: PadModel, portrait: Boolean, modifier: Modifier) {
 }
 
 @Composable
-private fun Header(model: PadModel, portrait: Boolean, name: String?) {
+private fun Header(model: PadModel, portrait: Boolean, name: String?, onLock: () -> Unit) {
     val s = model.sessions.firstOrNull { it.name == name }
     Column {
         Row(Modifier.fillMaxWidth().height(64.dp).padding(start = 12.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -95,6 +96,7 @@ private fun Header(model: PadModel, portrait: Boolean, name: String?) {
                     Text(s.path.replace("/home/${model.host.user}", "~"), color = Palette.secondary, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.StartEllipsis)
                 } else Text(model.host.displayName, color = Palette.text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             }
+            HeaderButton(Icons.Filled.Lock, "Lock Smart Terminal", onClick = onLock)
             // No close button here: closing kills the tmux session on the host (and the Claude
             // in it), too much for a single tap. The session row's long-press menu has it.
         }

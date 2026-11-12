@@ -100,7 +100,7 @@ resizes keep the screen, a swipe scrolls tmux (wheel events). Lessons:
 - Dictation with waveform; keys greyed while recording; return reappears after the text lands.
 - Theme, font, Streamline icon (adaptive icon from `AppIcon-art.png`).
 
-**3. Android 0.2.0: the lock.** YubiKey set up once (credential id + public key stored),
+**3. Android 0.2.0: the lock.** Done 2026-11-12 (`android-v0.2.0`); YubiKit 3.1.0 over USB (3.2 needs compile SDK 37), checked on the Pad with the YubiKey and face/PIN. Testing the key needs the Pad's only USB-C port: `adb tcpip 5555` + `adb connect 192.168.1.204:5555` first. YubiKey set up once (credential id + public key stored),
 assertion over a fresh challenge verified on device; biometric/PIN fallback; nothing connects
 until unlocked; relock after 2 minutes in the background. `FLAG_SECURE` on the window so the
 recents thumbnail doesn't show terminal contents (the iPad doesn't do this yet; worth porting back).
