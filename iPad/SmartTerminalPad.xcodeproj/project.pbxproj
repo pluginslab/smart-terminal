@@ -24,6 +24,7 @@
 		CF58A99E5A768A9FB67C1B5B /* Recorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B453DFDD47CDAD9C404B6F75 /* Recorder.swift */; };
 		CFF862A69E253509C77CED7E /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF3E9F7A1E331F333BD8B402 /* Theme.swift */; };
 		D2835A1E8A6B6B5E657ADB01 /* TerminalPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 602BD97F985A2DCCB5D7447F /* TerminalPane.swift */; };
+		D7767CD5381ECF101CA29B87 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6882F79F4F583614030A6BBA /* Assets.xcassets */; };
 		E14C373C23386A7A475FF558 /* DetailColumn.swift in Sources */ = {isa = PBXBuildFile; fileRef = C920E6640535FCC527E49D5A /* DetailColumn.swift */; };
 		F9ACC86B70935823D56FE2E0 /* SnapshotHook.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5F01A9C5FA2D6E9BD73F3DF /* SnapshotHook.swift */; };
 		FF8151B63A67F3576992991F /* Citadel in Frameworks */ = {isa = PBXBuildFile; productRef = 1AC395EA2657D64D86C13922 /* Citadel */; };
@@ -37,6 +38,7 @@
 		38B5E2409CFAE415E84EBC2B /* smart-terminal */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "smart-terminal"; path = ..; sourceTree = SOURCE_ROOT; };
 		45D9FD13CFC2CAC6408746F7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		602BD97F985A2DCCB5D7447F /* TerminalPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalPane.swift; sourceTree = "<group>"; };
+		6882F79F4F583614030A6BBA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6F75FFE16324556693766E45 /* DictationConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationConfig.swift; sourceTree = "<group>"; };
 		931931A15DEC0621EB659D52 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		989223A389CEC5FD759C5ED5 /* Host.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Host.swift; sourceTree = "<group>"; };
@@ -106,6 +108,7 @@
 			isa = PBXGroup;
 			children = (
 				24D9D0BB5A0AAE319FD096D2 /* App.swift */,
+				6882F79F4F583614030A6BBA /* Assets.xcassets */,
 				45D9FD13CFC2CAC6408746F7 /* Info.plist */,
 				40371EA648C048213BE84A31 /* Debug */,
 				323A7E55E93F0B3437F33EFB /* Dictation */,
@@ -233,6 +236,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D7767CD5381ECF101CA29B87 /* Assets.xcassets in Resources */,
 				5503157F4A85BE46674CF550 /* FiraCodeNerdFontMono-Bold.ttf in Resources */,
 				7B436C8607032E4FEAC38830 /* FiraCodeNerdFontMono-Regular.ttf in Resources */,
 			);

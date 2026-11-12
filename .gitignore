@@ -12,3 +12,8 @@ demo/home/.zsh_history
 
 # Xcode per-user state (iPad/)
 xcuserdata/
+
+# Streamline premium glyphs (licensed to hi@pluginslab.com): kept out of this public repo,
+# and so is the icon SVG made from them. Only the rendered icon is committed.
+Resources/icon-src/
+Resources/AppIcon.svg

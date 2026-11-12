@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.16.1] - 2026-11-12
+- New app icon, in the line of Pluginslab's Agent and Intelligence apps: a window with its sidebar and a sparkle, turquoise on a dark tile. The iPad app uses it too. (The Streamline glyphs it is made from stay out of this public repo; `scripts/make-brand-icon.py` rebuilds it from them.)
+- First public build since 0.15.6, so it also carries 0.16.0's removal of the browser pane.
+
 ## [iPad 0.1.0] - 2026-11-12
 The first iPad version, run from Xcode onto a device (not on TestFlight yet). The Mac app is unchanged.
 - iPad, portrait: the terminal takes the whole screen, as Mail does with a message. The lists slide in over it (swipe from the left edge, or the button in the terminal header) and go away when you pick a session; over it, not beside it, so tmux doesn't reflow. Landscape keeps the columns and remembers whether groups were shown. The key bar sits higher in portrait, clear of the home indicator (taps right above it reached the system, and repeated ones woke Siri).
