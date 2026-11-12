@@ -119,9 +119,13 @@ smooth scrolling, stylus does nothing surprising.
 
 ## Distribution
 
-Sideload over `adb` for now (the TestFlight-equivalent decision, made the same way as the iPad's:
-test the look first). Signed with a release keystore stored in `~/servers/CREDENTIALS.md`.
-Play internal testing later if it sticks.
+Sideloaded over adb, only on the Pad; no Play. Two builds, side by side:
+- **Smart Terminal** (`com.pluginslab.smartterminal.pad`): the one to use. Release build, not
+  debuggable, terminal hidden from recents. Signed with `~/.android/smartterminal-release.jks`
+  (path and password in `~/.gradle/gradle.properties`, key backed up in `~/servers/CREDENTIALS.md`
+  under "Smart Terminal for Android"). Without that key no update installs over it.
+  `./gradlew assembleRelease && adb install -r app/build/outputs/apk/release/app-release.apk`
+- **Smart Terminal Dev** (`.dev`): debug build for testing; adb screenshots work, `--ez nolock true`.
 
 ## Decided (2026-11-12)
 
