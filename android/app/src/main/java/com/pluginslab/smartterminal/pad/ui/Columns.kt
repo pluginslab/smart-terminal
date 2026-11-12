@@ -8,6 +8,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -330,6 +331,7 @@ private fun GitLine(status: GitStatus, folder: String?, onAccent: Boolean) {
 @Composable
 fun HeaderButton(icon: ImageVector, label: String, tint: Color = Palette.text, onClick: () -> Unit) {
     Box(Modifier.size(width = 44.dp, height = 38.dp).clip(RoundedCornerShape(50)).background(Palette.key)
+        .border(1.dp, Palette.glassEdge, RoundedCornerShape(50))
         .combinedClickable(onClick = onClick), contentAlignment = Alignment.Center) {
         Icon(icon, label, tint = tint, modifier = Modifier.size(20.dp))
     }

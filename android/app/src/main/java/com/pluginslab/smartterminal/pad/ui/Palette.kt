@@ -25,6 +25,8 @@ object Palette {
     val green = Color(0xFF6CC070)
     val red = Color(0xFFE5675A)
     val key = Color.White.copy(alpha = 0.08f)
+    /** The light edge of a glass panel or button, and the line between panes. */
+    val glassEdge = Color.White.copy(alpha = 0.12f)
 
     private fun shade(db: Float, sat: Float = 1f): Color {
         val hsv = FloatArray(3)

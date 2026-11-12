@@ -12,8 +12,11 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -89,7 +92,11 @@ fun KeyBar(model: PadModel, session: String, portrait: Boolean) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(Modifier.alpha(if (busy) 0.35f else 1f), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            // The keys scroll sideways when the column is narrow (three columns in landscape);
+            // return and the mic stay pinned at the right.
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.weight(1f, fill = false).horizontalScroll(rememberScrollState()).alpha(if (busy) 0.35f else 1f),
+                horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Key(icon = Icons.Filled.Keyboard, label = "Show Keyboard", enabled = !busy) { pane.showKeyboard() }
                 Separator()
                 Key(text = "esc", enabled = !busy) { pane.write("\u001b") }
@@ -100,7 +107,8 @@ fun KeyBar(model: PadModel, session: String, portrait: Boolean) {
             }
             if (d.state == Dictation.State.Recording) {
                 Waveform(d.levels, Modifier.weight(1f).height(36.dp).padding(horizontal = 8.dp))
-            } else Spacer(Modifier.weight(1f))
+            }
+            }
             AnimatedVisibility(!busy, enter = scaleIn() + fadeIn(), exit = scaleOut() + fadeOut()) {
                 Row(Modifier.height(48.dp).clip(RoundedCornerShape(50)).background(Palette.selection)
                     .clickable { pane.write("\r") }.padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -118,6 +126,7 @@ fun KeyBar(model: PadModel, session: String, portrait: Boolean) {
 @Composable
 private fun Key(icon: ImageVector? = null, text: String? = null, label: String? = null, enabled: Boolean, onClick: () -> Unit) {
     Box(Modifier.height(48.dp).widthIn(min = 56.dp).clip(RoundedCornerShape(50)).background(Palette.key)
+        .border(1.dp, Palette.glassEdge, RoundedCornerShape(50))
         .clickable(enabled = enabled, onClick = onClick).padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
         if (icon != null) Icon(icon, label ?: text, tint = Palette.text, modifier = Modifier.size(22.dp))
         else Text(text ?: "", color = Palette.text, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
@@ -147,6 +156,7 @@ private fun ArrowPad(enabled: Boolean, send: (Char) -> Unit) {
     }
     Box(
         Modifier.height(48.dp).width(64.dp).clip(RoundedCornerShape(50)).background(Palette.key)
+            .border(1.dp, Palette.glassEdge, RoundedCornerShape(50))
             .pointerInput(enabled) {
                 if (!enabled) return@pointerInput
                 var acc = Offset.Zero
@@ -198,6 +208,7 @@ private fun DictationButton(model: PadModel, session: String) {
             infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "pulse")
         Box(Modifier.size(width = 72.dp, height = 52.dp).clip(RoundedCornerShape(50))
             .background(if (recording) Color(0x59E5675A) else Palette.key)
+            .border(1.dp, Palette.glassEdge, RoundedCornerShape(50))
             .clickable { model.dictate(session) }, contentAlignment = Alignment.Center) {
             when (d.state) {
                 Dictation.State.Transcribing -> CircularProgressIndicator(Modifier.size(22.dp), color = Palette.selection, strokeWidth = 2.dp)

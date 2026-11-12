@@ -7,6 +7,14 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -49,8 +57,9 @@ fun RootScreen(model: PadModel, onLock: () -> Unit) {
         // rotating never rebuilds it (the iPad's blank-terminal lesson).
         Row(Modifier.fillMaxSize()) {
             if (!portrait) {
-                if (model.groupsShown) GroupsColumn(model, Modifier.width(230.dp).fillMaxHeight())
+                if (model.groupsShown) GroupsColumn(model, Modifier.width(238.dp).fillMaxHeight().floatingPanel())
                 SessionsColumn(model, portrait = false, Modifier.width(340.dp).fillMaxHeight())
+                PaneEdge()
             }
             DetailColumn(model, portrait, onLock, Modifier.weight(1f).fillMaxHeight())
         }
@@ -60,9 +69,10 @@ fun RootScreen(model: PadModel, onLock: () -> Unit) {
                     .clickable(remember { MutableInteractionSource() }, indication = null) { model.listsOpen = false })
             }
             AnimatedVisibility(model.listsOpen, enter = slideInHorizontally { -it }, exit = slideOutHorizontally { -it }) {
-                Row(Modifier.fillMaxHeight().widthIn(max = maxWidth - 64.dp)) {
-                    if (model.groupsShown) GroupsColumn(model, Modifier.width(230.dp).fillMaxHeight())
+                Row(Modifier.fillMaxHeight().widthIn(max = maxWidth - 64.dp).shadow(24.dp).background(Palette.list)) {
+                    if (model.groupsShown) GroupsColumn(model, Modifier.width(238.dp).fillMaxHeight().floatingPanel())
                     SessionsColumn(model, portrait = true, Modifier.width(340.dp).fillMaxHeight())
+                    PaneEdge()
                 }
             }
             BackHandler(model.listsOpen) { model.listsOpen = false }
@@ -70,6 +80,23 @@ fun RootScreen(model: PadModel, onLock: () -> Unit) {
     }
     model.renaming?.let { RenameDialog(model, it) }
 }
+
+/** The groups column floats, as iPadOS 26's sidebar does: inset, rounded, with a glass edge. */
+@Composable
+private fun Modifier.floatingPanel(): Modifier {
+    val shape = RoundedCornerShape(22.dp)
+    // Below the status bar (time, battery), not under it; the inset is used up here, so
+    // the column inside doesn't add it again.
+    return windowInsetsPadding(WindowInsets.statusBars)
+        .padding(start = 8.dp, top = 4.dp, bottom = 8.dp, end = 4.dp)
+        .shadow(10.dp, shape)
+        .clip(shape)
+        .border(1.dp, Palette.glassEdge, shape)
+}
+
+/** A hairline where the sessions list meets the terminal. */
+@Composable
+private fun PaneEdge() = Box(Modifier.width(1.dp).fillMaxHeight().background(Palette.glassEdge))
 
 @Composable
 private fun RenameDialog(model: PadModel, target: String) {
