@@ -1,0 +1,28 @@
+# Exact versions only (see docs/android-plan.md: the Citadel lesson).
+[versions]
+agp = "8.10.1"
+kotlin = "2.1.21"
+composeBom = "2025.05.01"
+activityCompose = "1.10.1"
+sshj = "0.41.2"
+bouncycastle = "1.84"
+annotation = "1.9.1"
+core = "1.16.0"
+
+[libraries]
+compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+compose-ui = { group = "androidx.compose.ui", name = "ui" }
+compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+sshj = { group = "com.hierynomus", name = "sshj", version.ref = "sshj" }
+
+bcprov = { group = "org.bouncycastle", name = "bcprov-jdk18on", version.ref = "bouncycastle" }
+bcpkix = { group = "org.bouncycastle", name = "bcpkix-jdk18on", version.ref = "bouncycastle" }
+androidx-core = { group = "androidx.core", name = "core-ktx", version.ref = "core" }
+androidx-annotation = { group = "androidx.annotation", name = "annotation", version.ref = "annotation" }
+
+[plugins]
+android-library = { id = "com.android.library", version.ref = "agp" }
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
