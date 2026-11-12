@@ -23,6 +23,7 @@ final class PadModel {
     var renaming: String?
 
     private var panes: [String: TerminalPane] = [:]
+    let dictation = Dictation()
 
     init() { load() }
 
@@ -56,6 +57,11 @@ final class PadModel {
         let p = TerminalPane(session: session)
         panes[session] = p
         return p
+    }
+
+    /// Dictate into a session: see `Dictation`.
+    func dictate(_ session: String) {
+        dictation.toggle(host: host, pane: pane(for: session))
     }
 
     /// Re-attach every pane after a dropped connection (the app came back to the front).

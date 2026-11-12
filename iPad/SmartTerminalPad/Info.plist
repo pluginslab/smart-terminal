@@ -18,6 +18,15 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Smart Terminal connects to your hosts over SSH.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Smart Terminal records your voice while you dictate and sends it to the Whisper server in your host's Glossa config.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>FiraCodeNerdFontMono-Regular.ttf</string>

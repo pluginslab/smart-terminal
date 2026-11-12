@@ -21,6 +21,12 @@ targets:
       path: SmartTerminalPad/Info.plist
       properties:
         UIAppFonts: [FiraCodeNerdFontMono-Regular.ttf, FiraCodeNerdFontMono-Bold.ttf]
+        NSMicrophoneUsageDescription: "Smart Terminal records your voice while you dictate and sends it to the Whisper server in your host's Glossa config."
+        NSLocalNetworkUsageDescription: "Smart Terminal connects to your hosts over SSH."
+        # The Whisper endpoint in the host's Glossa config is plain HTTP on the tailnet
+        # or LAN (llm-router on supermaschine); ATS would refuse it otherwise.
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
     dependencies:
       - package: SmartTerminal
         product: SmartTerminalCore

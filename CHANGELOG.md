@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+- New, iPad: dictation into the session in front. A microphone in the terminal header (⌘⇧D too): tap to record, tap again to stop; the audio goes to the Whisper server in the host's Glossa config (`~/.config/glossa/config.json` on the host, read over the SSH connection, with `glossary.txt` as vocabulary and the cursor's line as context) and the text is typed into the tmux pane. No settings on the device; the Mac's Glossa and the iPad share one server, one key and one glossary. Microphone permission is asked on first use; plain-HTTP endpoints on the tailnet are allowed (ATS exception).
+- iPad, debug builds: `-dictate <s> -dictateSeconds <n>` records on a timer after launch, for tests where the simulator cannot be tapped.
+
 ## [0.16.0] - 2026-11-11
 - Removed: the browser pane. Both engines (WebKit and the bundled Chromium), the globe button and `⇧⌘B`, View ▸ Browser Engine, the `open <url>` shell function, and the DevTools gate agent tools (devtools-fleet) drove the pane through. It didn't work well enough to keep. Web links you ⌘-click, and `open https://…` in a tab, go to your default browser again; devtools-fleet 0.4.0 always launches Chrome. The app is over 300 MB smaller without Chromium and its five helper apps.
 - The local gate stays for `smart-terminal-mcp`'s proposed commands and keeps its file name (`chromium-gate.json`), so shells in tmux sessions that outlive the app still find it. Only `/v1/commands` is left on it.

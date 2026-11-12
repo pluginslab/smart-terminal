@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftTerm
+import GameController
 
 /// The terminal column: a header band like the Mac's, then the session's terminal,
 /// or the setup card while the host isn't reachable.
@@ -44,6 +45,7 @@ struct DetailColumn: View {
             }
             Spacer(minLength: 8)
             if let s {
+                DictationButton(model: model, session: s.name)
                 Button { model.close(s.name) } label: {
                     Image(systemName: "xmark").font(.system(size: 14, weight: .medium)).frame(width: 36, height: 32)
                 }
@@ -119,7 +121,12 @@ private struct TerminalHost: UIViewRepresentable {
             if pane.state == .ended { pane.detach() }
             pane.attach(using: client)
         }
-        DispatchQueue.main.async { _ = pane.view.becomeFirstResponder() }
+        // Picking a session doesn't raise the on-screen keyboard: a tap on the terminal
+        // does (SwiftTerm focuses on tap). With a hardware keyboard nothing pops up,
+        // so focus straight away and typing goes to the session just picked.
+        if GCKeyboard.coalesced != nil {
+            DispatchQueue.main.async { _ = pane.view.becomeFirstResponder() }
+        }
     }
 }
 
