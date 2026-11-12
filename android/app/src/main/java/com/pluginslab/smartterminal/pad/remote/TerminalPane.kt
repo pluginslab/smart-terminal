@@ -10,6 +10,9 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.termux.terminal.TerminalSession
 import com.termux.terminal.TerminalSessionClient
 import com.termux.view.TerminalView
@@ -27,11 +30,9 @@ import java.util.concurrent.Executors
 class TerminalPane(private val appContext: Context, private val host: Host, val session: String) {
     enum class State { Idle, Attaching, Attached, Ended }
 
-    var state = State.Idle
-        private set(v) { field = v; onState?.invoke(v) }
-    var onState: ((State) -> Unit)? = null
-    var onTitle: ((String) -> Unit)? = null
-    var lastError: String? = null
+    var state by mutableStateOf(State.Idle)
+        private set
+    var lastError: String? by mutableStateOf(null)
         private set
 
     private val main = Handler(Looper.getMainLooper())
@@ -79,7 +80,7 @@ class TerminalPane(private val appContext: Context, private val host: Host, val 
         state = State.Attaching
         Thread({
             try {
-                val c = host.connect()
+                val c = host.connectBlocking()
                 val s = c.startSession()
                 s.allocatePTY("xterm-256color", cols, rows, 0, 0, emptyMap())
                 // A login shell first, so a tmux server started here gets the user's PATH.
@@ -115,6 +116,28 @@ class TerminalPane(private val appContext: Context, private val host: Host, val 
 
     fun write(text: String) = terminal.write(text)
 
+    /** An arrow key, in the form the program in front asked for (application cursor mode). */
+    fun arrow(direction: Char) {
+        val app = terminal.emulator?.isCursorKeysApplicationMode == true
+        write((if (app) "\u001bO" else "\u001b[") + direction)
+    }
+
+    /** The cursor's line before the cursor, for Whisper's prompt: in a Claude Code prompt
+     *  box that is the sentence being dictated so far. */
+    fun textBeforeCursor(maxChars: Int): String? {
+        val e = terminal.emulator ?: return null
+        val x = e.cursorCol
+        if (x <= 0) return null
+        val text = e.screen.getSelectedText(0, e.cursorRow, x - 1, e.cursorRow).trimEnd()
+        return text.takeLast(maxChars).ifEmpty { null }
+    }
+
+    /** The session went away on the host: stop reading. */
+    fun close() {
+        runCatching { sshSession?.close() }
+        io.shutdown()
+    }
+
     fun showKeyboard() {
         view.requestFocus()
         appContext.getSystemService(InputMethodManager::class.java).showSoftInput(view, 0)
@@ -122,7 +145,7 @@ class TerminalPane(private val appContext: Context, private val host: Host, val 
 
     private inner class SessionClient : TerminalSessionClient {
         override fun onTextChanged(changedSession: TerminalSession) = view.onScreenUpdated()
-        override fun onTitleChanged(changedSession: TerminalSession) { onTitle?.invoke(changedSession.title ?: "") }
+        override fun onTitleChanged(changedSession: TerminalSession) {}
         override fun onSessionFinished(finishedSession: TerminalSession) {}
         override fun onCopyTextToClipboard(session: TerminalSession, text: String) {
             appContext.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("terminal", text))

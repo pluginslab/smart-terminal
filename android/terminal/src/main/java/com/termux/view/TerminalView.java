@@ -172,8 +172,11 @@ public final class TerminalView extends View {
                 } else {
                     scrolledWithFinger = true;
                     distanceY += mScrollRemainder;
-                    int deltaRows = (int) (distanceY / mRenderer.mFontLineSpacing);
-                    mScrollRemainder = distanceY - deltaRows * mRenderer.mFontLineSpacing;
+                    // Smart Terminal: tmux scrolls 5 lines per wheel step, so one step per 2.5
+                    // rows of finger travel (twice the finger's speed), as on the iPad.
+                    float step = mRenderer.mFontLineSpacing * (mEmulator.isMouseTrackingActive() ? 2.5f : 1f);
+                    int deltaRows = (int) (distanceY / step);
+                    mScrollRemainder = distanceY - deltaRows * step;
                     doScroll(e, deltaRows);
                 }
                 return true;
@@ -196,7 +199,8 @@ public final class TerminalView extends View {
                 final boolean mouseTrackingAtStartOfFling = mEmulator.isMouseTrackingActive();
                 float SCALE = 0.25f;
                 if (mouseTrackingAtStartOfFling) {
-                    mScroller.fling(0, 0, 0, -(int) (velocityY * SCALE), 0, 0, -mEmulator.mRows / 2, mEmulator.mRows / 2);
+                    // Smart Terminal: wheel steps of 5 lines each, so a fifth of Termux's range.
+                    mScroller.fling(0, 0, 0, -(int) (velocityY * SCALE / 2.5f), 0, 0, -mEmulator.mRows / 5, mEmulator.mRows / 5);
                 } else {
                     mScroller.fling(0, mTopRow, 0, -(int) (velocityY * SCALE), 0, 0, -mEmulator.getScreen().getActiveTranscriptRows(), 0);
                 }

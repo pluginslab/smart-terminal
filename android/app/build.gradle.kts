@@ -12,7 +12,7 @@ android {
         minSdk = 33
         targetSdk = 36
         versionCode = 1
-        versionName = "0.0.1"
+        versionName = "0.1.0"
     }
     buildTypes {
         debug { applicationIdSuffix = ".dev" }
@@ -30,10 +30,13 @@ dependencies {
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
+    implementation(libs.compose.icons)
     implementation(libs.activity.compose)
     implementation(libs.androidx.core)
     implementation(project(":terminal"))
     implementation(libs.sshj)
     implementation(libs.bcprov)
     implementation(libs.bcpkix)
+    testImplementation(libs.junit)
+    testImplementation(libs.orgjson)  // Android's org.json is a stub in unit tests
 }

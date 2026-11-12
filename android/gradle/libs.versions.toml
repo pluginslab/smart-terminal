@@ -13,6 +13,9 @@ core = "1.16.0"
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 compose-ui = { group = "androidx.compose.ui", name = "ui" }
 compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+compose-icons = { group = "androidx.compose.material", name = "material-icons-extended" }
+junit = { group = "junit", name = "junit", version = "4.13.2" }
+orgjson = { group = "org.json", name = "json", version = "20250517" }
 activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 sshj = { group = "com.hierynomus", name = "sshj", version.ref = "sshj" }
 

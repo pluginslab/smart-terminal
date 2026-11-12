@@ -85,7 +85,7 @@ resizes keep the screen, a swipe scrolls tmux (wheel events). Lessons:
   fast. Tune to the iPad's one step per 2.5 rows in 0.1.0.
 - HyperOS opens new apps in a floating window; `am start --windowingMode 1` for full screen in tests.
 
-**2. Android 0.1.0: the iPad 0.1.0 feature set.**
+**2. Android 0.1.0: the iPad 0.1.0 feature set.** Done 2026-11-12 (`android-v0.1.0`), checked on the Pad by screenshot in landscape and portrait; dictation and the group menus by hand.
 - Device key, setup card with Copy Key (I add it to supermaschine's `authorized_keys` as
   `smart-terminal-android (Xiaomi Pad 8 Pro)`), pinned host key.
 - Host poller (3 s status, git every third tick) with the iPad's scripts.

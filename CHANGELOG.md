@@ -1,5 +1,14 @@
 # Changelog
 
+## [Android 0.1.0] - 2026-11-12
+The first Android version, for the Xiaomi Pad 8 Pro (HyperOS 3, Android 16), installed over adb (not on Play). The iPad 0.1.0 feature set; the Mac and iPad apps are unchanged. Plan and lessons in `docs/android-plan.md`.
+- New, Android (`android/`, a Gradle project): Smart Terminal for Android tablets, the Mail-style columns (groups, sessions, terminal) with each tab a tmux session on supermaschine over SSH. Landscape shows the columns; portrait gives the terminal the whole screen and lays the lists over it from the header button (not a left-edge swipe: that is Android's back gesture), back or picking a session puts them away. The groups column collapses from the sessions header.
+- Rows as on the iPad: Claude's state and title, the folder's git state, last activity, "also open elsewhere". Groups, names and membership are kept on the tablet. New sessions are `android-N`; closing (it kills the tmux session) is in the row's long-press menu only.
+- The terminal is Termux's emulator and view (Apache-2.0, vendored in `android/terminal/`, fed by an SSH channel). A swipe scrolls tmux (wheel events, at the iPad's speed), long-press selects, only a tap on the terminal raises the keyboard. Each tab's terminal lives as long as the app, so rotation and resizing HyperOS's floating window keep the screen; tmux gets the real size on attach and on every change.
+- SSH is sshj. The tablet makes its own ecdsa-sha2-nistp256 key, kept encrypted under an Android Keystore key, and pins the host's key on first connect. `supermaschine` needs Tailscale; at home it falls back to the LAN address.
+- Key bar: keyboard, esc, ⇧tab, tab, ^C, one swipe arrow key with haptics, return, and the microphone at the right edge, clear of the gesture bar. Hidden while the on-screen keyboard is up. Dictation as on the iPad, through the host's Glossa config; the keys grey out and a waveform shows while recording.
+- The Streamline icon, as an adaptive icon.
+
 ## [0.17.0] - 2026-11-12
 - New: a lock. At launch, and whenever the screen locks or the Mac sleeps, every window shows the lock instead of its terminals until you unlock; shells, tmux and Claude keep running behind it, but nothing of them shows, keys meant for a terminal are dropped, the menus are off and the window title says Locked. Lock by hand with ⇧⌘L, Smart Terminal ▸ Lock Smart Terminal, or the lock button next to the sidebar button.
 - Unlock with a YubiKey you already use for SSH: any `~/.ssh/id_*_sk*` key. `ssh-keygen -Y sign` signs a fresh random challenge on the key and `ssh-keygen -Y verify` checks it against the key's `.pub` (Homebrew's OpenSSH, which talks to FIDO keys). Keys made without a touch are tried first, so one left plugged in (a Nano) unlocks at once; one that needs a touch is asked for next. Or Touch ID, with the login password as fallback.
