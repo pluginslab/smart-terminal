@@ -11,7 +11,6 @@ final class SmartTerminalView: LocalProcessTerminalView {
         onBell?()
     }
 
-
     /// SwiftTerm paints the default background through `layer.backgroundColor`,
     /// which is a no-op if set before the layer exists; re-apply once hosted.
     override func viewDidMoveToWindow() {
