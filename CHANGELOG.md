@@ -1,5 +1,10 @@
 # Changelog
 
+## [iPad 0.2.0] - 2026-11-12
+- iPad: a lock before anything starts, at launch and after more than two minutes away; nothing connects to the host until it is open. Unlock with a YubiKey (or another FIDO key) over USB-C, set up once on the device, or with Touch ID and the passcode. The key goes through Apple's passkey API: its public key is kept on the iPad and each unlock checks the key's signature over a fresh challenge, on the device. The API needs a web domain tied to the app, so pluginslab.com serves `/.well-known/apple-app-site-association` naming it (`webcredentials`), and the app has the associated-domains entitlement. No lock in the simulator or on an iPhone for now. Debug builds: `-nolock YES` skips it.
+- iPad: the Streamline icon, the same as the Mac's.
+- iPad: no deprecated UIKit calls left (the keyboard watcher reads the screen from the notification; the key prompt's fallback window takes the scene).
+
 ## [0.16.1] - 2026-11-12
 - New app icon, in the line of Pluginslab's Agent and Intelligence apps: a window with its sidebar and a sparkle, turquoise on a dark tile. The iPad app uses it too. (The Streamline glyphs it is made from stay out of this public repo; `scripts/make-brand-icon.py` rebuilds it from them.)
 - First public build since 0.15.6, so it also carries 0.16.0's removal of the browser pane.

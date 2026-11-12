@@ -13,7 +13,8 @@ final class KeyboardWatcher {
         NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillChangeFrameNotification,
                                                object: nil, queue: .main) { [weak self] note in
             guard let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
-            let screen = UIScreen.main.bounds
+            // The notification's object is the screen the keyboard is on.
+            let screen = (note.object as? UIScreen)?.bounds ?? frame
             let shown = frame.intersection(screen).height > 120
             MainActor.assumeIsolated { self?.visible = shown }
         }
