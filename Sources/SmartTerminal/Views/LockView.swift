@@ -60,9 +60,7 @@ struct LockView: View {
         .background(Color(red: 0x16 / 255, green: 0x28 / 255, blue: 0x3b / 255))
         .contentShape(Rectangle())   // swallows clicks meant for what's behind
         .environment(\.colorScheme, .dark)
-        .task {
-            // Ask the key at once, as a login would (the Nano answers without a touch).
-            if lock.hasSecurityKey { lock.unlockWithSecurityKey() }
-        }
+        // The key is asked on its own only at launch and after the Mac's screen
+        // unlocks (AppLock); here it takes the button or Return.
     }
 }
