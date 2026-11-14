@@ -38,6 +38,8 @@ final class SessionRegistry {
         s.onBell = { [weak self] s in self?.model?.markAttention(s.tabID) }
         s.onOutput = { [weak self] s in self?.model?.markActivity(s.tabID) }
         s.onExit = { [weak self] s, code in self?.sessionExited(s, code: code) }
+        s.view.onPinch = { [weak self] size in self?.setFontSize(size) }
+        s.view.currentFontSize = { [weak self] in self?.fontSize ?? 13 }
         sessions[tabID] = s
         s.start(cwd: cwd)
         return s

@@ -1,5 +1,18 @@
 # Changelog
 
+## [iPad 0.5.0] - 2026-11-14
+- iPad/iPhone: iSH+ as a second host. When iSH+ is installed, a badge under supermaschine opens its setup (one paste installs an SSH server and tmux in the running distribution and adds this device's key), and the + button asks where the new session runs: supermaschine or iSH+'s Linux, reached over SSH on 127.0.0.1 (port 2222 by default, settable). Each distribution keeps its own sessions and groups. iSH+ has to keep Linux running while it is in the background (Split View always works); a paused iSH+ shows within 8 seconds and the app reconnects when Linux is back. New iPhone sessions are `iphone-N`.
+- iPad/iPhone: pinch on the terminal to change the font size (9 to 28 pt, whole points, haptics at each step); every session follows and it is kept.
+- iPad/iPhone: fixed stray `;30;64t` text after a resize or the keyboard going away: the terminal's pixel size now goes with every size change, so tmux no longer asks for it.
+- iPad/iPhone: a session closed on one device no longer comes back from another device that had it open: panes reconnect with `tmux attach-session`, never `new-session -A`.
+- iPad/iPhone: dictation mixes with other apps' audio instead of interrupting it (it stopped iSH+'s background keep-alive). A failed new session shows why.
+
+## [Android 0.3.1] - 2026-11-14
+- Android: a session closed elsewhere no longer comes back when this tablet reconnects (attach only, never create).
+
+## [0.19.1] - 2026-11-14
+- Pinch on the trackpad changes the terminal font size, like ⌘+ / ⌘−, for every tab.
+
 ## [iPad 0.4.0] - 2026-11-14
 - iPhone: the app is now universal. On iPhone the columns stack (groups, then sessions, then the terminal, with back buttons), it runs in portrait only, the keys scroll sideways under return and the mic (with a shadow while more keys are hidden), and the lock is on (Face ID or the YubiKey). A tap on the terminal never raises the keyboard, also with a hardware keyboard; only the keyboard button does. Disconnected, it opens on the setup card, so the device's key can be added.
 - iPad/iPhone: a Stray group lists the host's tmux sessions this device hasn't taken up (cc-super, scripts, other devices). Opening one only opens it; it leaves Stray once moved to a group or to Ungrouped. Sessions present at the first launch with this version count as taken up.

@@ -11,6 +11,7 @@
 		1C6A3201B7619C3EF8A6DE39 /* DictationConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F75FFE16324556693766E45 /* DictationConfig.swift */; };
 		1DDF773ABE5B035D98E05692 /* DictationButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = E899548E1DAF1ECCCBA27F97 /* DictationButton.swift */; };
 		262B20750787027F12B3F2D5 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = AEDB9C1EED79BC775D9FDE38 /* SwiftTerm */; };
+		2B51AB525597474C1A81BF7F /* IshSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C95857479667857CF3ED79A /* IshSetupView.swift */; };
 		4A5E087247007B58A95386FA /* PadModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FEA3E12BFC282C776B7BC76 /* PadModel.swift */; };
 		5503157F4A85BE46674CF550 /* FiraCodeNerdFontMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = EC595A7DDCE47830D81010A8 /* FiraCodeNerdFontMono-Bold.ttf */; };
 		72607D5BB0505FBDE696F433 /* Dictation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4661658435A90EFB4BBE564 /* Dictation.swift */; };
@@ -37,6 +38,7 @@
 		0494622D7FA96B753FFF4437 /* DeviceKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceKey.swift; sourceTree = "<group>"; };
 		0D0D31BB0F66445A77AD5398 /* LockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockView.swift; sourceTree = "<group>"; };
 		0D0D96CFF4858DACB9B93ECC /* CommandAssist.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandAssist.swift; sourceTree = "<group>"; };
+		1C95857479667857CF3ED79A /* IshSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IshSetupView.swift; sourceTree = "<group>"; };
 		1FEA3E12BFC282C776B7BC76 /* PadModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PadModel.swift; sourceTree = "<group>"; };
 		24D9D0BB5A0AAE319FD096D2 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		2B77E9B2D66FB8769F7C9183 /* KeyBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyBar.swift; sourceTree = "<group>"; };
@@ -180,6 +182,7 @@
 			children = (
 				C920E6640535FCC527E49D5A /* DetailColumn.swift */,
 				E899548E1DAF1ECCCBA27F97 /* DictationButton.swift */,
+				1C95857479667857CF3ED79A /* IshSetupView.swift */,
 				2B77E9B2D66FB8769F7C9183 /* KeyBar.swift */,
 				931931A15DEC0621EB659D52 /* RootView.swift */,
 			);
@@ -277,6 +280,7 @@
 				1DDF773ABE5B035D98E05692 /* DictationButton.swift in Sources */,
 				1C6A3201B7619C3EF8A6DE39 /* DictationConfig.swift in Sources */,
 				92BA2C78F9CB4953789EC071 /* Host.swift in Sources */,
+				2B51AB525597474C1A81BF7F /* IshSetupView.swift in Sources */,
 				8BB8B837B145CA4CE0B52F38 /* KeyBar.swift in Sources */,
 				F8C790A55AAE129C8F99BC38 /* LockView.swift in Sources */,
 				4A5E087247007B58A95386FA /* PadModel.swift in Sources */,
@@ -313,7 +317,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.4.0;
+				MARKETING_VERSION = 0.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pluginslab.smartterminal.pad;
 				PRODUCT_NAME = "Smart Terminal";
 				SDKROOT = iphoneos;
@@ -400,7 +404,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.4.0;
+				MARKETING_VERSION = 0.5.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pluginslab.smartterminal.pad;
 				PRODUCT_NAME = "Smart Terminal";
 				SDKROOT = iphoneos;

@@ -12,11 +12,26 @@ enum Theme {
     static let ansi: [UInt32] = [0x35424B, 0xB35547, 0x6CAA70, 0xC4AB62, 0x6D95B3, 0xBD7BCC, 0x7BCACD, 0xDDE5EB,
                                  0x465C6C, 0xDF6C59, 0x78BD7D, 0xE5C871, 0x66B5EC, 0xD389E5, 0x84DDE0, 0xE5EEF5]
 
-    static func apply(to view: TerminalView) {
-        let size: CGFloat = 15
+    /// The terminal's font size: pinch on a terminal to change it, for all of them.
+    static let fontSizes: ClosedRange<CGFloat> = 9...28
+    static let fontSizeChanged = Notification.Name("TerminalFontSizeChanged")
+    private static let fontSizeKey = "terminalFontSize"
+    static var fontSize: CGFloat {
+        get {
+            let v = CGFloat(UserDefaults.standard.double(forKey: fontSizeKey))
+            return v > 0 ? min(max(v, fontSizes.lowerBound), fontSizes.upperBound) : 15
+        }
+        set { UserDefaults.standard.set(Double(newValue), forKey: fontSizeKey) }
+    }
+
+    static func setFont(_ view: TerminalView, size: CGFloat) {
         let regular = UIFont(name: "FiraCodeNFM-Reg", size: size) ?? .monospacedSystemFont(ofSize: size, weight: .regular)
         let bold = UIFont(name: "FiraCodeNFM-Bold", size: size) ?? .monospacedSystemFont(ofSize: size, weight: .bold)
         view.setFonts(normal: regular, bold: bold, italic: regular, boldItalic: bold)
+    }
+
+    static func apply(to view: TerminalView) {
+        setFont(view, size: fontSize)
         view.nativeForegroundColor = text
         view.nativeBackgroundColor = background
         view.selectedTextBackgroundColor = selectionText

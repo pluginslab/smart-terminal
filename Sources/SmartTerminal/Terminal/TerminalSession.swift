@@ -6,6 +6,25 @@ import SmartTerminalCore
 final class SmartTerminalView: LocalProcessTerminalView {
     var onBell: (() -> Void)?
     var onOutput: (() -> Void)?
+    /// Trackpad pinch: the font size it asks for (SessionRegistry applies it to every tab).
+    var onPinch: ((CGFloat) -> Void)?
+    var currentFontSize: (() -> CGFloat)?
+
+    private var pinchStart: CGFloat = 0
+    private var pinchScale: CGFloat = 1
+
+    /// Pinch on the trackpad changes the font size in whole points, live, like ⌘+ / ⌘−.
+    override func magnify(with event: NSEvent) {
+        guard let onPinch, let currentFontSize else { return super.magnify(with: event) }
+        if event.phase == .began || pinchStart == 0 {
+            pinchStart = currentFontSize()
+            pinchScale = 1
+        }
+        pinchScale *= 1 + event.magnification
+        let size = (pinchStart * pinchScale).rounded()
+        if size != currentFontSize() { onPinch(size) }
+        if event.phase == .ended || event.phase == .cancelled { pinchStart = 0 }
+    }
 
     override func bell(source: Terminal) {
         onBell?()

@@ -15,7 +15,7 @@ struct SmartTerminalPadApp: App {
             .animation(.easeOut(duration: 0.2), value: lock.locked)
             // Nothing connects until the first unlock.
             .onChange(of: lock.locked, initial: true) { _, locked in
-                if !locked { model.host.connect() }
+                if !locked { model.connect() }
             }
                 .task {
                     // The simulator log shows the key, so it can be added to the host.

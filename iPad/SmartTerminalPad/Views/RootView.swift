@@ -49,7 +49,11 @@ struct RootView: View {
                 withAnimation(.snappy) { model.columns = .detailOnly }
             }
         }
-        .onChange(of: model.sessions.map(\.name), initial: true) { _, names in model.reconcile(names) }
+        .onChange(of: model.sessions.map(\.name), initial: true) { _, _ in model.reconcile() }
+        .sheet(isPresented: $model.ishSetup) { IshSetupView(model: model) }
+        .alert("New Session", isPresented: Binding(get: { model.problem != nil }, set: { if !$0 { model.problem = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: { Text(model.problem ?? "") }
         .onChange(of: model.category) { _, new in
             // Picking a category shows one of its sessions, so the terminal matches the list.
             // Not Stray: showing one would attach to it without taking it up.
@@ -87,7 +91,16 @@ private struct CategoryList: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 1) {
                 HostBadge(host: model.host)
+                    .padding(.horizontal, 8).padding(.bottom, model.ishInstalled ? 4 : 10)
+                if model.ishInstalled {
+                    // iSH+'s Linux on this device: tap for its setup and state.
+                    Button { model.ishSetup = true } label: {
+                        HostBadge(host: model.ish, configured: model.ishConfigured)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                     .padding(.horizontal, 8).padding(.bottom, 10)
+                }
                 CategoryRow(title: "All Sessions", icon: .symbol("rectangle.stack"), sessions: all,
                             selected: model.category == .all) { model.show(.all) }
                 Text("Groups")
@@ -123,7 +136,7 @@ private struct CategoryList: View {
             }
             .padding(.horizontal, 10).padding(.top, 14).padding(.bottom, 6)
         }
-        .refreshable { await model.host.refresh() }
+        .refreshable { await model.refresh() }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             HStack {
                 Button { model.newGroup() } label: { Label("New Group", systemImage: "plus") }
@@ -139,18 +152,25 @@ private struct CategoryList: View {
 /// Which host the sessions come from, and whether it's reachable.
 private struct HostBadge: View {
     let host: Host
+    var configured = true
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "server.rack").foregroundStyle(.secondary)
-            Text(host.displayName).font(.callout.weight(.semibold))
+            Image(systemName: host.isLocal ? "ipad.and.iphone" : "server.rack").foregroundStyle(.secondary)
+                .frame(width: 18)
+            Text(host.displayName).font(.callout.weight(.semibold)).lineLimit(1)
             Spacer()
-            Circle().fill(color).frame(width: 7, height: 7)
+            if !configured {
+                Text("Set Up").font(.caption.weight(.semibold)).foregroundStyle(Theme.selection)
+            } else {
+                Circle().fill(color).frame(width: 7, height: 7)
+            }
         }
     }
 
     private var color: Color {
-        switch host.state {
+        if host.isLocal, host.state != .connected { return .secondary.opacity(0.5) }
+        return switch host.state {
         case .connected: .green
         case .connecting: .yellow
         case .idle, .failed: .red
@@ -261,12 +281,44 @@ private struct SessionList: View {
                     .keyboardShortcut("f", modifiers: [.shift, .command])
                     .accessibilityLabel(model.listsHidden ? "Keep Lists Beside the Terminal" : "Hide Lists")
                 }
-                Button { model.newSession() } label: {
-                    Image(systemName: "plus").font(.system(size: 15, weight: .medium)).frame(width: 36, height: 32)
+                if model.ishInstalled {
+                    // Where the new session runs: supermaschine, or iSH+'s Linux here.
+                    Menu {
+                        Button { model.newSession(on: model.host) } label: {
+                            Label(model.host.displayName, systemImage: "server.rack")
+                        }
+                        if model.ish.state == .connected {
+                            Button { model.newSession(on: model.ish) } label: {
+                                Label(model.ish.displayName, systemImage: "ipad.and.iphone")
+                            }
+                        } else {
+                            Button { model.ishSetup = true } label: {
+                                Label(model.ishConfigured ? "iSH+ isn't running…" : "Set Up iSH+…",
+                                      systemImage: "ipad.and.iphone")
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "plus").font(.system(size: 15, weight: .medium)).frame(width: 36, height: 32)
+                    }
+                    .menuStyle(.button)
+                    .buttonStyle(.plain)
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                    .accessibilityLabel("New Session")
+                    // ⌘T: supermaschine, as before; ⌥⌘T: iSH+.
+                    .background {
+                        Button("") { model.newSession(on: model.host) }
+                            .keyboardShortcut("t", modifiers: .command).opacity(0)
+                        Button("") { model.ish.state == .connected ? model.newSession(on: model.ish) : (model.ishSetup = true) }
+                            .keyboardShortcut("t", modifiers: [.option, .command]).opacity(0)
+                    }
+                } else {
+                    Button { model.newSession() } label: {
+                        Image(systemName: "plus").font(.system(size: 15, weight: .medium)).frame(width: 36, height: 32)
+                    }
+                    .buttonStyle(.plain)
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                    .keyboardShortcut("t", modifiers: .command)
                 }
-                .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: .capsule)
-                .keyboardShortcut("t", modifiers: .command)
             }
             .padding(.leading, 20).padding(.trailing, 12)
             .frame(height: 64)
@@ -295,7 +347,7 @@ private struct SessionList: View {
             .environment(\.defaultMinListRowHeight, 0)
             .contentMargins(.top, 4, for: .scrollContent)
             .contentMargins(.bottom, 8, for: .scrollContent)
-            .refreshable { await model.host.refresh() }
+            .refreshable { await model.refresh() }
         }
         .background(Theme.list.ignoresSafeArea())
         .alert(closing.map { "Close \u{201C}\(model.title(of: $0))\u{201D}?" } ?? "",
@@ -304,7 +356,8 @@ private struct SessionList: View {
             Button("Close Session", role: .destructive) { model.close(s.name) }
             Button("Cancel", role: .cancel) {}
         } message: { s in
-            Text("This kills the tmux session \(s.name) on the host. Whatever runs in it stops.")
+            let h = model.host(of: s.name)
+            Text("This kills the tmux session \(h.tmuxName(s.name)) on \(h.displayName). Whatever runs in it stops.")
         }
     }
 
@@ -355,7 +408,7 @@ private struct SessionRow: View {
                         .font(.caption)
                         .foregroundStyle(isActive ? AnyShapeStyle(onAccent.opacity(0.75)) : AnyShapeStyle(.secondary))
                 }
-                if let git = model.host.git[session.path] {
+                if let git = model.host(of: session.name).git[session.path] {
                     GitLine(status: git, folder: folder, onAccent: isActive)
                 } else {
                     Text(folder ?? " ")
@@ -403,8 +456,9 @@ private struct SessionRow: View {
     }
 
     private var detail: String {
-        var parts = ["tmux \(session.name)"]
-        if session.agent == nil, !["zsh", "bash", "sh", "fish"].contains(session.command) { parts.append(session.command) }
+        let h = model.host(of: session.name)
+        var parts = [(h.isLocal ? h.displayName + " · " : "") + "tmux \(h.tmuxName(session.name))"]
+        if session.agent == nil, !["zsh", "bash", "sh", "ash", "fish"].contains(session.command) { parts.append(session.command) }
         if session.attachedClients > (model.selected == session.name ? 1 : 0) { parts.append("also open elsewhere") }
         return parts.joined(separator: " · ")
     }

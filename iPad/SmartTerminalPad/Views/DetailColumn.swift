@@ -11,8 +11,7 @@ struct DetailColumn: View {
         VStack(spacing: 0) {
             header
             Group {
-                if case .connected = model.host.state, let name = model.selected,
-                   model.sessions.contains(where: { $0.name == name }) {
+                if let name = model.selected, model.sessions.contains(where: { $0.name == name }) {
                     TerminalHost(model: model, session: name).id(name)
                 } else if case .connected = model.host.state {
                     ContentUnavailableView("No Session", systemImage: "terminal",
@@ -24,7 +23,7 @@ struct DetailColumn: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color(uiColor: Theme.background))
             // Hidden while the on-screen keyboard is up: SwiftTerm's own key row sits on it then.
-            if case .connected = model.host.state, let name = model.selected,
+            if let name = model.selected,
                model.sessions.contains(where: { $0.name == name }), !KeyboardWatcher.shared.visible {
                 KeyBar(model: model, session: name)
             }
@@ -67,7 +66,8 @@ struct DetailColumn: View {
             VStack(alignment: .leading, spacing: 1) {
                 if let s {
                     Text(model.title(of: s)).font(.title3.weight(.bold)).lineLimit(1).truncationMode(.middle)
-                    Text(s.path.replacingOccurrences(of: "/home/\(model.host.user)", with: "~"))
+                    let h = model.host(of: s.name)
+                    Text((h.isLocal ? h.displayName + "  " : "") + s.path.replacingOccurrences(of: "/home/\(h.user)", with: "~"))
                         .font(.subheadline).foregroundStyle(.secondary)
                         .lineLimit(1).truncationMode(.head)
                 } else {
@@ -145,7 +145,7 @@ private struct TerminalHost: UIViewRepresentable {
         let pane = model.pane(for: session)
         container.pane = pane
         container.claim()
-        if pane.state == .idle || pane.state == .ended, let client = model.host.client {
+        if pane.state == .idle || pane.state == .ended, let client = model.host(of: session).client {
             if pane.state == .ended { pane.detach() }
             pane.attach(using: client)
         }

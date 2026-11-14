@@ -25,7 +25,8 @@ import java.util.concurrent.Executors
 
 /**
  * One tab's terminal: Termux's view fed by an SSH shell channel that runs
- * `tmux new-session -A -s <session>` on the host. Lives as long as the process, not the
+ * `tmux attach-session -t =<session>` on the host (attach only: a session closed
+ * elsewhere must not come back when this pane reconnects; new ones are made first). Lives as long as the process, not the
  * activity, so rotating or resizing the window keeps the screen and the connection.
  */
 class TerminalPane(private val appContext: Context, private val host: Host, val session: String) {
@@ -85,7 +86,7 @@ class TerminalPane(private val appContext: Context, private val host: Host, val 
                 val s = c.startSession()
                 s.allocatePTY("xterm-256color", cols, rows, 0, 0, emptyMap())
                 // A login shell first, so a tmux server started here gets the user's PATH.
-                val cmd = s.exec("exec \"\$SHELL\" -lc " + Host.quote("exec tmux new-session -A -s " + Host.quote(session)))
+                val cmd = s.exec("exec \"\$SHELL\" -lc " + Host.quote("exec tmux attach-session -t " + Host.quote("=$session")))
                 sshSession = s
                 shell = cmd
                 out = cmd.outputStream

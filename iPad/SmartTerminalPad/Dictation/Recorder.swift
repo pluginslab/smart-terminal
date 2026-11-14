@@ -30,7 +30,9 @@ final class Recorder {
     func start() async throws {
         guard await AVAudioApplication.requestRecordPermission() else { throw RecorderError.denied }
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.record, mode: .default)
+        // Mixed with others: a non-mixable session interrupts iSH+'s silent audio, which is
+        // what keeps its Linux running in the background.
+        try session.setCategory(.playAndRecord, mode: .default, options: [.mixWithOthers, .allowBluetoothHFP])
         try session.setActive(true)
 
         reset()

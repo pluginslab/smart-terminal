@@ -46,27 +46,33 @@ final class Dictation {
 
     /// `commandIn`: the pane's folder when it runs a plain shell (no Claude): then what
     /// you say becomes a command typed for you, not the words themselves.
-    func toggle(host: Host, pane: TerminalPane, commandIn folder: String? = nil) {
+    /// `contextHost`: where the pane runs, when that isn't `host` (iSH+'s Linux): the
+    /// configs still come from `host`, the folder's context from there.
+    func toggle(host: Host, contextHost: Host? = nil, pane: TerminalPane, commandIn folder: String? = nil) {
         switch state {
         case .recording: stop(into: pane)
         case .starting, .transcribing, .composing: break
-        case .idle, .failed, .notice: start(host: host, commandIn: folder)
+        case .idle, .failed, .notice: start(host: host, contextHost: contextHost ?? host, commandIn: folder)
         }
     }
 
-    private func start(host: Host, commandIn folder: String?) {
+    private func start(host: Host, contextHost: Host, commandIn folder: String?) {
         clearTask?.cancel()
         state = .starting
         commandMode = folder != nil
         // Fetch the config and glossary while the user talks: two files, one round trip
         // (plus the assist's config and the folder's context in command mode).
         var script = "cat \(DictationConfig.path) 2>/dev/null; echo '@@GLOSSA@@'; cat \(DictationConfig.glossaryPath) 2>/dev/null"
+        let local = contextHost !== host
         if let folder {
-            script += "; echo '@@ASSIST@@'; cat \(CommandAssist.configPath) 2>/dev/null; echo '@@CONTEXT@@'; "
-                + CommandAssist.contextScript(path: folder)
+            script += "; echo '@@ASSIST@@'; cat \(CommandAssist.configPath) 2>/dev/null; echo '@@CONTEXT@@'"
+            if !local { script += "; " + CommandAssist.contextScript(path: folder) }
         }
         configTask = Task { [weak self] in
-            let out = await host.run("sh -c " + Host.quote(script))
+            async let context: String? = local && folder != nil
+                ? contextHost.run("sh -c " + Host.quote(CommandAssist.contextScript(path: folder!))) : nil
+            var out = await host.run("sh -c " + Host.quote(script))
+            if let extra = await context { out = (out ?? "") + "\n" + extra }
             guard let self else { return }
             var rest = out ?? ""
             var assistPart = "", contextPart = ""

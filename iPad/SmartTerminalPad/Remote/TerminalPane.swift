@@ -5,13 +5,15 @@ import NIOCore
 import NIOSSH
 
 /// One tab's terminal: a SwiftTerm view fed by an SSH PTY that runs
-/// `tmux new -A -s <session>` on the host. Kept alive while the app runs, so
+/// `tmux attach -t =<session>` on the host. Kept alive while the app runs, so
 /// switching tabs keeps scrollback and doesn't re-attach.
 @MainActor
 final class TerminalPane: NSObject, TerminalViewDelegate {
     enum State: Equatable { case idle, attaching, attached, ended }
 
     let session: String
+    /// The name tmux knows it by on its host (the app's name less the host's prefix).
+    let tmuxName: String
     let view: TerminalView
     private(set) var state: State = .idle { didSet { onState?(state) } }
     var onState: ((State) -> Void)?
@@ -20,13 +22,24 @@ final class TerminalPane: NSObject, TerminalViewDelegate {
     private var writer: TTYStdinWriter?
     private var task: Task<Void, Never>?
 
-    init(session: String) {
+    init(session: String, tmuxName: String? = nil) {
         self.session = session
+        self.tmuxName = tmuxName ?? session
         view = PadTerminalView(frame: CGRect(x: 0, y: 0, width: 800, height: 600))
         super.init()
         view.terminalDelegate = self
         Theme.apply(to: view)
+        // A pinch in another pane changed the size: follow it.
+        fontObserver = NotificationCenter.default.addObserver(forName: Theme.fontSizeChanged, object: nil,
+                                                              queue: .main) { [weak self] note in
+            MainActor.assumeIsolated {
+                guard let self, note.object as AnyObject? !== self.view else { return }
+                Theme.setFont(self.view, size: Theme.fontSize)
+            }
+        }
     }
+
+    private var fontObserver: NSObjectProtocol?
 
     /// Attaches over `client` unless already attached.
     func attach(using client: SSHClient) {
@@ -36,28 +49,33 @@ final class TerminalPane: NSObject, TerminalViewDelegate {
         let request = SSHChannelRequestEvent.PseudoTerminalRequest(
             wantReply: true, term: "xterm-256color",
             terminalCharacterWidth: max(term.cols, 20), terminalRowHeight: max(term.rows, 5),
-            terminalPixelWidth: 0, terminalPixelHeight: 0,
+            terminalPixelWidth: pixels(cols: term.cols, rows: term.rows).width,
+            terminalPixelHeight: pixels(cols: term.cols, rows: term.rows).height,
             terminalModes: SSHTerminalModes([:]))
-        let name = session
+        let name = tmuxName
         task = Task { [weak self] in
             do {
                 try await client.withPTY(request) { inbound, outbound in
-                    let size = await MainActor.run { () -> (Int, Int)? in
+                    let size = await MainActor.run { () -> (Int, Int, Int, Int)? in
                         self?.writer = outbound
                         self?.state = .attached
-                        guard let t = self?.view.getTerminal() else { return nil }
-                        return (t.cols, t.rows)
+                        guard let self else { return nil }
+                        let t = self.view.getTerminal()
+                        let px = self.pixels(cols: t.cols, rows: t.rows)
+                        return (t.cols, t.rows, px.width, px.height)
                     }
                     // The PTY was asked for with the size the view had before layout;
                     // resizes in between found no channel yet. Send the real size now,
                     // or tmux draws wider than the view (lines off the edge, status
                     // bar wrapped onto two lines).
-                    if let (cols, rows) = size {
-                        try? await outbound.changeSize(cols: cols, rows: rows, pixelWidth: 0, pixelHeight: 0)
+                    if let (cols, rows, w, h) = size {
+                        try? await outbound.changeSize(cols: cols, rows: rows, pixelWidth: w, pixelHeight: h)
                     }
                     // The PTY starts a login shell; hand it over to tmux straight away.
-                    // `-A` attaches when the session exists, creates it otherwise.
-                    try await outbound.write(ByteBuffer(string: "exec tmux new-session -A -s \(Host.quote(name))\n"))
+                    // Attach only, never create: a session closed elsewhere would come back
+                    // as a new (stray) one when this pane reconnects. New sessions are made
+                    // before they're opened (Host.newSession).
+                    try await outbound.write(ByteBuffer(string: "exec tmux attach-session -t \(Host.quote("=" + name))\n"))
                     for try await chunk in inbound {
                         let bytes: [UInt8]
                         switch chunk {
@@ -116,8 +134,18 @@ final class TerminalPane: NSObject, TerminalViewDelegate {
 
     nonisolated func sizeChanged(source: TerminalView, newCols: Int, newRows: Int) {
         Task { @MainActor in
-            try? await self.writer?.changeSize(cols: newCols, rows: newRows, pixelWidth: 0, pixelHeight: 0)
+            let px = self.pixels(cols: newCols, rows: newRows)
+            try? await self.writer?.changeSize(cols: newCols, rows: newRows, pixelWidth: px.width, pixelHeight: px.height)
         }
+    }
+
+    /// The text area in pixels, sent with every size. With 0 there, tmux (3.5+) asks the
+    /// terminal itself (CSI 18t and 14t); the answers come back over the network, and
+    /// when one arrives in pieces after tmux's short escape-time, the rest ends up typed
+    /// into the pane (";30;64t" after a resize or the keyboard going away).
+    private func pixels(cols: Int, rows: Int) -> (width: Int, height: Int) {
+        let cell = view.cellSizeInPixels(source: view.getTerminal()) ?? (width: 10, height: 20)
+        return (max(1, cell.width * cols), max(1, cell.height * rows))
     }
 
     nonisolated func setTerminalTitle(source: TerminalView, title: String) {
@@ -160,6 +188,39 @@ final class PadTerminalView: TerminalView, UIGestureRecognizerDelegate {
         scrollPan.maximumNumberOfTouches = 1
         scrollPan.delegate = self
         addGestureRecognizer(scrollPan)
+        let pinch = UIPinchGestureRecognizer(target: self, action: #selector(pinched(_:)))
+        pinch.delegate = self
+        addGestureRecognizer(pinch)
+    }
+
+    // MARK: - Pinch to zoom
+
+    private var pinchStart: CGFloat = 15
+    private var shownSize: CGFloat = 15
+
+    /// Pinch changes the font size, in whole points between Theme.fontSizes, live
+    /// (tmux gets the new columns and rows at each step). Every pane follows at the end.
+    @objc private func pinched(_ g: UIPinchGestureRecognizer) {
+        switch g.state {
+        case .began:
+            stopMomentum()
+            pinchStart = Theme.fontSize
+            shownSize = pinchStart
+        case .changed:
+            let wanted = (pinchStart * g.scale).rounded()
+            let size = min(max(wanted, Theme.fontSizes.lowerBound), Theme.fontSizes.upperBound)
+            guard size != shownSize else { return }
+            shownSize = size
+            Theme.setFont(self, size: size)
+            let atLimit = size == Theme.fontSizes.lowerBound || size == Theme.fontSizes.upperBound
+            UIImpactFeedbackGenerator(style: atLimit ? .medium : .light).impactOccurred(intensity: atLimit ? 1 : 0.5)
+        case .ended, .cancelled:
+            guard shownSize != Theme.fontSize else { return }
+            Theme.fontSize = shownSize
+            NotificationCenter.default.post(name: Theme.fontSizeChanged, object: self)
+        default:
+            break
+        }
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -243,7 +304,8 @@ final class PadTerminalView: TerminalView, UIGestureRecognizerDelegate {
 
     // Run alongside SwiftTerm's taps and long-press; only one-finger vertical drags start here.
     func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
-        other is UILongPressGestureRecognizer || other is UITapGestureRecognizer
+        if g is UIPinchGestureRecognizer || other is UIPinchGestureRecognizer { return false }
+        return other is UILongPressGestureRecognizer || other is UITapGestureRecognizer
     }
 
     override func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {

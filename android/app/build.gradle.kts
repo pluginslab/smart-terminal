@@ -11,8 +11,8 @@ android {
         applicationId = "com.pluginslab.smartterminal.pad"
         minSdk = 33
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.3.1"
     }
     // Release signing: the key's path and password come from ~/.gradle/gradle.properties
     // (never this repo); the key is backed up in ~/servers/CREDENTIALS.md.
