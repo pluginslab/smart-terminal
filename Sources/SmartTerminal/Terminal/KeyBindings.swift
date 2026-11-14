@@ -20,7 +20,10 @@ enum KeyBindings {
     }
 
     private static func handle(_ event: NSEvent) -> NSEvent? {
-        guard let view = event.window?.firstResponder as? SmartTerminalView,
+        // Locked: TerminalWindow drops keys aimed at a terminal, but this monitor runs
+        // before the window sees the event, so it has to step aside on its own.
+        guard !AppLock.shared.locked,
+              let view = event.window?.firstResponder as? SmartTerminalView,
               let bytes = bytes(for: event, in: view) else { return event }
         // The app's own shortcuts win, as the menus do in Terminal.app (⌃⌥← moves a tab).
         if NSApp.mainMenu?.performKeyEquivalent(with: event) == true { return nil }
