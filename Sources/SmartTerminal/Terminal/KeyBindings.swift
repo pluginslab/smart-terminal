@@ -1,9 +1,10 @@
 import AppKit
 import SmartTerminalCore
 
-/// Applies Terminal.app's Option key bindings (`TerminalKeyMap`) to the focused tab.
+/// Applies Terminal.app's Option key bindings (`TerminalKeyMap`) to the focused tab, and
+/// the line shortcuts with Command (⌘← ⌘→ ⌘⌫ ⌘⌦) a Mac text field has.
 ///
-/// Terminal.app applies them in its terminal view. Here that would be SwiftTerm's
+/// Terminal.app applies its bindings in its terminal view. Here that would be SwiftTerm's
 /// `keyDown`, which is public, not open, and settles some Option keys before the text
 /// system sees them: ⌥⌦ goes out as a plain forward delete, and so does every
 /// functional key once a program turns on the kitty keyboard protocol. So the binding
@@ -32,11 +33,13 @@ enum KeyBindings {
     }
 
     private static func bytes(for event: NSEvent, in view: SmartTerminalView) -> [UInt8]? {
-        let flags = event.modifierFlags
-        // Not while a dead key or an input method is composing: the binding would cut it off.
-        guard !view.keyMap.isEmpty, flags.contains(.option), !flags.contains(.command),
-              !view.hasMarkedText(), let key = event.charactersIgnoringModifiers?.utf16.first else { return nil }
         // Arrows also carry .function and .numericPad, which Terminal's bindings don't name.
+        let flags = event.modifierFlags.intersection([.command, .option, .control, .shift])
+        // Not while a dead key or an input method is composing: the binding would cut it off.
+        guard !view.hasMarkedText(), let key = event.charactersIgnoringModifiers?.utf16.first else { return nil }
+        // Command alone; ⌘⇧← and the like stay as they were.
+        if flags == .command { return TerminalKeyMap.commandLineEditing(key: key) }
+        guard !view.keyMap.isEmpty, flags.contains(.option), !flags.contains(.command) else { return nil }
         var modifiers: TerminalKeyMap.Modifiers = [.option]
         if flags.contains(.control) { modifiers.insert(.control) }
         if flags.contains(.shift) { modifiers.insert(.shift) }

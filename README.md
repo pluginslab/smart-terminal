@@ -87,6 +87,7 @@ work in both.
 | Reopen a closed window (its tabs and groups) | `⌘⇧T` |
 | Resume every Claude and tmux session after a restart | *Shell → Resume All Sessions* |
 | Font size, clear, find | `⌘+` `⌘-` `⌘0`, `⌘K`, `⌘F` |
+| At the prompt: start or end of the line, delete to its start or end (sent as `⌃A` `⌃E` `⌃U` `⌃K`) | `⌘←` `⌘→`, `⌘⌫` `⌘⌦` |
 
 **Dragging in the strip.** Where you drop a tab decides its group, the same way Chrome does:
 

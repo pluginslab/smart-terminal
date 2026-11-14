@@ -67,6 +67,16 @@ import Testing
         #expect(map.bytes(modifiers: [.option], key: 0x74) == nil)
     }
 
+    @Test func commandSendsLineEditingKeys() {
+        #expect(TerminalKeyMap.commandLineEditing(key: 0xF702) == [0x01])
+        #expect(TerminalKeyMap.commandLineEditing(key: 0xF703) == [0x05])
+        #expect(TerminalKeyMap.commandLineEditing(key: 0x7F) == [0x15])
+        #expect(TerminalKeyMap.commandLineEditing(key: 0xF728) == [0x0B])
+        // ⌘↑, ⌘C and the rest are left to the menus and the terminal.
+        #expect(TerminalKeyMap.commandLineEditing(key: 0xF700) == nil)
+        #expect(TerminalKeyMap.commandLineEditing(key: 0x63) == nil)
+    }
+
     @Test func emptyByDefault() {
         #expect(TerminalKeyMap().isEmpty)
         #expect(TerminalKeyMap(entries: ["$F702": esc + "[1;2D"]).isEmpty)

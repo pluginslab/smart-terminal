@@ -48,6 +48,23 @@ public struct TerminalKeyMap: Equatable, Sendable {
         bindings[Chord(modifiers: modifiers, key: key)]
     }
 
+    /// What a key with Command alone sends, for the line shortcuts of a Mac text field:
+    /// ⌘← and ⌘→ go to the start and end of the line, ⌘⌫ deletes back to its start and
+    /// ⌘⌦ to its end. Terminal.app can't bind them (its key editor has no ⌘), and
+    /// SwiftTerm hands them to the text system, which sends ⌘← and ⌘→ as a word jump
+    /// and nothing for ⌘⌫. They go out as the Emacs keys that shells and line editors
+    /// already know: ⌃A, ⌃E, ⌃U and ⌃K. iTerm2's "Natural Text Editing" preset sends the
+    /// same for ⌘←, ⌘→ and ⌘⌫.
+    public static func commandLineEditing(key: UInt16) -> [UInt8]? {
+        switch key {
+        case 0xF702: [0x01]  // ⌘←  ⌃A  start of line
+        case 0xF703: [0x05]  // ⌘→  ⌃E  end of line
+        case 0x7F: [0x15]    // ⌘⌫  ⌃U  delete to the start
+        case 0xF728: [0x0B]  // ⌘⌦  ⌃K  delete to the end
+        default: nil
+        }
+    }
+
     /// "~^F728": modifier prefixes (^ control, ~ option, $ shift), then the key as four
     /// hex digits. Keypad (#) and Command (@) bindings are left out: arrows always carry
     /// the keypad flag, so it can't tell them apart, and Terminal's editor can't bind ⌘.

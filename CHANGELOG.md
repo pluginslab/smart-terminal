@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 - Fixed: Option keys do what they do in Terminal.app. The key bindings of your default profile (Settings > Profiles > Keyboard), or Terminal's own when the profile has none, are applied: ⌥← and ⌥→ jump a word, and a profile that binds ⌥⌫ to `\033\177` deletes one, while Option still types accents and ç. With Option not set as Meta (Terminal's default), ⌥← and ⌥⌫ sent nothing, ⌥⌦ deleted one character and ⌥P typed π. Only bindings with Option are applied: SwiftTerm already sends the same sequences for the others. The app's own shortcuts still come first (⌃⌥← moves a tab).
+- Added: the line shortcuts of a Mac text field work at the prompt. ⌘← and ⌘→ go to the start and end of the line, ⌘⌫ deletes back to its start and ⌘⌦ to its end, sent as ⌃A, ⌃E, ⌃U and ⌃K, which shells and Claude Code already understand (iTerm2's "Natural Text Editing" preset sends the same for ⌘←, ⌘→ and ⌘⌫). Before, ⌘← and ⌘→ jumped a word, and ⌘⌫ and ⌘⌦ sent nothing. Only Command alone: ⌃⌘← still goes back through the tabs, and ⌘⇧← is left as it was.
 
 ## [iPad 0.3.0] - 2026-11-12
 - iPad: swipe a session left to close it, or all the way across. Closing asks first (from the swipe and from the long-press menu), since it kills the tmux session on the host and whatever runs in it.
