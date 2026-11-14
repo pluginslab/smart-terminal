@@ -1,5 +1,11 @@
 # Changelog
 
+## [iPad 0.3.1] - 2026-11-14
+- iPad: a tap on the terminal no longer raises the on-screen keyboard; the key bar's keyboard button does. Long-press still focuses (for copy and paste), and with a hardware keyboard a tap focuses as before.
+
+## [0.18.0] - 2026-11-14
+- ⌘1…⌘8 now pick a group (in strip order, ⌘9 the last), back on the tab last shown in it; the sidebar layout shows that group. ⌥⌘1…⌥⌘8 pick a tab within the current tab's group (or among the ungrouped tabs), ⌥⌘9 the last. Not ⇧⌘: macOS keeps ⇧⌘3/4/5 for screenshots. Either beeps when there's nothing at that number.
+
 ## [iPad 0.3.0] - 2026-11-12
 - iPad: swipe a session left to close it, or all the way across. Closing asks first (from the swipe and from the long-press menu), since it kills the tmux session on the host and whatever runs in it.
 - iPad: hide the lists in landscape as in portrait: the button in the sessions header (⇧⌘F) gives the terminal the full width. The sidebar button, ⇧⌘F or a swipe from the left edge lays them over the terminal, picking a session puts them away again, and the pin puts the sessions column back beside the terminal (the groups column only if you opened it).

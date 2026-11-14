@@ -1,5 +1,6 @@
 import UIKit
 import SwiftTerm
+import GameController
 import Citadel
 import NIOCore
 import NIOSSH
@@ -154,6 +155,17 @@ final class PadTerminalView: TerminalView, UIGestureRecognizerDelegate {
     }
 
     required init?(coder: NSCoder) { fatalError() }
+
+    /// A tap on the terminal doesn't raise the on-screen keyboard (SwiftTerm focuses
+    /// on tap); the key bar's keyboard button does. Long-press still focuses, for the
+    /// copy/paste menu, and with a hardware keyboard a tap focuses as before.
+    override func becomeFirstResponder() -> Bool {
+        if !isFirstResponder, GCKeyboard.coalesced == nil,
+           gestureRecognizers?.contains(where: { $0 is UITapGestureRecognizer && $0.state == .ended }) == true {
+            return false
+        }
+        return super.becomeFirstResponder()
+    }
 
     /// Don't install SwiftTerm's drag-as-mouse gesture; scrolling is handled here.
     override func mouseModeChanged(source: Terminal) {}

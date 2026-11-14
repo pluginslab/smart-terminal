@@ -80,7 +80,9 @@ work in both.
 | Collapse or expand a group (strip) | click its chip, or `⌥⌘C` |
 | Name, color, ungroup, close or move a group | double-click or right-click it in the left column, or its chip in the strip |
 | Move a tab left or right **within its group** | `⌃⌥←` `⌃⌥→` |
-| Switch tabs | `⌘1`…`⌘8`, `⌘9` for the last, `⌃Tab` / `⌃⇧Tab`, `⌘⇧]` / `⌘⇧[` |
+| Switch groups | `⌘1`…`⌘8`, `⌘9` for the last (back to the tab last shown there) |
+| Switch tabs in the group | `⌥⌘1`…`⌥⌘8`, `⌥⌘9` for the last |
+| Switch tabs | `⌃Tab` / `⌃⇧Tab`, `⌘⇧]` / `⌘⇧[` |
 | Back and forward through the tabs you looked at, as in Slack | `⌃⌘←` / `⌃⌘→`, or the arrows left of the title above the terminal |
 | Move a tab or group to a new window | drag it onto the desktop, or right-click → *Move to New Window* |
 | New window, close tab, close window | `⌘N`, `⌘W`, `⌘⇧W` |

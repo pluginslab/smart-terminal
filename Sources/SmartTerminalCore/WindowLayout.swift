@@ -128,6 +128,38 @@ public struct WindowLayout: Identifiable, Codable, Hashable, Sendable {
         select(visible[i].id)
     }
 
+    /// ⌘1…⌘8 pick the nth group (strip order), ⌘9 the last: the tab last shown there
+    /// (the first of `recent`, newest first, that's in it), else its first tab.
+    /// False when there's no such group.
+    @discardableResult
+    public mutating func selectGroup(number: Int, recent: [UUID] = []) -> Bool {
+        let groups = orderedGroups
+        guard let i = Self.position(number, count: groups.count) else { return false }
+        let members = tabs(in: groups[i].id)
+        guard let tab = recent.lazy.compactMap({ id in members.first { $0.id == id } }).first ?? members.first
+        else { return false }
+        select(tab.id)
+        return true
+    }
+
+    /// ⌥⌘1…⌥⌘8 pick the nth tab of the active tab's group (or of the ungrouped tabs),
+    /// ⌥⌘9 the last. Collapsed or not: picking one expands its group. False when there's none.
+    @discardableResult
+    public mutating func selectNumberInGroup(_ number: Int) -> Bool {
+        let group = activeTab?.groupID
+        let members = tabs.filter { $0.groupID == group }
+        guard let i = Self.position(number, count: members.count) else { return false }
+        select(members[i].id)
+        return true
+    }
+
+    /// 1…8 is that position, 9 the last.
+    private static func position(_ number: Int, count: Int) -> Int? {
+        guard count > 0, number >= 1 else { return nil }
+        let i = number == 9 ? count - 1 : number - 1
+        return i < count ? i : nil
+    }
+
     public mutating func updateTab(_ id: UUID, _ change: (inout TerminalTab) -> Void) {
         guard let i = index(of: id) else { return }
         let group = tabs[i].groupID

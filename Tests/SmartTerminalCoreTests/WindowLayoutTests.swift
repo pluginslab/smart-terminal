@@ -193,6 +193,32 @@ func render(_ w: WindowLayout) -> String {
         #expect(w.activeTab?.displayTitle == "e")
     }
 
+    @Test func selectGroupPicksTheGroupsLastShownTabAndNineIsLast() {
+        var (w, t, _) = make("a [G: b c] d [H: e f]")
+        w.select(t["a"]!)
+        do { let ok = w.selectGroup(number: 1); #expect(ok) }
+        #expect(w.activeTab?.displayTitle == "b")
+        do { let ok = w.selectGroup(number: 9, recent: [t["f"]!, t["c"]!]); #expect(ok) }
+        #expect(w.activeTab?.displayTitle == "f")
+        do { let ok = w.selectGroup(number: 1, recent: [t["f"]!, t["c"]!]); #expect(ok) }
+        #expect(w.activeTab?.displayTitle == "c")
+        do { let ok = w.selectGroup(number: 3); #expect(!ok) }
+    }
+
+    @Test func selectNumberInGroupStaysInTheActiveGroup() {
+        var (w, t, g) = make("a [G: b c d] e")
+        w.setCollapsed(g["G"]!, true)
+        w.select(t["c"]!)
+        do { let ok = w.selectNumberInGroup(1); #expect(ok) }
+        #expect(w.activeTab?.displayTitle == "b")
+        do { let ok = w.selectNumberInGroup(9); #expect(ok) }
+        #expect(w.activeTab?.displayTitle == "d")
+        do { let ok = w.selectNumberInGroup(4); #expect(!ok) }
+        w.select(t["e"]!)
+        do { let ok = w.selectNumberInGroup(1); #expect(ok) }
+        #expect(w.activeTab?.displayTitle == "a")
+    }
+
     @Test func selectRelativeWraps() {
         var (w, t, _) = make("a b c")
         w.select(t["c"]!)

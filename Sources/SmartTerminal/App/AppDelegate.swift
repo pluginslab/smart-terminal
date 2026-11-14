@@ -221,8 +221,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
         if let id = keyWindowID { model.update(id) { $0.selectRelative(-1) }; clearActive() }
     }
 
+    @objc func selectGroupByNumber(_ sender: NSMenuItem) {
+        guard let id = keyWindowID else { return }
+        let recent = Array((model.tabHistory[id]?.entries ?? []).reversed())
+        var ok = false
+        model.update(id) { ok = $0.selectGroup(number: sender.tag, recent: recent) }
+        guard ok else { NSSound.beep(); return }
+        if let g = model.window(id)?.activeTab?.groupID { model.shownGroupRequest[id] = g }
+        clearActive()
+    }
+
     @objc func selectTabByNumber(_ sender: NSMenuItem) {
-        if let id = keyWindowID { model.update(id) { $0.selectNumber(sender.tag) }; clearActive() }
+        guard let id = keyWindowID else { return }
+        var ok = false
+        model.update(id) { ok = $0.selectNumberInGroup(sender.tag) }
+        if ok { clearActive() } else { NSSound.beep() }
     }
 
     private func clearActive() {
@@ -284,7 +297,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, 
             return wid.map { model.canGoInHistory(-1, in: $0) } ?? false
         case #selector(tabHistoryForward(_:)):
             return wid.map { model.canGoInHistory(1, in: $0) } ?? false
-        case #selector(selectNextTab(_:)), #selector(selectPreviousTab(_:)), #selector(selectTabByNumber(_:)):
+        case #selector(selectNextTab(_:)), #selector(selectPreviousTab(_:)), #selector(selectTabByNumber(_:)), #selector(selectGroupByNumber(_:)):
             return wid != nil
         default:
             return true

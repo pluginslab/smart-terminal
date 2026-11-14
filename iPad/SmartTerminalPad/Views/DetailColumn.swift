@@ -139,8 +139,8 @@ private struct TerminalHost: UIViewRepresentable {
             if pane.state == .ended { pane.detach() }
             pane.attach(using: client)
         }
-        // Picking a session doesn't raise the on-screen keyboard: a tap on the terminal
-        // does (SwiftTerm focuses on tap). With a hardware keyboard nothing pops up,
+        // Picking a session doesn't raise the on-screen keyboard; only the key bar's
+        // keyboard button does (see PadTerminalView). With a hardware keyboard nothing pops up,
         // so focus straight away and typing goes to the session just picked.
         if GCKeyboard.coalesced != nil {
             DispatchQueue.main.async { _ = pane.view.becomeFirstResponder() }

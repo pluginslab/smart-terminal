@@ -70,6 +70,12 @@ struct TabSidebarLayout<Detail: View>: View {
             }
             remember(tab)
         }
+        // ⌘1…⌘9: the group itself, not just its tab inside All Sessions.
+        .onChange(of: model.shownGroupRequest[windowID]) { _, new in
+            guard let new else { return }
+            category = .group(new)
+            model.shownGroupRequest[windowID] = nil
+        }
         #if DEBUG
         .onChange(of: DebugUI.shared.category) { _, new in
             if let new { category = new; DebugUI.shared.category = nil }

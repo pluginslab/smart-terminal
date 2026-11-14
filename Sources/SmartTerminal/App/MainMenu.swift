@@ -105,9 +105,16 @@ enum MainMenu {
             item("Show Previous Tab", #selector(AppDelegate.selectPreviousTab(_:)), "\t", [.control, .shift]).hiddenAlternate(),
             .separator(),
         ]
+        // ⌘ picks the group, ⌥⌘ the tab within the current group. (Not ⇧⌘: macOS
+        // keeps ⇧⌘3/4/5 for screenshots.)
         for n in 1...9 {
-            tabItems.append(item(n == 9 ? "Show Last Tab" : "Show Tab \(n)",
-                                 #selector(AppDelegate.selectTabByNumber(_:)), "\(n)", tag: n))
+            tabItems.append(item(n == 9 ? "Show Last Group" : "Show Group \(n)",
+                                 #selector(AppDelegate.selectGroupByNumber(_:)), "\(n)", tag: n))
+        }
+        tabItems.append(.separator())
+        for n in 1...9 {
+            tabItems.append(item(n == 9 ? "Show Last Tab in Group" : "Show Tab \(n) in Group",
+                                 #selector(AppDelegate.selectTabByNumber(_:)), "\(n)", [.command, .option], tag: n))
         }
         _ = submenu("Tab", tabItems)
 

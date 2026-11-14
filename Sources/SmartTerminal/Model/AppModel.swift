@@ -41,6 +41,8 @@ final class AppModel {
     var renamingTabID: UUID?
     var editingGroupID: UUID?
     var currentDrag: DragPayload?
+    /// ⌘1…⌘9 picked a group: the sidebar layout shows it in its left column (per window).
+    var shownGroupRequest: [UUID: UUID] = [:]
     var dropHint: DropHint?
     /// What views draw: a hint only counts while a drag is actually in flight.
     var activeDropHint: DropHint? { currentDrag == nil ? nil : dropHint }
