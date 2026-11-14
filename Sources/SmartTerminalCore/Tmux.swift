@@ -106,12 +106,15 @@ public enum TabRecovery: Equatable, Sendable {
     case recreate(TmuxSessionRef, agent: AgentSessionRef?)
     /// The tab was in ssh, attached to tmux on the other host: run the same ssh again.
     case reconnect(RemoteSessionRef)
+    /// The tab ran Claude Code's agent view: attach to the background session it had
+    /// open (still running in the daemon), or open the list.
+    case attach(AgentViewRef)
 
     public var agent: AgentSessionRef? {
         switch self {
         case .resume(let a): a
         case .reattach(_, let a), .recreate(_, let a): a
-        case .reconnect: nil
+        case .reconnect, .attach: nil
         }
     }
 
@@ -122,15 +125,18 @@ public enum TabRecovery: Equatable, Sendable {
         case .reattach(let t, _): t.attachCommand
         case .recreate(let t, let a): t.recreateCommand(cwd: a?.cwd ?? cwd, command: a?.resumeCommand, tabID: tabID)
         case .reconnect(let r): r.command
+        case .attach(let v): v.command
         }
     }
 
     /// Picks the offer for a tab's saved references. `tmuxAlive` asks the tmux server.
     public static func make(agent: AgentSessionRef?, tmux: TmuxSessionRef?, remote: RemoteSessionRef? = nil,
+                            agentView: AgentViewRef? = nil,
                             tmuxAlive: (TmuxSessionRef) -> Bool) -> TabRecovery? {
         if let remote { return .reconnect(remote) }
         if let tmux { return tmuxAlive(tmux) ? .reattach(tmux, agent: agent) : .recreate(tmux, agent: agent) }
-        return agent.map { .resume($0) }
+        if let agent { return .resume(agent) }
+        return agentView.map { .attach($0) }
     }
 }
 

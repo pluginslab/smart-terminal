@@ -82,7 +82,8 @@ struct VisualEffectBackground: NSViewRepresentable {
     func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
 }
 
-/// Offered after a restart when Claude Code, or a tmux session, was running in this tab.
+/// Offered after a restart when Claude Code (a session, or its agent view), or a tmux
+/// session, was running in this tab.
 struct ResumeBar: View {
     @Environment(\.panelPalette) private var palette
     let recovery: TabRecovery
@@ -93,7 +94,7 @@ struct ResumeBar: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: recovery.agent == nil ? "square.stack.3d.up" : "asterisk")
+            Image(systemName: isClaude ? "asterisk" : "square.stack.3d.up")
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(ClaudeGlyph.claudeOrange)
             Text(message)
@@ -118,6 +119,11 @@ struct ResumeBar: View {
 
     private func quoted(_ s: String?) -> String { s.map { "“\($0)”" } ?? "" }
 
+    private var isClaude: Bool {
+        if case .attach = recovery { return true }
+        return recovery.agent != nil
+    }
+
     private var claude: String { "Claude session \(quoted(recovery.agent?.title))" }
 
     private var message: String {
@@ -132,6 +138,9 @@ struct ResumeBar: View {
                 : "\(claude) was running here in tmux \(quoted(t.session)), which has ended."
         case .reconnect(let r):
             "tmux \(quoted(r.session ?? "session")) on \(r.host ?? "the remote host") was attached here over ssh."
+        case .attach(let v):
+            v.jobID == nil ? "Claude Code's agent view was open here."
+                : "Background Claude session \(quoted(v.name ?? v.jobID)) was open here. It runs in Claude Code's daemon."
         }
     }
 
@@ -141,6 +150,7 @@ struct ResumeBar: View {
         case .reattach: "Reattach"
         case .recreate(_, let agent): agent == nil ? "Recreate" : "Resume in tmux"
         case .reconnect: "Reconnect"
+        case .attach(let v): v.jobID == nil ? "Open Agents" : "Attach"
         }
     }
 }

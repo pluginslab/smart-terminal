@@ -145,6 +145,17 @@ Claude still running in it on the other machine. Only ssh that attaches to tmux
 command never runs again by itself. If the connection drops (sleep, Wi-Fi, the host restarting), the
 tab keeps it and offers **Reconnect** right away; *Dismiss* forgets it.
 
+**Claude Code's agent view** (`claude agents`, the list of the background sessions
+`claude --bg` starts) comes back as well. Those sessions run in Claude Code's daemon,
+not in the tab, so quitting the app doesn't stop them; `claude --resume` would start a
+second copy of one that is still running. Instead the tab remembers the session it had
+open and offers **Attach**, which types `claude attach <id>`, or **Open Agents**
+(`claude agents`) if the list was up. Which session that is comes from the terminal title
+Claude Code sets: an attached session's name, "claude agents" on the list. When the title
+doesn't say (attaching to an idle session from the list sets none, and two sessions can
+share a name) the tab comes back to the list. Quit the agent view yourself and the tab
+forgets it.
+
 A **tmux** pill at the top right of a session row says it runs in tmux, and
 **tmux · host** for tmux over ssh. Hover it for the session's name.
 

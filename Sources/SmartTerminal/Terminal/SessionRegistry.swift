@@ -29,7 +29,8 @@ final class SessionRegistry {
             self?.model?.sessionUpdated(tabID: s.tabID, autoTitle: s.autoTitle, cwd: s.currentDirectory)
             self?.model?.agentUpdated(tabID: s.tabID, agent: s.agent, ref: s.agentRef,
                                       agentStillRunning: s.agentStillRunning, tmux: s.tmuxSession,
-                                      remote: s.remoteSession)
+                                      remote: s.remoteSession, agentView: s.agentView,
+                                      agentViewStillRunning: s.agentViewStillRunning)
         }
         s.onTerminalTitle = { [weak self] s in
             self?.model?.titleBarChanged(tabID: s.tabID, info: TitleBarInfo(

@@ -220,9 +220,9 @@ struct ClaudeSessionReference {
     let transcriptPath: String?
 
     init?(tab: TerminalTab, agent: AgentSnapshot?) {
-        guard let id = agent?.sessionID ?? tab.agentSession?.sessionID else { return nil }
+        guard let id = agent?.sessionID ?? tab.agentSession?.sessionID ?? tab.agentView?.sessionID else { return nil }
         sessionID = id
-        title = agent?.title ?? tab.agentSession?.title
+        title = agent?.title ?? tab.agentSession?.title ?? tab.agentView?.name
         transcriptPath = agent?.transcriptPath ?? Self.findTranscript(id)
     }
 

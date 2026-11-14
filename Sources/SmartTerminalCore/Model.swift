@@ -36,10 +36,13 @@ public struct TerminalTab: Identifiable, Codable, Hashable, Sendable {
     public var tmuxSession: TmuxSessionRef?
     /// ssh to tmux on another host (cc-super) when last seen; run again after a restart.
     public var remoteSession: RemoteSessionRef?
+    /// Claude Code's agent view (`claude agents`) when last seen, with the background
+    /// session it had open; attached again after a restart.
+    public var agentView: AgentViewRef?
 
     public init(id: UUID = UUID(), customTitle: String? = nil, autoTitle: String = "Terminal",
                 cwd: String? = nil, groupID: UUID? = nil, agentSession: AgentSessionRef? = nil,
-                tmuxSession: TmuxSessionRef? = nil) {
+                tmuxSession: TmuxSessionRef? = nil, agentView: AgentViewRef? = nil) {
         self.id = id
         self.customTitle = customTitle
         self.autoTitle = autoTitle
@@ -47,6 +50,7 @@ public struct TerminalTab: Identifiable, Codable, Hashable, Sendable {
         self.groupID = groupID
         self.agentSession = agentSession
         self.tmuxSession = tmuxSession
+        self.agentView = agentView
     }
 
     public var displayTitle: String {

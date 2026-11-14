@@ -74,6 +74,13 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
     /// The ssh client `remoteSession` was read from.
     private var remotePID: pid_t = 0
     var agentStillRunning: Bool { lastAgentPID > 0 && kill(lastAgentPID, 0) == 0 }
+    /// Set while Claude Code's agent view is in front: the background session it shows,
+    /// or the list (persisted for after a restart).
+    private(set) var agentView: AgentViewRef?
+    private var agentViewTracker = AgentViewTracker()
+    /// The agent-view client last seen here; suspended (^Z) isn't gone.
+    private var lastAgentViewPID: pid_t = 0
+    var agentViewStillRunning: Bool { lastAgentViewPID > 0 && kill(lastAgentViewPID, 0) == 0 }
 
     var onChange: ((TerminalSession) -> Void)?
     /// Title-bar inputs changed: program title (every spinner frame), command, grid size.
@@ -207,6 +214,16 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
         }
         let newAgent = claude.update(foregroundPGID: claudeGroup, terminalTitle: title, titleNeedsRecord: claudeGroup != pgid)
         if newAgent != nil { lastAgentPID = claude.pid }
+        // Claude Code's agent view in front: its sessions run in the daemon, so after a
+        // restart the tab attaches again instead of resuming anything.
+        var newAgentView: AgentViewRef?
+        if newTmux == nil, newRemote == nil, let pgid, !claude.hasRecord,
+           let client = ClaudeWatcher.clientProcess(inGroup: pgid) {
+            let args = client == agentViewTracker.pid ? [] : ProcessInspector.arguments(of: client) ?? []
+            newAgentView = agentViewTracker.update(pid: client, arguments: args, title: shellTitle,
+                                                   sessions: ClaudeWatcher.backgroundSessions)
+            if newAgentView != nil { lastAgentViewPID = client }
+        }
         let newCommand = Self.describeCommand(leader: pgid, shell: shellPath)
         if newCommand != commandLine {
             commandLine = newCommand
@@ -214,13 +231,15 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate {
         }
         // Always report the first poll: a tab that starts in its folder and whose shell
         // never sets a title would otherwise keep the placeholder name.
-        if !reportedOnce || cwd != currentDirectory || fg != foregroundProcess || newAgent != agent || newTmux != tmuxSession || newRemote != remoteSession {
+        if !reportedOnce || cwd != currentDirectory || fg != foregroundProcess || newAgent != agent || newTmux != tmuxSession
+            || newRemote != remoteSession || newAgentView != agentView {
             reportedOnce = true
             currentDirectory = cwd
             foregroundProcess = fg
             agent = newAgent
             tmuxSession = newTmux
             remoteSession = newRemote
+            agentView = newAgentView
             onChange?(self)
         }
     }

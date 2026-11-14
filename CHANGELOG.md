@@ -1,5 +1,8 @@
 # Changelog
 
+## [Unreleased]
+- New: Claude Code's agent view comes back after a restart. A tab running `claude agents` (the list of background sessions, `claude --bg`) or `claude attach <id>` remembers the session it had open and offers **Attach**, which types `claude attach <id>`; on the list it offers **Open Agents** (`claude agents`). Those sessions run in Claude Code's daemon and never stopped, so nothing is resumed and none runs twice. The session is told by the terminal title Claude Code sets (its name; "claude agents" for the list); when the title doesn't say, as when attaching to an idle session from the list, the tab comes back to the list. *Shell ▸ Resume All Sessions* and *Resume Sessions When Opened* include these tabs.
+
 ## [iPad 0.3.0] - 2026-11-12
 - iPad: swipe a session left to close it, or all the way across. Closing asks first (from the swipe and from the long-press menu), since it kills the tmux session on the host and whatever runs in it.
 - iPad: hide the lists in landscape as in portrait: the button in the sessions header (⇧⌘F) gives the terminal the full width. The sidebar button, ⇧⌘F or a swipe from the left edge lays them over the terminal, picking a session puts them away again, and the pin puts the sessions column back beside the terminal (the groups column only if you opened it).

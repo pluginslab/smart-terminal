@@ -269,9 +269,10 @@ final class DebugChannel {
                 let title = model.layout.windows.lazy.compactMap { $0.tab(id) }.first?.displayTitle ?? "?"
                 out.append("\(title): \(a.status.rawValue) waitingFor=\(a.waitingFor ?? "-") attention=\(model.attention.contains(id))")
             }
-            for tab in model.layout.windows.flatMap(\.tabs) where tab.agentSession != nil || tab.tmuxSession != nil || tab.remoteSession != nil {
+            for tab in model.layout.windows.flatMap(\.tabs) where tab.agentSession != nil || tab.tmuxSession != nil
+                || tab.remoteSession != nil || tab.agentView != nil {
                 let rec = model.recovery(tab.id).map { "\($0)" } ?? "-"
-                out.append("saved \(tab.displayTitle): claude=\(tab.agentSession?.sessionID ?? "-") cwd=\(tab.agentSession?.cwd ?? "-") tmux=\(tab.tmuxSession?.session ?? "-") \(tab.tmuxSession?.socketArgs ?? []) remote=\(tab.remoteSession?.host ?? "-") recovery=\(rec)")
+                out.append("saved \(tab.displayTitle): claude=\(tab.agentSession?.sessionID ?? "-") cwd=\(tab.agentSession?.cwd ?? "-") tmux=\(tab.tmuxSession?.session ?? "-") \(tab.tmuxSession?.socketArgs ?? []) remote=\(tab.remoteSession?.host ?? "-") agentView=\(tab.agentView.map { $0.jobID ?? "list" } ?? "-") recovery=\(rec)")
             }
             let path = a1
             UNUserNotificationCenter.current().getNotificationSettings { settings in

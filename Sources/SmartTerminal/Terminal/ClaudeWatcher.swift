@@ -80,6 +80,30 @@ final class ClaudeWatcher {
         return ProcessInspector.children(of: pgid).first { getpgid($0) == pgid && hasRecord($0) } ?? pgid
     }
 
+    /// Whether the last update found a session file for the Claude in front.
+    var hasRecord: Bool { record != nil }
+
+    /// A `claude` in the group with no session file of its own: a client of Claude
+    /// Code's agent view (`claude agents`, `claude attach`), or a `claude` that hasn't
+    /// written its file yet; the caller tells them apart by its argv and title.
+    static func clientProcess(inGroup pgid: pid_t) -> pid_t? {
+        let candidates = [pgid] + ProcessInspector.children(of: pgid).filter { getpgid($0) == pgid }
+        return candidates.first { ProcessInspector.name(of: $0) == "claude" && sessionRecord(pid: $0) == nil }
+    }
+
+    /// The background sessions the Claude Code daemon is running now (live pids only:
+    /// a crash can leave a file behind).
+    static func backgroundSessions() -> [BackgroundSessionRecord] {
+        let dir = claudeDir.appendingPathComponent("sessions")
+        let files = (try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? []
+        return files.filter { $0.hasSuffix(".json") }.compactMap { file in
+            guard let data = try? Data(contentsOf: dir.appendingPathComponent(file)),
+                  let rec = try? JSONDecoder().decode(BackgroundSessionRecord.self, from: data),
+                  rec.isBackground, kill(rec.pid, 0) == 0 else { return nil }
+            return rec
+        }
+    }
+
     /// `~/.claude/sessions/<pid>.json`, if that pid is a live Claude Code session.
     static func sessionRecord(pid: pid_t) -> ClaudeSessionRecord? {
         let url = Self.claudeDir.appendingPathComponent("sessions/\(pid).json")
