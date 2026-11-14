@@ -241,7 +241,10 @@ final class DebugChannel {
             let arrows: [UInt16: Int] = [123: NSLeftArrowFunctionKey, 124: NSRightArrowFunctionKey,
                                          125: NSDownArrowFunctionKey, 126: NSUpArrowFunctionKey]
             if arrows[code] != nil { flags.formUnion([.function, .numericPad]) }
-            let chars = arrows[code].map { String(UnicodeScalar($0)!) } ?? ""
+            // ⌫ and ⌦, so the key bindings can be checked: they look at the characters.
+            let deletes: [UInt16: Int] = [51: 0x7F, 117: NSDeleteFunctionKey]
+            if code == 117 { flags.insert(.function) }
+            let chars = (arrows[code] ?? deletes[code]).map { String(UnicodeScalar($0)!) } ?? ""
             for type in [NSEvent.EventType.keyDown, .keyUp] {
                 if let e = NSEvent.keyEvent(with: type, location: .zero, modifierFlags: flags, timestamp: ProcessInfo.processInfo.systemUptime,
                                             windowNumber: window.windowNumber, context: nil, characters: chars,
