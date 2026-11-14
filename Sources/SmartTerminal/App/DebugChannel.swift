@@ -146,11 +146,12 @@ final class DebugChannel {
                 try? png.write(to: URL(fileURLWithPath: a1))
             }
         case "category":
-            // Picks a groups-column row: category all | ungrouped | <group name>
+            // Picks a groups-column row: category all | ungrouped | stray | <group name>
             guard let w = keyWindowID, let win = model.window(w) else { return }
             DebugUI.shared.category = switch a1 {
             case "all": .all
             case "ungrouped": .ungrouped
+            case "stray": .stray
             default: win.orderedGroups.first { $0.name == a1 }.map { .group($0.id) }
             }
         case "history":

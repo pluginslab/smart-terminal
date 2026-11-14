@@ -14,6 +14,7 @@
 		4A5E087247007B58A95386FA /* PadModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FEA3E12BFC282C776B7BC76 /* PadModel.swift */; };
 		5503157F4A85BE46674CF550 /* FiraCodeNerdFontMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = EC595A7DDCE47830D81010A8 /* FiraCodeNerdFontMono-Bold.ttf */; };
 		72607D5BB0505FBDE696F433 /* Dictation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4661658435A90EFB4BBE564 /* Dictation.swift */; };
+		76913CF3996889493593828D /* CommandAssist.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D0D96CFF4858DACB9B93ECC /* CommandAssist.swift */; };
 		7B436C8607032E4FEAC38830 /* FiraCodeNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 9E9335DD7E9D8C006760247E /* FiraCodeNerdFontMono-Regular.ttf */; };
 		8286F816A71786F06A249095 /* SmartTerminalCore in Frameworks */ = {isa = PBXBuildFile; productRef = A343C546ED015E8ECCB778BC /* SmartTerminalCore */; };
 		8BB8B837B145CA4CE0B52F38 /* KeyBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B77E9B2D66FB8769F7C9183 /* KeyBar.swift */; };
@@ -35,6 +36,7 @@
 /* Begin PBXFileReference section */
 		0494622D7FA96B753FFF4437 /* DeviceKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceKey.swift; sourceTree = "<group>"; };
 		0D0D31BB0F66445A77AD5398 /* LockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockView.swift; sourceTree = "<group>"; };
+		0D0D96CFF4858DACB9B93ECC /* CommandAssist.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandAssist.swift; sourceTree = "<group>"; };
 		1FEA3E12BFC282C776B7BC76 /* PadModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PadModel.swift; sourceTree = "<group>"; };
 		24D9D0BB5A0AAE319FD096D2 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		2B77E9B2D66FB8769F7C9183 /* KeyBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyBar.swift; sourceTree = "<group>"; };
@@ -84,6 +86,7 @@
 		323A7E55E93F0B3437F33EFB /* Dictation */ = {
 			isa = PBXGroup;
 			children = (
+				0D0D96CFF4858DACB9B93ECC /* CommandAssist.swift */,
 				E4661658435A90EFB4BBE564 /* Dictation.swift */,
 				6F75FFE16324556693766E45 /* DictationConfig.swift */,
 				B453DFDD47CDAD9C404B6F75 /* Recorder.swift */,
@@ -267,6 +270,7 @@
 			files = (
 				BCC4AAA453C94F1E2121A23B /* App.swift in Sources */,
 				A891B3DFAD55FE2BF01DDEC7 /* AppLock.swift in Sources */,
+				76913CF3996889493593828D /* CommandAssist.swift in Sources */,
 				E14C373C23386A7A475FF558 /* DetailColumn.swift in Sources */,
 				9EDECF1075B213543D67EC78 /* DeviceKey.swift in Sources */,
 				72607D5BB0505FBDE696F433 /* Dictation.swift in Sources */,
@@ -304,17 +308,18 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.3.1;
+				MARKETING_VERSION = 0.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pluginslab.smartterminal.pad;
 				PRODUCT_NAME = "Smart Terminal";
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = minimal;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 2;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -390,17 +395,18 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.3.1;
+				MARKETING_VERSION = 0.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pluginslab.smartterminal.pad;
 				PRODUCT_NAME = "Smart Terminal";
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = minimal;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 2;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};

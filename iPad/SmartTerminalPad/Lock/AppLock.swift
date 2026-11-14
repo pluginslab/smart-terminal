@@ -26,13 +26,13 @@ final class AppLock: NSObject {
     /// Away longer than this locks again.
     static let graceSeconds: TimeInterval = 120
 
-    /// The lock is for the iPad. Not in the simulator (no security key, no Touch ID
-    /// worth the name) and not on an iPhone for now (that comes with the iPhone work).
+    /// On every iPad and iPhone. Not in the simulator (no security key, no Touch ID
+    /// or Face ID worth the name).
     static var isRequired: Bool {
         #if targetEnvironment(simulator)
         false
         #else
-        UIDevice.current.userInterfaceIdiom == .pad
+        true
         #endif
     }
 

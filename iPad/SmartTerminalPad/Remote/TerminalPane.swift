@@ -1,6 +1,5 @@
 import UIKit
 import SwiftTerm
-import GameController
 import Citadel
 import NIOCore
 import NIOSSH
@@ -92,6 +91,15 @@ final class TerminalPane: NSObject, TerminalViewDelegate {
         return text.isEmpty ? nil : String(text.suffix(maxChars))
     }
 
+    /// The screen's last lines up to the cursor's, for the command assist's context
+    /// (tmux's status line is below the cursor, so it's left out).
+    func screenText(lines: Int) -> String {
+        let terminal = view.getTerminal()
+        let y = terminal.getCursorLocation().y
+        return (max(0, y - lines + 1)...max(0, y)).compactMap { terminal.getLine(row: $0)?.translateToString(trimRight: true) }
+            .joined(separator: "\n").trimmingCharacters(in: .newlines)
+    }
+
     func detach() {
         task?.cancel()
         task = nil
@@ -156,11 +164,12 @@ final class PadTerminalView: TerminalView, UIGestureRecognizerDelegate {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    /// A tap on the terminal doesn't raise the on-screen keyboard (SwiftTerm focuses
-    /// on tap); the key bar's keyboard button does. Long-press still focuses, for the
-    /// copy/paste menu, and with a hardware keyboard a tap focuses as before.
+    /// A tap on the terminal doesn't focus it (SwiftTerm focuses on tap), so neither
+    /// the keyboard nor its key row comes up; the key bar's keyboard button does.
+    /// Long-press still focuses, for the copy/paste menu. With a hardware keyboard,
+    /// picking a session focuses it (DetailColumn), so typing needs no tap.
     override func becomeFirstResponder() -> Bool {
-        if !isFirstResponder, GCKeyboard.coalesced == nil,
+        if !isFirstResponder,
            gestureRecognizers?.contains(where: { $0 is UITapGestureRecognizer && $0.state == .ended }) == true {
             return false
         }

@@ -3,6 +3,7 @@ package com.pluginslab.smartterminal.pad.remote
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.res.Configuration
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -138,9 +139,18 @@ class TerminalPane(private val appContext: Context, private val host: Host, val 
         io.shutdown()
     }
 
+    /** The key bar's keyboard button: the only thing that raises the on-screen keyboard. */
     fun showKeyboard() {
         view.requestFocus()
         appContext.getSystemService(InputMethodManager::class.java).showSoftInput(view, 0)
+    }
+
+    /** Picking a session with a hardware keyboard in: typing goes to it without a tap. */
+    fun focusIfHardwareKeyboard() {
+        val c = appContext.resources.configuration
+        if (c.keyboard != Configuration.KEYBOARD_NOKEYS && c.hardKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_NO) {
+            view.post { view.requestFocus() }
+        }
     }
 
     private inner class SessionClient : TerminalSessionClient {
@@ -171,8 +181,9 @@ class TerminalPane(private val appContext: Context, private val host: Host, val 
     private inner class ViewClient : TerminalViewClient {
         private var scale = 1f
         override fun onScale(scale: Float): Float = 1f
-        /** Only a tap on the terminal raises the keyboard (never picking a session). */
-        override fun onSingleTapUp(e: MotionEvent?) = showKeyboard()
+        /** A tap doesn't raise the on-screen keyboard (the view takes focus, nothing pops up);
+         *  only the key bar's keyboard button does. Long-press still selects text. */
+        override fun onSingleTapUp(e: MotionEvent?) {}
         override fun shouldBackButtonBeMappedToEscape() = false
         /** Plain characters from the IME: no autocorrect or composing over a terminal. */
         override fun shouldEnforceCharBasedInput() = true

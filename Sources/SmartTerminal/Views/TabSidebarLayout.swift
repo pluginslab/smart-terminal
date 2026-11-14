@@ -15,14 +15,16 @@ enum TabLayout: String {
 }
 
 /// What the left column has selected; the middle column lists its tabs.
+/// `stray` lists tmux sessions on supermaschine instead, which aren't tabs yet.
 enum TabCategory: Hashable {
-    case all, ungrouped, group(UUID)
+    case all, ungrouped, group(UUID), stray
 
     func contains(_ tab: TerminalTab) -> Bool {
         switch self {
         case .all: true
         case .ungrouped: tab.groupID == nil
         case .group(let g): tab.groupID == g
+        case .stray: false
         }
     }
 }
@@ -65,7 +67,9 @@ struct TabSidebarLayout<Detail: View>: View {
         // A tab chosen elsewhere (⌘], a notification, a drop) brings its category along.
         .onChange(of: window?.activeTabID, initial: true) { _, _ in
             guard let tab = model.window(windowID)?.activeTab else { return }
-            if !resolved(category, in: model.window(windowID)).contains(tab) {
+            // A stray just opened (or picked again) from Stray: stay there, it's still listed.
+            let showsStray = category == .stray && model.straySession(of: tab.id) != nil
+            if !showsStray, !resolved(category, in: model.window(windowID)).contains(tab) {
                 category = tab.groupID.map { .group($0) } ?? .ungrouped
             }
             remember(tab)
@@ -89,10 +93,18 @@ struct TabSidebarLayout<Detail: View>: View {
                 try? await Task.sleep(for: .seconds(4))
             }
         }
+        // supermaschine's tmux sessions for the Stray entry, also only while on screen.
+        .task(id: windowID) {
+            while !Task.isCancelled {
+                model.refreshStray()
+                try? await Task.sleep(for: .seconds(10))
+            }
+        }
         // Picking a category shows one of its sessions, so the terminal matches the list.
         // Picking a category shows the session last shown in it (else its first), so
         // the terminal matches the list.
         .onChange(of: category) { _, new in
+            if new == .stray { model.refreshStray(force: true) }
             guard let w = model.window(windowID), let active = w.activeTab, !new.contains(active) else { return }
             let last = lastTab[new].flatMap { w.tab($0) }.flatMap { new.contains($0) ? $0 : nil }
             guard let pick = last ?? w.tabs.first(where: new.contains) else { return }
@@ -190,6 +202,14 @@ private struct CategoryList: View {
                         .onDrop(of: [.smartTerminalTab, .smartTerminalGroup],
                                 delegate: StripDropDelegate(windowID: windowID, model: model) { _ in .end })
                 }
+                // Last, and only when there is something to take in (or it is the one picked).
+                let strays = model.stray.sessions.count
+                if strays > 0 || selection == .stray {
+                    CategoryRow(title: "Stray", icon: .symbol("questionmark.folder"), tabs: [], count: strays,
+                                model: model, selected: selection == .stray) { selection = .stray }
+                        .help("tmux sessions on \(StraySessions.host) no tab here has opened")
+                        .padding(.top, 8)
+                }
             }
             // Straight under the traffic lights, as Mail's sidebar starts. (Only the
             // session list needs the gap below its header.)
@@ -228,6 +248,8 @@ private struct CategoryRow: View {
     let title: String
     let icon: CategoryIcon
     let tabs: [TerminalTab]
+    /// Shown instead of the tabs' count (Stray lists sessions, not tabs).
+    var count: Int?
     let model: AppModel
     let selected: Bool
     var dimmed = false
@@ -250,7 +272,7 @@ private struct CategoryRow: View {
                 Circle().fill(ClaudeGlyph.claudeOrange).frame(width: 7, height: 7)
                     .help("A session here needs you")
             }
-            Text("\(tabs.count)")
+            Text("\(count ?? tabs.count)")
                 .font(.callout.monospacedDigit())
                 .foregroundStyle(.secondary)
         }
@@ -455,22 +477,26 @@ private struct SessionList: View {
         // A plain stack, not a List: List's own click handling fought the rows'
         // drag and hover handlers, so a click only selected when it landed just right.
         VStack(spacing: 0) {
-            header(window, count: tabs.count)
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(Array(tabs.enumerated()), id: \.element.id) { i, tab in
-                        let active = window?.activeTabID == tab.id
-                        SessionRow(windowID: windowID, tab: tab,
-                                   group: category == .all ? tab.groupID.flatMap { window?.group($0) } : nil,
-                                   isActive: active, model: model)
-                        // Mail's hairlines between rows, left out next to the selection.
-                        if i + 1 < tabs.count, !active, window?.activeTabID != tabs[i + 1].id {
-                            Divider().overlay(palette?.line ?? .clear).padding(.horizontal, 12)
+            header(window, count: category == .stray ? model.stray.sessions.count : tabs.count)
+            if category == .stray {
+                StrayList(windowID: windowID, model: model)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(tabs.enumerated()), id: \.element.id) { i, tab in
+                            let active = window?.activeTabID == tab.id
+                            SessionRow(windowID: windowID, tab: tab,
+                                       group: category == .all ? tab.groupID.flatMap { window?.group($0) } : nil,
+                                       isActive: active, model: model)
+                            // Mail's hairlines between rows, left out next to the selection.
+                            if i + 1 < tabs.count, !active, window?.activeTabID != tabs[i + 1].id {
+                                Divider().overlay(palette?.line ?? .clear).padding(.horizontal, 12)
+                            }
                         }
                     }
+                    .padding(.horizontal, 10)
+                    .padding(.top, 10).padding(.bottom, 8)
                 }
-                .padding(.horizontal, 10)
-                .padding(.top, 10).padding(.bottom, 8)
             }
         }
         .background { if let palette { palette.list.ignoresSafeArea() } }
@@ -499,7 +525,13 @@ private struct SessionList: View {
             }
             Spacer(minLength: 4)
             GlassGroup {
-                HeaderButton(symbol: "plus", help: "New Tab Here (⌘T)", action: newTab)
+                if category == .stray {
+                    HeaderButton(symbol: "arrow.clockwise", help: "List \(StraySessions.host)’s Sessions Again") {
+                        model.refreshStray(force: true)
+                    }
+                } else {
+                    HeaderButton(symbol: "plus", help: "New Tab Here (⌘T)", action: newTab)
+                }
             }
         }
         // Collapsed sidebar: the traffic lights and the toggle sit where the title would.
@@ -515,13 +547,14 @@ private struct SessionList: View {
         case .ungrouped: "Ungrouped"
         case .group(let g):
             window?.group(g).map { $0.name.isEmpty ? "Unnamed \($0.color.displayName) Group" : $0.name } ?? ""
+        case .stray: "Stray"
         }
     }
 
     private func newTab() {
         switch category {
         case .group(let g): model.newTab(inGroup: g)
-        case .all, .ungrouped: model.newTab(in: windowID, nextToActive: false)
+        case .all, .ungrouped, .stray: model.newTab(in: windowID, nextToActive: false)
         }
     }
 }
@@ -693,6 +726,93 @@ private struct SessionRow: View {
         guard isRenaming else { return }
         model.rename(tab: tab.id, to: draft == tab.autoTitle ? nil : draft)
         model.renamingTabID = nil
+    }
+}
+
+/// The Stray entry's list: supermaschine's tmux sessions no tab has opened. A click
+/// opens one as a new Ungrouped tab (and the groups column follows it there).
+private struct StrayList: View {
+    let windowID: UUID
+    let model: AppModel
+    @Environment(\.panelPalette) private var palette
+
+    var body: some View {
+        let sessions = model.stray.sessions
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                if sessions.isEmpty {
+                    Text(model.stray.unreachable ? "\(StraySessions.host) can’t be reached." : "No stray sessions.")
+                        .font(.callout).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 12).padding(.vertical, 9)
+                }
+                ForEach(Array(sessions.enumerated()), id: \.element.id) { i, session in
+                    let tab = model.strayTab(named: session.name)
+                    StrayRow(session: session, isOpen: tab != nil,
+                             isActive: tab.map { model.window($0.0)?.activeTabID == $0.1 } ?? false) {
+                        model.openStray(session, in: windowID)
+                    }
+                    .contextMenu {
+                        Button(tab == nil ? "Open in New Tab" : "Show Tab") { model.openStray(session, in: windowID) }
+                        Button("Keep in Ungrouped") { model.keepStrayInUngrouped(session, in: windowID) }
+                            .help("Stop listing it under Stray without putting its tab in a group")
+                    }
+                    if i + 1 < sessions.count {
+                        Divider().overlay(palette?.line ?? .clear).padding(.horizontal, 12)
+                    }
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.top, 10).padding(.bottom, 8)
+        }
+    }
+}
+
+/// A stray session: its name, then folder, last activity, and whether a client
+/// elsewhere (the iPad, another terminal) is attached.
+private struct StrayRow: View {
+    let session: RemoteTmuxSession
+    /// A tab here already shows it (it stays listed until it goes into a group).
+    let isOpen: Bool
+    /// That tab is the one on screen.
+    let isActive: Bool
+    let open: () -> Void
+    @State private var hovering = false
+    @Environment(\.panelPalette) private var palette
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 5) {
+                Text(session.name).font(.body.weight(.semibold)).lineLimit(1).truncationMode(.middle)
+                Spacer(minLength: 4)
+                if isOpen {
+                    TmuxPill(label: "open", help: "A tab here shows it; put the tab in a group to stop listing it here",
+                             onAccent: false)
+                }
+                if session.attached > 0 {
+                    TmuxPill(label: "attached elsewhere",
+                             help: session.attached == 1 ? "1 client attached" : "\(session.attached) clients attached",
+                             onAccent: false)
+                }
+            }
+            HStack(spacing: 4) {
+                Text(session.displayPath).lineLimit(1).truncationMode(.head).layoutPriority(-1)
+                Text("·")
+                Text(session.activity, format: .relative(presentation: .named))
+            }
+            .font(.callout).foregroundStyle(.secondary).lineLimit(1)
+        }
+        .padding(.horizontal, 12).padding(.vertical, 9)
+        .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(isActive ? (palette.map { AnyShapeStyle($0.selectionSoft) } ?? AnyShapeStyle(.selection))
+                               : AnyShapeStyle(Color.primary.opacity(hovering ? 0.06 : 0)))
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .onHover { hovering = $0 }
+        .onTapGesture(perform: open)
+        .help(isOpen ? "Show “\(session.name)”" : "Open “\(session.name)” in a new tab")
     }
 }
 

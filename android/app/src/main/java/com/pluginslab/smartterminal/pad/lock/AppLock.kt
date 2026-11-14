@@ -47,6 +47,9 @@ class AppLock(private val context: Context) {
     /** The key is plugged in and we are waiting for a touch. */
     var waitingForTouch by mutableStateOf(false)
         private set
+    /** The YubiKey button was tapped: listening for the key on USB. */
+    var listening by mutableStateOf(false)
+        private set
 
     private val prefs = context.getSharedPreferences("lock", Context.MODE_PRIVATE)
     private val main = Handler(Looper.getMainLooper())
@@ -105,13 +108,16 @@ class AppLock(private val context: Context) {
     // MARK: security key
 
     /**
-     * Listens for the key on USB while the lock shows: plugging it in (or having it in)
-     * starts the setup or the unlock, and a touch finishes it.
+     * Listens for the key on USB, from the lock screen's YubiKey button (not on its own
+     * when the lock shows, as on the iPad): plugging it in (or having it in) starts the
+     * setup or the unlock, and a touch finishes it.
      */
     fun startKey() {
         if (yubikit != null || !locked) return
         val kit = YubiKitManager(context)
         yubikit = kit
+        listening = true
+        message = null
         kit.startUsbDiscovery(UsbConfiguration()) { device ->
             if (!device.supportsConnection(FidoConnection::class.java)) return@startUsbDiscovery
             main.post { busy = true; waitingForTouch = true; message = null }
@@ -131,6 +137,8 @@ class AppLock(private val context: Context) {
     fun stopKey() {
         yubikit?.stopUsbDiscovery()
         yubikit = null
+        listening = false
+        waitingForTouch = false
     }
 
     /** Make a credential for this app on the key and keep its id and public key. */

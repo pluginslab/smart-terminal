@@ -1,5 +1,18 @@
 # Changelog
 
+## [iPad 0.4.0] - 2026-11-14
+- iPhone: the app is now universal. On iPhone the columns stack (groups, then sessions, then the terminal, with back buttons), it runs in portrait only, the keys scroll sideways under return and the mic (with a shadow while more keys are hidden), and the lock is on (Face ID or the YubiKey). A tap on the terminal never raises the keyboard, also with a hardware keyboard; only the keyboard button does. Disconnected, it opens on the setup card, so the device's key can be added.
+- iPad/iPhone: a Stray group lists the host's tmux sessions this device hasn't taken up (cc-super, scripts, other devices). Opening one only opens it; it leaves Stray once moved to a group or to Ungrouped. Sessions present at the first launch with this version count as taken up.
+- iPad/iPhone: pull down on the groups list to refresh the groups and sessions.
+- iPad/iPhone: voice commands in a plain shell. With no Claude in the pane, the mic turns what you say into one command (llm-router, model `code`, with the folder, listing, git branch, containers, recent history and the screen as context) and types it without Return. If it can't, it asks a question instead; risky commands get a warning. The answer streams where the waveform was. A badge on the mic shows command mode. Config in `~/.config/smart-terminal/assist.json` on the host.
+
+## [Android 0.3.0] - 2026-11-14
+- Android: the Stray group, as on the iPad (opening doesn't take a session up; moving it, or Keep in Ungrouped, does), and pull to refresh on the groups column.
+- Android: swipe a session to close it, with a confirmation (it kills the tmux session); hide the lists in landscape and pin them back (Meta+Shift+F); the YubiKey prompt comes only from its button; a tap on the terminal no longer raises the keyboard, the keyboard key does.
+
+## [0.19.0] - 2026-11-14
+- A Stray group in the sidebar lists supermaschine's tmux sessions no tab here has taken up. Opening one opens a tab attached to it (as cc-super does, without its port forwards), marked "open"; it stays under Stray until moved to a group or kept in Ungrouped. The listing reuses one SSH connection (ControlMaster). Kept in `stray-sessions.json` next to `layout.json`.
+
 ## [iPad 0.3.1] - 2026-11-14
 - iPad: a tap on the terminal no longer raises the on-screen keyboard; the key bar's keyboard button does. Long-press still focuses (for copy and paste), and with a hardware keyboard a tap focuses as before.
 

@@ -20,7 +20,7 @@ struct DictationButton: View {
             }
             Button { model.dictate(session) } label: {
                 ZStack {
-                    if d.state == .transcribing {
+                    if d.state == .transcribing || isComposing {
                         ProgressView().controlSize(.small).tint(Theme.selection)
                     } else {
                         Image(systemName: icon)
@@ -33,10 +33,31 @@ struct DictationButton: View {
             }
             .buttonStyle(.plain)
             .glassEffect(d.state == .recording ? .regular.tint(.red.opacity(0.35)).interactive() : .regular.interactive(), in: .capsule)
+            // Command mode (a plain shell): a badge on the button's corner, the mic stays plain.
+            .overlay(alignment: .topTrailing) {
+                if commands {
+                    Image(systemName: "terminal.fill")
+                        .font(.system(size: large ? 9 : 7, weight: .bold))
+                        .foregroundStyle(Theme.onSelection)
+                        .frame(width: large ? 18 : 14, height: large ? 18 : 14)
+                        .background(Theme.selection, in: .circle)
+                        .overlay(Circle().stroke(Theme.bar, lineWidth: 1.5))
+                        .offset(x: 3, y: -3)
+                        .allowsHitTesting(false)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
             .keyboardShortcut("d", modifiers: [.command, .shift])
-            .accessibilityLabel(d.state == .recording ? "Stop dictation" : "Dictate")
+            .accessibilityLabel(d.state == .recording ? "Stop" : commands ? "Voice command" : "Dictate")
         }
         .animation(.easeInOut(duration: 0.2), value: d.state)
+    }
+
+    private var commands: Bool { model.voiceCommands(in: session) }
+
+    private var isComposing: Bool {
+        if case .composing = model.dictation.state { return true }
+        return false
     }
 
     private var icon: String {

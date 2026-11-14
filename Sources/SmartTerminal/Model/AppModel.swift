@@ -67,6 +67,7 @@ final class AppModel {
     @ObservationIgnored let sessions = SessionRegistry()
     @ObservationIgnored let clipboard = ClipboardHistory()
     @ObservationIgnored let git = GitStatusStore()
+    @ObservationIgnored let stray = StraySessionStore()
     @ObservationIgnored private var inbox: ShellInbox?
     @ObservationIgnored weak var windows: WindowManaging?
     @ObservationIgnored var notifier: Notifier?
@@ -130,6 +131,7 @@ final class AppModel {
     private func mutate(_ change: (inout AppLayout) -> Void) {
         let shown = Dictionary(layout.windows.map { ($0.id, $0.activeTabID) }, uniquingKeysWith: { a, _ in a })
         change(&layout)
+        adoptGroupedStrays()
         for w in layout.windows where w.activeTabID != shown[w.id] ?? nil {
             if let t = w.activeTabID { tabHistory[w.id, default: TabHistory()].visit(t) }
         }
@@ -246,6 +248,63 @@ final class AppModel {
         guard let wid = layout.windowID(containingGroup: groupID) else { return }
         let cwd = window(wid)?.tabs(in: groupID).last.flatMap { sessions.currentDirectory(of: $0.id) ?? $0.cwd }
         update(wid) { $0.insert(TerminalTab(cwd: cwd ?? TerminalSession.homeDirectory), at: .intoGroup(groupID)) }
+    }
+
+    /// Shows a stray session from supermaschine: the tab already on it, else a new
+    /// Ungrouped tab, through the same path as Reconnect after a restart (the tab is
+    /// given the ssh reference and `resumeAgent` types it). Opening doesn't adopt it:
+    /// it stays under Stray until its tab goes into a group or is kept in Ungrouped.
+    func openStray(_ session: RemoteTmuxSession, in windowID: UUID) {
+        if let (wid, tabID) = strayTab(named: session.name) {
+            select(tabID)
+            if wid != windowID { windows?.focusWindow(for: wid) }
+            return
+        }
+        guard window(windowID) != nil else { return }
+        var tab = TerminalTab(autoTitle: session.name, cwd: TerminalSession.homeDirectory)
+        tab.remoteSession = StraySessions.attachRef(session.name)
+        update(windowID) { $0.addTab(tab, nextToActive: false) }
+        resumeAgent(tab.id)
+    }
+
+    /// Takes a stray in without a group: opens it if no tab has it yet, then adopts it.
+    func keepStrayInUngrouped(_ session: RemoteTmuxSession, in windowID: UUID) {
+        if strayTab(named: session.name) == nil { openStray(session, in: windowID) }
+        stray.adopt([session.name])
+    }
+
+    /// The tab (and its window) attached to, or reconnecting to, this session on supermaschine.
+    func strayTab(named name: String) -> (UUID, UUID)? {
+        for w in layout.windows {
+            if let t = w.tabs.first(where: { StraySessions.sessions(of: $0, live: liveRemote).contains(name) }) {
+                return (w.id, t.id)
+            }
+        }
+        return nil
+    }
+
+    /// The stray session this tab shows, if it shows one.
+    func straySession(of tabID: UUID) -> RemoteTmuxSession? {
+        guard let wid = windowID(containingTab: tabID), let tab = window(wid)?.tab(tabID) else { return nil }
+        let names = StraySessions.sessions(of: tab, live: liveRemote)
+        return stray.sessions.first { names.contains($0.name) }
+    }
+
+    /// Lists supermaschine's sessions again (see StraySessionStore).
+    func refreshStray(force: Bool = false) {
+        stray.refresh(adoptedByTabs: { [weak self] in self?.groupedStraySessions ?? [] }, force: force)
+    }
+
+    /// Sessions on supermaschine whose tab (in any window, closed ones too) is in a group.
+    private var groupedStraySessions: Set<String> {
+        StraySessions.groupedSessions((layout.windows + layout.closedWindows).flatMap(\.tabs), live: liveRemote)
+    }
+
+    /// Every move into a group goes through `mutate`: its session is taken in then.
+    private func adoptGroupedStrays() {
+        guard !stray.sessions.isEmpty else { return }
+        let grouped = groupedStraySessions
+        if stray.sessions.contains(where: { grouped.contains($0.name) }) { stray.adopt(grouped) }
     }
 
     func select(_ tabID: UUID) {

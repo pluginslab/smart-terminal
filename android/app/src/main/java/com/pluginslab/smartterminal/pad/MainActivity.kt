@@ -3,6 +3,7 @@ package com.pluginslab.smartterminal.pad
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.view.KeyEvent
 import android.util.Log
 import android.view.WindowManager
 import androidx.fragment.app.FragmentActivity
@@ -41,6 +42,16 @@ class MainActivity : FragmentActivity() {
         // Debug builds: `adb shell am start ... --es session <name>` opens that session.
         intent.getStringExtra("session")?.let { model.selected = it }
         setContent { PadTheme { if (lock.locked) LockScreen(lock) else RootScreen(model, onLock = lock::lock) } }
+    }
+
+    /** ⇧⌘F, as on the iPad (Meta is ⌘ on a hardware keyboard): landscape's hide / show /
+     *  pin of the lists. Here, before the terminal view, which would take the key. */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (!lock.locked && event.keyCode == KeyEvent.KEYCODE_F && event.isMetaPressed && event.isShiftPressed) {
+            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) model.listsShortcut()
+            return true
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     override fun onStart() {

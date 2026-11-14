@@ -32,12 +32,16 @@ struct KeyBar: View {
     @Bindable var model: PadModel
     let session: String
 
+    /// iPhone: keys hidden past the right edge (they scroll under return and the mic).
+    @State private var moreKeys = false
+
     var body: some View {
         let pane = model.pane(for: session)
         // While dictating, the other keys wait: a stray tap would land in the middle
         // of the text about to be typed. Return comes back once the text is in.
         let busy = model.dictation.isActive
-        HStack(spacing: 6) {
+        // iPhone: the keys scroll sideways; return and the mic stay at the right edge.
+        let keys = HStack(spacing: 6) {
             Group {
                 Key(symbol: "keyboard", label: "Show Keyboard") {
                     _ = pane.view.becomeFirstResponder()
@@ -51,40 +55,85 @@ struct KeyBar: View {
             }
             .disabled(busy)
             .opacity(busy ? 0.35 : 1)
+        }
+        HStack(spacing: 6) {
             if model.dictation.state == .recording {
+                if !model.compact { keys }
                 Waveform(levels: model.dictation.levels)
                     .frame(maxWidth: .infinity, minHeight: 32, maxHeight: 32)
                     .padding(.horizontal, 8)
                     .transition(.opacity)
+            } else if let line = statusLine {
+                // Command mode: the model's answer coming in, then its question or a warning.
+                if !model.compact { keys }
+                Text(line.text)
+                    .font(line.notice ? .footnote : .caption.monospaced())
+                    .foregroundStyle(line.notice ? Color.orange : Color.secondary)
+                    .lineLimit(line.notice ? 2 : 1)
+                    .truncationMode(.head)
+                    .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+                    .padding(.horizontal, 8)
+                    .transition(.opacity)
+                    .contentTransition(.interpolate)
+            } else if model.compact {
+                ScrollView(.horizontal, showsIndicators: false) { keys }
+                    .scrollClipDisabled(false)
+                    // Keys hidden to the right look tucked under return and the mic: a
+                    // shadow at the edge, only while there's more to scroll to.
+                    .onScrollGeometryChange(for: Bool.self) { g in
+                        g.contentOffset.x + g.containerSize.width < g.contentSize.width - 1
+                    } action: { _, more in moreKeys = more }
+                    // Run on under return (which sits above, see below), with room at the
+                    // end so the last key still scrolls fully into view.
+                    .contentMargins(.trailing, 28, for: .scrollContent)
+                    .padding(.trailing, -28)
             } else {
+                keys
                 Spacer(minLength: 8)
             }
             if !busy {
                 Button { pane.view.send([0x0d]) } label: {
                     Label("return", systemImage: "return")
                         .font(.system(size: 15, weight: .semibold))
-                        .labelStyle(.titleAndIcon)
+                        .labelStyle(ReturnLabelStyle(iconOnly: model.compact))
                         .foregroundStyle(Theme.onSelection)
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, model.compact ? 12 : 16)
                         .frame(height: 36)
                 }
                 .buttonStyle(.plain)
                 .glassEffect(.regular.tint(Theme.selection).interactive(), in: .capsule)
+                // iPhone: return lies on top of the scrolling keys and shades them.
+                .background {
+                    if model.compact {
+                        Capsule().fill(Theme.bar)
+                            .shadow(color: .black.opacity(moreKeys ? 0.55 : 0), radius: 7, x: -5)
+                            .animation(.easeOut(duration: 0.15), value: moreKeys)
+                    }
+                }
+                .zIndex(1)
                 .accessibilityLabel("Return")
                 .transition(.scale.combined(with: .opacity))
             }
-            Separator().padding(.horizontal, 4)
+            Separator().padding(.horizontal, model.compact ? 0 : 4)
             DictationButton(model: model, session: session, large: true)
         }
         .animation(.snappy(duration: 0.2), value: busy)
         // Clear of the home indicator: in portrait, taps right above it reached the
         // system (repeated ones woke Siri), so the keys sit higher there.
-        .padding(.horizontal, 12).padding(.top, 8).padding(.bottom, model.portrait ? 30 : 12)
+        .padding(.horizontal, model.compact ? 8 : 12).padding(.top, 8).padding(.bottom, model.portrait ? 30 : 12)
         .background(Theme.bar)
         .overlay(alignment: .top) { Divider().overlay(Theme.line) }
     }
 
 
+
+    private var statusLine: (text: String, notice: Bool)? {
+        switch model.dictation.state {
+        case .composing(let t): (t, false)
+        case .notice(let t): (t, true)
+        default: nil
+        }
+    }
 
     private func arrow(_ pane: TerminalPane, _ a: Arrow) {
         let app = pane.view.getTerminal().applicationCursor
@@ -95,6 +144,14 @@ struct KeyBar: View {
         case .right: app ? EscapeSequences.moveRightApp : EscapeSequences.moveRightNormal
         }
         pane.view.send(seq)
+    }
+}
+
+/// Return's label: word and icon, or just the icon where space is short.
+private struct ReturnLabelStyle: LabelStyle {
+    let iconOnly: Bool
+    func makeBody(configuration: Configuration) -> some View {
+        if iconOnly { configuration.icon } else { Label(configuration) .labelStyle(.titleAndIcon) }
     }
 }
 

@@ -52,18 +52,21 @@ import java.util.UUID
 fun RootScreen(model: PadModel, onLock: () -> Unit) {
     BoxWithConstraints(Modifier.fillMaxSize().background(Palette.list)) {
         val portrait = maxHeight > maxWidth
-        LaunchedEffect(portrait) { if (!portrait) model.listsOpen = false }
+        LaunchedEffect(portrait) { model.portrait = portrait }
+        // Portrait, or landscape with the lists hidden: they're laid over the terminal.
+        val overlaid = portrait || model.listsHidden
+        LaunchedEffect(overlaid) { if (!overlaid) model.listsOpen = false }
         // The terminal column keeps its place in the tree whatever shows beside it, so
         // rotating never rebuilds it (the iPad's blank-terminal lesson).
         Row(Modifier.fillMaxSize()) {
-            if (!portrait) {
+            if (!overlaid) {
                 if (model.groupsShown) GroupsColumn(model, Modifier.width(238.dp).fillMaxHeight().floatingPanel())
                 SessionsColumn(model, portrait = false, Modifier.width(340.dp).fillMaxHeight())
                 PaneEdge()
             }
-            DetailColumn(model, portrait, onLock, Modifier.weight(1f).fillMaxHeight())
+            DetailColumn(model, portrait, overlaid, onLock, Modifier.weight(1f).fillMaxHeight())
         }
-        if (portrait) {
+        if (overlaid) {
             AnimatedVisibility(model.listsOpen, enter = fadeIn(), exit = fadeOut()) {
                 Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f))
                     .clickable(remember { MutableInteractionSource() }, indication = null) { model.listsOpen = false })
@@ -71,7 +74,7 @@ fun RootScreen(model: PadModel, onLock: () -> Unit) {
             AnimatedVisibility(model.listsOpen, enter = slideInHorizontally { -it }, exit = slideOutHorizontally { -it }) {
                 Row(Modifier.fillMaxHeight().widthIn(max = maxWidth - 64.dp).shadow(24.dp).background(Palette.list)) {
                     if (model.groupsShown) GroupsColumn(model, Modifier.width(238.dp).fillMaxHeight().floatingPanel())
-                    SessionsColumn(model, portrait = true, Modifier.width(340.dp).fillMaxHeight())
+                    SessionsColumn(model, portrait = portrait, Modifier.width(340.dp).fillMaxHeight())
                     PaneEdge()
                 }
             }

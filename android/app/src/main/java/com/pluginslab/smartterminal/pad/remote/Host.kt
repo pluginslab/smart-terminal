@@ -59,6 +59,8 @@ class Host(private val context: Context, val address: String, val user: String, 
     @Volatile private var client: SSHClient? = null
     private val main = Handler(Looper.getMainLooper())
     @Volatile private var poller: Thread? = null
+    /** Called on the main thread with each fresh list (not when the host failed to answer). */
+    var onList: ((List<RemoteSession>) -> Unit)? = null
 
     /** Connects in the background and starts polling; no-op while connected or connecting. */
     fun connect() {
@@ -147,6 +149,12 @@ class Host(private val context: Context, val address: String, val user: String, 
 
     fun refreshBlocking(): Boolean = refreshList() != null
 
+    /** Pull to refresh: the same list the poller fetches, now; [then] on the main thread. */
+    fun refresh(then: () -> Unit) {
+        if (client?.isConnected != true) { reconnectIfNeeded(); main.post(then); return }
+        Thread({ refreshList(); main.post(then) }, "ssh-refresh").start()
+    }
+
     /** The session list (also published to [sessions]), or null when the host is gone. */
     private fun refreshList(): List<RemoteSession>? {
         val out = runBlocking("sh -c " + quote(STATUS_SCRIPT)) ?: return null
@@ -173,7 +181,7 @@ class Host(private val context: Context, val address: String, val user: String, 
             }
             s
         }.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
-        main.post { sessions = list }
+        main.post { sessions = list; onList?.invoke(list) }
         return list
     }
 

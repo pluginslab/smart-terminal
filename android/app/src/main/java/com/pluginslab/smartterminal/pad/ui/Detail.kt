@@ -58,12 +58,12 @@ import com.pluginslab.smartterminal.pad.remote.TerminalPane
  *  setup card while the host isn't reachable), and the key bar under it. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun DetailColumn(model: PadModel, portrait: Boolean, onLock: () -> Unit, modifier: Modifier) {
+fun DetailColumn(model: PadModel, portrait: Boolean, overlaid: Boolean, onLock: () -> Unit, modifier: Modifier) {
     val host = model.host
     val name = model.selected?.takeIf { n -> model.sessions.any { it.name == n } }
     val connected = host.state == Host.State.Connected
     Column(modifier.background(Palette.head).windowInsetsPadding(WindowInsets.statusBars)) {
-        Header(model, portrait, name, onLock)
+        Header(model, overlaid, name, onLock)
         Box(Modifier.weight(1f).fillMaxWidth().background(Palette.terminal), contentAlignment = Alignment.Center) {
             when {
                 connected && name != null -> key(name) { Terminal(model.pane(name)) }
@@ -82,11 +82,12 @@ fun DetailColumn(model: PadModel, portrait: Boolean, onLock: () -> Unit, modifie
 }
 
 @Composable
-private fun Header(model: PadModel, portrait: Boolean, name: String?, onLock: () -> Unit) {
+private fun Header(model: PadModel, overlaid: Boolean, name: String?, onLock: () -> Unit) {
     val s = model.sessions.firstOrNull { it.name == name }
     Column {
         Row(Modifier.fillMaxWidth().height(64.dp).padding(start = 12.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (portrait) {
+            // Portrait, or landscape with the lists hidden: this lays them over the terminal.
+            if (overlaid) {
                 HeaderButton(Icons.Outlined.ViewSidebar, "Show Sessions") { model.listsOpen = true }
                 Spacer(Modifier.width(12.dp))
             } else Spacer(Modifier.width(8.dp))
@@ -115,6 +116,7 @@ private fun Header(model: PadModel, portrait: Boolean, name: String?, onLock: ()
 @Composable
 private fun Terminal(pane: TerminalPane) {
     LaunchedEffect(pane, pane.state) { if (pane.state == TerminalPane.State.Ended) pane.reattach() }
+    LaunchedEffect(pane) { pane.focusIfHardwareKeyboard() }
     AndroidView(factory = { pane.detachedView() }, modifier = Modifier.fillMaxSize().padding(start = 6.dp, end = 6.dp, top = 4.dp))
 }
 

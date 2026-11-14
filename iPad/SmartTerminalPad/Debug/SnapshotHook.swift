@@ -14,6 +14,10 @@ import UIKit
 enum SnapshotHook {
     static func start() {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        // The device key's public half, so the Mac can fetch it over the cable for
+        // the host's authorized_keys (devicectl … --source Documents/device-key.pub).
+        try? (DeviceKey.publicKeyLine + "\n").write(to: docs.appendingPathComponent("device-key.pub"),
+                                                    atomically: true, encoding: .utf8)
         let request = docs.appendingPathComponent("snap-request")
         let output = docs.appendingPathComponent("snap.png")
         Task {

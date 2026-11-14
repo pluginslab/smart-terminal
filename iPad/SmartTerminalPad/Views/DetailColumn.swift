@@ -43,7 +43,17 @@ struct DetailColumn: View {
         return HStack(alignment: .center, spacing: 10) {
             // Portrait, or landscape with the lists hidden: this brings them back
             // over the terminal (so does a swipe from the left edge).
-            if model.overlaid, model.columns == .detailOnly {
+            if model.compact {
+                // iPhone: back to the sessions.
+                Button { model.compactColumn = .content } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 15, weight: .medium))
+                        .frame(width: 36, height: 32)
+                }
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: .capsule)
+                .accessibilityLabel("Sessions")
+            } else if model.overlaid, model.columns == .detailOnly {
                 Button { withAnimation(.snappy) { model.columns = .doubleColumn } } label: {
                     Image(systemName: "sidebar.left")
                         .font(.system(size: 15, weight: .medium))
@@ -189,7 +199,7 @@ private struct ConnectCard: View {
             if case .failed(let message) = host.state {
                 Text(message).foregroundStyle(.secondary)
             }
-            Text("This iPad's key. Add it to ~/.ssh/authorized_keys on \(host.displayName):")
+            Text("This \(UIDevice.current.model)'s key. Add it to ~/.ssh/authorized_keys on \(host.displayName):")
                 .font(.subheadline).foregroundStyle(.secondary)
             Text(DeviceKey.publicKeyLine)
                 .font(.system(.footnote, design: .monospaced))

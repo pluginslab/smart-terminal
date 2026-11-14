@@ -5,7 +5,8 @@ import SmartTerminalCore
 
 /// What the left column has selected; the middle column lists its sessions.
 enum TabCategory: Hashable {
-    case all, ungrouped, group(UUID)
+    /// `stray`: tmux sessions on the host this device hasn't taken up yet.
+    case all, ungrouped, group(UUID), stray
 }
 
 /// The iPad's own state around the host's tmux sessions: groups, names you gave
@@ -18,6 +19,11 @@ final class PadModel {
     /// tmux session name -> group
     private(set) var membership: [String: UUID] = [:]
     private(set) var customTitles: [String: String] = [:]
+    /// Sessions this device has taken up: made here, opened here, or put in a group.
+    /// The rest (cc-super, scripts, other devices) wait under Stray. Nil until the
+    /// first list from the host: then everything already there counts as taken up,
+    /// so the lists don't change under you when this arrives.
+    private var adopted: Set<String>?
 
     var category: TabCategory = .all
     var selected: String?
@@ -28,6 +34,24 @@ final class PadModel {
     /// Landscape with the lists put away, as in portrait: they come back laid over
     /// the terminal and go again when you pick a session. Pin puts them back beside it.
     var listsHidden = false
+    /// iPhone (compact width): the columns are one stack, and this is the one on top.
+    var compactColumn: NavigationSplitViewColumn = .sidebar
+    /// Compact width (iPhone): RootView sets it from its size class.
+    var compact = false
+
+    /// Picks a category; on iPhone it also goes on to its sessions.
+    func show(_ c: TabCategory) {
+        category = c
+        compactColumn = .content
+    }
+
+    /// Picks a session; on iPhone it also goes on to its terminal.
+    /// Opening a stray session doesn't take it up: it stays under Stray until it's
+    /// moved to a group (or to Ungrouped), as each device groups sessions its own way.
+    func open(_ session: String) {
+        selected = session
+        compactColumn = .detail
+    }
     /// Landscape's own choice (groups shown or not), kept while the lists are away.
     var landscapeColumns: NavigationSplitViewVisibility = .all
 
@@ -57,12 +81,41 @@ final class PadModel {
 
     func sessions(in c: TabCategory) -> [RemoteSession] {
         sessions.filter { s in
+            let mine = isAdopted(s.name)
             switch c {
-            case .all: true
-            case .ungrouped: membership[s.name] == nil
-            case .group(let g): membership[s.name] == g
+            case .all: return mine
+            case .ungrouped: return mine && membership[s.name] == nil
+            case .group(let g): return mine && membership[s.name] == g
+            case .stray: return !mine
             }
         }
+    }
+
+    func isAdopted(_ name: String) -> Bool {
+        adopted.map { $0.contains(name) } ?? true || membership[name] != nil
+    }
+
+    private func adopt(_ name: String) {
+        guard adopted?.contains(name) == false else { return }
+        adopted?.insert(name)
+        save()
+    }
+
+    /// After each list from the host: the first one takes up everything there; later
+    /// ones forget sessions that are gone, so a new one under an old name starts stray.
+    /// An empty list is skipped: it's what there is before the first answer from the
+    /// host, and taking it at its word forgot every session at each launch.
+    func reconcile(_ names: [String]) {
+        let now = Set(names)
+        guard !now.isEmpty else { return }
+        if adopted == nil {
+            adopted = now
+        } else {
+            let kept = adopted!.intersection(now)
+            guard kept != adopted else { return }
+            adopted = kept
+        }
+        save()
     }
 
     func group(of s: RemoteSession) -> TabGroup? {
@@ -84,8 +137,15 @@ final class PadModel {
     }
 
     /// Dictate into a session: see `Dictation`.
+    /// A plain shell (no Claude in the pane): the mic makes commands, not words.
+    func voiceCommands(in session: String) -> Bool {
+        sessions.first { $0.name == session }
+            .map { $0.agent == nil && ["zsh", "bash", "sh", "fish"].contains($0.command) } ?? false
+    }
+
     func dictate(_ session: String) {
-        dictation.toggle(host: host, pane: pane(for: session))
+        let path = sessions.first { $0.name == session }?.path
+        dictation.toggle(host: host, pane: pane(for: session), commandIn: voiceCommands(in: session) ? path : nil)
     }
 
     /// Re-attach every pane after a dropped connection (the app came back to the front).
@@ -99,10 +159,12 @@ final class PadModel {
         var n = 1
         while taken.contains("ipad-\(n)") { n += 1 }
         let name = "ipad-\(n)"
+        adopt(name)
         if case .group(let g) = category { membership[name] = g; save() }
+        if category == .stray { category = .ungrouped }
         Task {
             await host.newSession(named: name)
-            selected = name
+            open(name)
         }
     }
 
@@ -129,12 +191,14 @@ final class PadModel {
         let color = GroupColor.allCases.first { !used.contains($0) } ?? .blue
         let g = TabGroup(name: "", color: color)
         groups.append(g)
-        if let session { membership[session] = g.id }
+        if let session { adopt(session); membership[session] = g.id }
         category = .group(g.id)
         save()
     }
 
+    /// Moving takes a stray session up, to Ungrouped too.
     func move(_ session: String, to group: UUID?) {
+        adopt(session)
         membership[session] = group
         save()
     }
@@ -163,12 +227,14 @@ final class PadModel {
         var groups: [TabGroup]
         var membership: [String: UUID]
         var customTitles: [String: String]
+        var adopted: [String]?
     }
 
     private static let key = "padLayout"
 
     private func save() {
-        let s = Saved(groups: groups, membership: membership, customTitles: customTitles)
+        let s = Saved(groups: groups, membership: membership, customTitles: customTitles,
+                      adopted: adopted.map { $0.sorted() })
         UserDefaults.standard.set(try? JSONEncoder().encode(s), forKey: Self.key)
     }
 
@@ -178,5 +244,6 @@ final class PadModel {
         groups = s.groups
         membership = s.membership
         customTitles = s.customTitles
+        adopted = s.adopted.map(Set.init)
     }
 }

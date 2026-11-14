@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -35,11 +36,21 @@ import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Dns
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Inbox
+import androidx.compose.material.icons.filled.OpenInFull
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.outlined.ViewSidebar
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -75,12 +86,17 @@ import com.pluginslab.smartterminal.pad.remote.RemoteSession
 
 // MARK: - Groups column
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GroupsColumn(model: PadModel, modifier: Modifier) {
-    val all = model.sessions
+    val all = model.sessions(TabCategory.All)
     val ungrouped = model.sessions(TabCategory.Ungrouped)
+    val stray = model.sessions(TabCategory.Stray)
+    var refreshing by remember { mutableStateOf(false) }
     Column(modifier.background(Palette.side).windowInsetsPadding(WindowInsets.statusBars)) {
-        LazyColumn(Modifier.weight(1f).padding(horizontal = 10.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 14.dp, bottom = 6.dp)) {
+        // Pull down to ask the host now rather than wait for the next poll.
+        PullToRefreshBox(refreshing, { refreshing = true; model.refresh { refreshing = false } }, Modifier.weight(1f)) {
+        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 10.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 14.dp, bottom = 6.dp)) {
             item { HostBadge(model.host) }
             item {
                 CategoryRow("All Sessions", RowIcon.Symbol(Icons.Filled.Layers), all.map { it.agent },
@@ -106,6 +122,12 @@ fun GroupsColumn(model: PadModel, modifier: Modifier) {
                 CategoryRow("Ungrouped", RowIcon.Symbol(Icons.Filled.Terminal), ungrouped.map { it.agent },
                     selected = model.category == TabCategory.Ungrouped) { model.pick(TabCategory.Ungrouped) }
             }
+            // Sessions this device hasn't taken up (cc-super, scripts, other devices).
+            if (stray.isNotEmpty()) item {
+                CategoryRow("Stray", RowIcon.Symbol(Icons.Filled.Inbox), stray.map { it.agent },
+                    selected = model.category == TabCategory.Stray) { model.pick(TabCategory.Stray) }
+            }
+        }
         }
         TextButton({ model.newGroup() }, Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
             .windowInsetsPadding(WindowInsets.navigationBars)) {
@@ -187,6 +209,8 @@ private fun CategoryRow(
 @Composable
 fun SessionsColumn(model: PadModel, portrait: Boolean, modifier: Modifier) {
     val list = model.sessions(model.category)
+    /** The session asked to close: closing kills the tmux session, so it always asks. */
+    var closing by remember { mutableStateOf<RemoteSession?>(null) }
     Column(modifier.background(Palette.list).windowInsetsPadding(WindowInsets.statusBars)) {
         Row(Modifier.fillMaxWidth().height(64.dp).padding(start = 12.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             // The groups column's toggle, amber while it shows.
@@ -199,41 +223,76 @@ fun SessionsColumn(model: PadModel, portrait: Boolean, modifier: Modifier) {
                 Text(categoryTitle(model), color = Palette.text, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(if (list.size == 1) "1 session" else "${list.size} sessions", color = Palette.secondary, fontSize = 14.sp)
             }
+            if (!portrait) {
+                // Landscape: put the lists away (the terminal gets the width), or, while
+                // they're laid over it, pin them back beside it.
+                HeaderButton(if (model.listsHidden) Icons.Filled.PushPin else Icons.Filled.OpenInFull,
+                    if (model.listsHidden) "Keep Lists Beside the Terminal" else "Hide Lists") {
+                    if (model.listsHidden) model.pinLists() else model.hideLists()
+                }
+                Spacer(Modifier.width(8.dp))
+            }
             HeaderButton(Icons.Filled.Add, "New Session") { model.newSession() }
         }
         LazyColumn(Modifier.weight(1f).padding(horizontal = 10.dp),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 4.dp, bottom = 8.dp)) {
             itemsIndexed(list, key = { _, s -> s.name }) { i, s ->
                 val active = model.selected == s.name
-                SessionRow(model, s, showGroup = model.category == TabCategory.All, isActive = active)
+                SessionRow(model, s, showGroup = model.category == TabCategory.All, isActive = active) { closing = s }
                 if (i + 1 < list.size && !active && model.selected != list[i + 1].name) {
                     HorizontalDivider(Modifier.padding(horizontal = 12.dp), color = Palette.line, thickness = 0.5.dp)
                 }
             }
         }
     }
+    closing?.let { s ->
+        AlertDialog(
+            onDismissRequest = { closing = null },
+            title = { Text("Close \u201C${model.title(s)}\u201D?") },
+            text = { Text("This kills the tmux session ${s.name} on the host. Whatever runs in it stops.") },
+            confirmButton = { TextButton({ model.close(s.name); closing = null }) { Text("Close Session", color = Palette.red) } },
+            dismissButton = { TextButton({ closing = null }) { Text("Cancel") } },
+            containerColor = Palette.head,
+        )
+    }
 }
 
 private fun categoryTitle(model: PadModel) = when (val c = model.category) {
     TabCategory.All -> "All Sessions"
     TabCategory.Ungrouped -> "Ungrouped"
+    TabCategory.Stray -> "Stray"
     is TabCategory.Group -> model.groups.firstOrNull { it.id == c.id }?.let(model::groupTitle) ?: ""
 }
 
 /** A Mail-style row: title, then folder with git state, then what runs there. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun SessionRow(model: PadModel, s: RemoteSession, showGroup: Boolean, isActive: Boolean) {
+private fun SessionRow(model: PadModel, s: RemoteSession, showGroup: Boolean, isActive: Boolean, onClose: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
     var moveMenu by remember { mutableStateOf(false) }
     val group = model.group(s)
     val fg = if (isActive) Palette.onSelection else Palette.text
     val dim = if (isActive) Palette.onSelection.copy(alpha = 0.8f) else Palette.secondary
     val dimmer = if (isActive) Palette.onSelection.copy(alpha = 0.7f) else Palette.tertiary
+    // Swipe left to close. The swipe never dismisses by itself: it asks, and the row
+    // springs back whatever the answer (false keeps it from settling as swiped away).
+    val swipe = rememberSwipeToDismissBoxState(confirmValueChange = { v ->
+        if (v == SwipeToDismissBoxValue.EndToStart) onClose()
+        false
+    })
     Box {
+        SwipeToDismissBox(swipe, enableDismissFromStartToEnd = false, backgroundContent = {
+            if (swipe.dismissDirection == SwipeToDismissBoxValue.EndToStart) {
+                Box(Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)).background(Palette.red).padding(end = 20.dp),
+                    contentAlignment = Alignment.CenterEnd) {
+                    Icon(Icons.Filled.Close, "Close", tint = Color.White, modifier = Modifier.size(22.dp))
+                }
+            }
+        }) {
         Row(
             Modifier.fillMaxWidth().heightIn(min = 64.dp).clip(RoundedCornerShape(10.dp))
-                .background(if (isActive) Palette.selection else Color.Transparent)
+                // Opaque, so the red behind shows only where the row has moved off it.
+                .background(if (isActive) Palette.selection else Palette.list)
                 .combinedClickable(onLongClick = { menu = true }) { model.select(s.name) }
                 .padding(horizontal = 12.dp, vertical = 9.dp),
         ) {
@@ -258,12 +317,13 @@ private fun SessionRow(model: PadModel, s: RemoteSession, showGroup: Boolean, is
             }
             }
         }
+        }
         DropdownMenu(menu, { menu = false }, containerColor = Palette.head) {
             DropdownMenuItem({ Text("Rename…") }, { model.renaming = s.name; menu = false })
             DropdownMenuItem({ Text("Move to Group…") }, { moveMenu = true; menu = false })
             HorizontalDivider(color = Palette.line)
-            // Kills the tmux session on the host, and the Claude in it: only here, never one tap away.
-            DropdownMenuItem({ Text("Close Session", color = Palette.red) }, { model.close(s.name); menu = false })
+            // Kills the tmux session on the host, and the Claude in it: always asks first.
+            DropdownMenuItem({ Text("Close Session…", color = Palette.red) }, { onClose(); menu = false })
         }
         DropdownMenu(moveMenu, { moveMenu = false }, containerColor = Palette.head) {
             DropdownMenuItem({ Text("New Group") }, { model.newGroup(with = s.name); moveMenu = false })
@@ -272,6 +332,8 @@ private fun SessionRow(model: PadModel, s: RemoteSession, showGroup: Boolean, is
                     leadingIcon = { Box(Modifier.size(11.dp).clip(CircleShape).background(Color(g.color.argb))) })
             }
             if (group != null) DropdownMenuItem({ Text("Remove from Group") }, { model.move(s.name, null); moveMenu = false })
+            // Stray: take it up without a group.
+            if (!model.isAdopted(s.name)) DropdownMenuItem({ Text("Ungrouped") }, { model.adoptUngrouped(s.name); moveMenu = false })
         }
     }
 }

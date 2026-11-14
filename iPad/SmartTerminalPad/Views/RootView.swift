@@ -9,9 +9,10 @@ import SmartTerminalCore
 /// session. Laid over, not beside, so tmux doesn't reflow each time they appear.
 struct RootView: View {
     @Bindable var model: PadModel
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $model.columns) {
+        NavigationSplitView(columnVisibility: $model.columns, preferredCompactColumn: $model.compactColumn) {
             CategoryList(model: model)
                 .navigationSplitViewColumnWidth(min: 180, ideal: 210, max: 280)
                 .toolbar(.hidden, for: .navigationBar)
@@ -33,17 +34,36 @@ struct RootView: View {
             model.portrait = portrait
             model.columns = portrait || model.listsHidden ? .detailOnly : model.landscapeColumns
         }
+        .onChange(of: sizeClass, initial: true) { _, new in model.compact = new == .compact }
+        // iPhone: the setup card (the key to add, the error) lives in the terminal
+        // screen, which needs a session to reach; show it while the host isn't there.
+        .onChange(of: connected, initial: true) { _, ok in
+            guard model.compact else { return }
+            if !ok { model.compactColumn = .detail }
+            // Back from the card once connected, unless a session is open there.
+            else if model.compactColumn == .detail, model.selected == nil { model.compactColumn = .sidebar }
+        }
         .onChange(of: model.selected) { _, _ in
             // Picking a session puts laid-over lists away, as Mail does in portrait.
             if model.overlaid, model.columns != .detailOnly {
                 withAnimation(.snappy) { model.columns = .detailOnly }
             }
         }
+        .onChange(of: model.sessions.map(\.name), initial: true) { _, names in model.reconcile(names) }
         .onChange(of: model.category) { _, new in
             // Picking a category shows one of its sessions, so the terminal matches the list.
+            // Not Stray: showing one would attach to it without taking it up.
+            guard new != .stray else { return }
             let list = model.sessions(in: new)
             if !list.contains(where: { $0.name == model.selected }) { model.selected = list.first?.name }
         }
+    }
+}
+
+extension RootView {
+    private var connected: Bool {
+        if case .connected = model.host.state { return true }
+        return false
     }
 }
 
@@ -62,14 +82,14 @@ private struct CategoryList: View {
     @Bindable var model: PadModel
 
     var body: some View {
-        let all = model.sessions
+        let all = model.sessions(in: .all)
         let ungrouped = model.sessions(in: .ungrouped)
         ScrollView {
             VStack(alignment: .leading, spacing: 1) {
                 HostBadge(host: model.host)
                     .padding(.horizontal, 8).padding(.bottom, 10)
                 CategoryRow(title: "All Sessions", icon: .symbol("rectangle.stack"), sessions: all,
-                            selected: model.category == .all) { model.category = .all }
+                            selected: model.category == .all) { model.show(.all) }
                 Text("Groups")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
@@ -78,7 +98,7 @@ private struct CategoryList: View {
                     CategoryRow(title: model.groupTitle(g), icon: .color(g.color.color),
                                 sessions: model.sessions(in: .group(g.id)),
                                 selected: model.category == .group(g.id), dimmed: g.name.isEmpty) {
-                        model.category = .group(g.id)
+                        model.show(.group(g.id))
                     }
                     .contextMenu { GroupMenu(model: model, group: g) }
                     .dropDestination(for: String.self) { names, _ in
@@ -88,15 +108,22 @@ private struct CategoryList: View {
                 }
                 if !ungrouped.isEmpty {
                     CategoryRow(title: "Ungrouped", icon: .symbol("terminal"), sessions: ungrouped,
-                                selected: model.category == .ungrouped) { model.category = .ungrouped }
+                                selected: model.category == .ungrouped) { model.show(.ungrouped) }
                         .dropDestination(for: String.self) { names, _ in
                             names.forEach { model.move($0, to: nil) }
                             return true
                         }
                 }
+                let stray = model.sessions(in: .stray)
+                if !stray.isEmpty {
+                    // Sessions on the host not taken up here; opening one moves it to Ungrouped.
+                    CategoryRow(title: "Stray", icon: .symbol("tray"), sessions: stray,
+                                selected: model.category == .stray) { model.show(.stray) }
+                }
             }
             .padding(.horizontal, 10).padding(.top, 14).padding(.bottom, 6)
         }
+        .refreshable { await model.host.refresh() }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             HStack {
                 Button { model.newGroup() } label: { Label("New Group", systemImage: "plus") }
@@ -200,10 +227,12 @@ private struct SessionList: View {
         VStack(spacing: 0) {
             HStack(alignment: .center, spacing: 8) {
                 // The groups column's toggle (the system one lives in the hidden nav bar).
+                // iPhone: back to the groups.
                 Button {
+                    if compact { model.compactColumn = .sidebar; return }
                     withAnimation(.snappy) { columns = groupsShown ? .doubleColumn : .all }
                 } label: {
-                    Image(systemName: "sidebar.left")
+                    Image(systemName: compact ? "chevron.left" : "sidebar.left")
                         .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(groupsShown ? Theme.selection : Color.primary)
                         .frame(width: 36, height: 32)
@@ -218,7 +247,7 @@ private struct SessionList: View {
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 4)
-                if !model.portrait {
+                if !model.portrait, !compact {
                     // Landscape: put the lists away (the terminal gets the width), or,
                     // while they're laid over it, pin them back beside it.
                     Button {
@@ -281,6 +310,10 @@ private struct SessionList: View {
 
     @State private var closing: RemoteSession?
 
+    /// The root's size class (RootView sets it): a column reports compact on its own,
+    /// even on an iPad in landscape.
+    private var compact: Bool { model.compact }
+
     /// `.automatic` is what the system picks: groups shown in landscape, hidden in portrait.
     private var groupsShown: Bool { columns == .all }
 
@@ -288,6 +321,7 @@ private struct SessionList: View {
         switch model.category {
         case .all: "All Sessions"
         case .ungrouped: "Ungrouped"
+        case .stray: "Stray"
         case .group(let id): model.groups.first { $0.id == id }.map(model.groupTitle) ?? ""
         }
     }
@@ -344,7 +378,7 @@ private struct SessionRow: View {
         .foregroundStyle(isActive ? onAccent : Color.primary)
         .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .hoverEffect(.highlight)
-        .onTapGesture { model.selected = session.name }
+        .onTapGesture { model.open(session.name) }
         .draggable(session.name)
         .contextMenu {
             Button("Rename…") { model.renaming = session.name }
@@ -354,6 +388,7 @@ private struct SessionRow: View {
                     Button(model.groupTitle(g)) { model.move(session.name, to: g.id) }
                 }
                 if group != nil { Button("Remove from Group") { model.move(session.name, to: nil) } }
+                if !model.isAdopted(session.name) { Button("Ungrouped") { model.move(session.name, to: nil) } }
             }
             Divider()
             Button("Close Session…", role: .destructive) { onClose() }

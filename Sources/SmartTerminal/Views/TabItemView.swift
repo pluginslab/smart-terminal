@@ -194,6 +194,9 @@ struct TabContextMenu: View {
         }
         if tab.groupID != nil {
             Button("Remove from Group") { model.removeFromGroup(tab.id) }
+        } else if let stray = model.straySession(of: tab.id) {
+            // Listed under Stray until it is in a group, or kept here on purpose.
+            Button("Keep in Ungrouped") { model.keepStrayInUngrouped(stray, in: windowID) }
         }
         if let ref = ClaudeSessionReference(tab: tab, agent: model.agents[tab.id]) {
             Divider()

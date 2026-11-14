@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Covers the app until it is unlocked: the security key first when one is set
-/// up (it asks for the key straight away), Touch ID or the passcode as the
+/// up (from its button), Touch ID / Face ID or the passcode as the
 /// other way in.
 struct LockView: View {
     @Bindable var lock: AppLock
