@@ -1,5 +1,15 @@
 # Changelog
 
+## [iPad 0.5.1] - 2026-11-17
+- iPad/iPhone: closing the session in front selects the one above it (the one below when it was the first) instead of leaving nothing selected.
+- iPad/iPhone: only the key bar's keyboard button raises the on-screen keyboard. A tap on the terminal never does, nor does focus coming back after an alert, a sheet or returning to the app; long-press still focuses for copy and paste.
+- iPad/iPhone: SwiftTerm's grey key row is gone. The app's key bar stays on top of the keyboard instead, its keyboard key hides the keyboard, and a sticky ctrl key (shown while the keyboard is up) applies to the next key typed.
+- iPhone: the scrolling keys stop at return's edge and fade out there, so a key under return no longer shows a press when return is tapped.
+- iPad/iPhone: glass buttons (back, sidebar, lock, +, the keys, return, the mic) take taps on their whole capsule, not only on the icon or text, so light taps no longer miss.
+
+## [Android 0.3.2] - 2026-11-17
+- Android: closing the session in front selects the one above it (the one below when it was the first).
+
 ## [iPad 0.5.0] - 2026-11-14
 - iPad/iPhone: iSH+ as a second host. When iSH+ is installed, a badge under supermaschine opens its setup (one paste installs an SSH server and tmux in the running distribution and adds this device's key), and the + button asks where the new session runs: supermaschine or iSH+'s Linux, reached over SSH on 127.0.0.1 (port 2222 by default, settable). Each distribution keeps its own sessions and groups. iSH+ has to keep Linux running while it is in the background (Split View always works); a paused iSH+ shows within 8 seconds and the app reconnects when Linux is back. New iPhone sessions are `iphone-N`.
 - iPad/iPhone: pinch on the terminal to change the font size (9 to 28 pt, whole points, haptics at each step); every session follows and it is kept.

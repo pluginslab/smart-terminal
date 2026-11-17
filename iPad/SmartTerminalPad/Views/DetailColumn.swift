@@ -22,9 +22,9 @@ struct DetailColumn: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color(uiColor: Theme.background))
-            // Hidden while the on-screen keyboard is up: SwiftTerm's own key row sits on it then.
+            // Also on top of the on-screen keyboard (SwiftTerm's own key row is off).
             if let name = model.selected,
-               model.sessions.contains(where: { $0.name == name }), !KeyboardWatcher.shared.visible {
+               model.sessions.contains(where: { $0.name == name }) {
                 KeyBar(model: model, session: name)
             }
         }
@@ -44,12 +44,15 @@ struct DetailColumn: View {
             // over the terminal (so does a swipe from the left edge).
             if model.compact {
                 // iPhone: back to the sessions.
+                // .plain buttons only take taps on what the label draws (here the chevron):
+                // contentShape makes the whole capsule tappable, as on every plain button.
                 Button { model.compactColumn = .content } label: {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 15, weight: .medium))
                         .frame(width: 36, height: 32)
                 }
                 .buttonStyle(.plain)
+                .contentShape(Rectangle())
                 .glassEffect(.regular.interactive(), in: .capsule)
                 .accessibilityLabel("Sessions")
             } else if model.overlaid, model.columns == .detailOnly {
@@ -59,6 +62,7 @@ struct DetailColumn: View {
                         .frame(width: 36, height: 32)
                 }
                 .buttonStyle(.plain)
+                .contentShape(Rectangle())
                 .glassEffect(.regular.interactive(), in: .capsule)
                 .keyboardShortcut("f", modifiers: [.shift, .command])
                 .accessibilityLabel("Show Sessions")
@@ -82,6 +86,7 @@ struct DetailColumn: View {
                         .frame(width: 36, height: 32)
                 }
                 .buttonStyle(.plain)
+                .contentShape(Rectangle())
                 .glassEffect(.regular.interactive(), in: .capsule)
                 .keyboardShortcut("l", modifiers: [.shift, .command])
                 .accessibilityLabel("Lock Smart Terminal")
@@ -153,7 +158,7 @@ private struct TerminalHost: UIViewRepresentable {
         // keyboard button does (see PadTerminalView). With a hardware keyboard nothing pops up,
         // so focus straight away and typing goes to the session just picked.
         if GCKeyboard.coalesced != nil {
-            DispatchQueue.main.async { _ = pane.view.becomeFirstResponder() }
+            DispatchQueue.main.async { pane.focus() }
         }
     }
 }

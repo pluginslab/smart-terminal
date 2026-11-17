@@ -243,12 +243,22 @@ final class PadModel {
     }
 
     func close(_ session: String) {
+        // The one in front closes: the row above it takes its place (the one below
+        // for the first row), as tabs do.
+        if selected == session {
+            let list = sessions(in: category).map(\.name)
+            if let i = list.firstIndex(of: session) {
+                let rest = list.filter { $0 != session }
+                selected = rest.isEmpty ? nil : rest[max(0, min(i - 1, rest.count - 1))]
+            } else {
+                selected = nil
+            }
+        }
         panes[session]?.detach()
         panes[session] = nil
         membership[session] = nil
         customTitles[session] = nil
         save()
-        if selected == session { selected = nil }
         let h = host(of: session)
         Task { await h.kill(session) }
     }

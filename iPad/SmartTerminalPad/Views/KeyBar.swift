@@ -25,6 +25,13 @@ final class KeyboardWatcher {
     }
 }
 
+/// Ctrl latched from the key bar: SwiftTerm applies it to the next typed key.
+@MainActor @Observable
+final class CtrlLatch {
+    static let shared = CtrlLatch()
+    var on = false
+}
+
 /// The keys a session needs when there's no keyboard: answering Claude (arrows,
 /// return, esc), its mode (⇧⇥), stopping a command (^C). Then the keyboard toggle,
 /// and dictation next to return.
@@ -32,7 +39,7 @@ struct KeyBar: View {
     @Bindable var model: PadModel
     let session: String
 
-    /// iPhone: keys hidden past the right edge (they scroll under return and the mic).
+    /// iPhone: keys hidden past the right edge (they fade out next to return).
     @State private var moreKeys = false
 
     var body: some View {
@@ -43,10 +50,25 @@ struct KeyBar: View {
         // iPhone: the keys scroll sideways; return and the mic stay at the right edge.
         let keys = HStack(spacing: 6) {
             Group {
-                Key(symbol: "keyboard", label: "Show Keyboard") {
-                    _ = pane.view.becomeFirstResponder()
+                // Shows the keyboard, or hides it while it's up (the bar then sits on it).
+                Key(symbol: keyboardUp ? "keyboard.chevron.compact.down" : "keyboard",
+                    label: keyboardUp ? "Hide Keyboard" : "Show Keyboard") {
+                    if keyboardUp {
+                        CtrlLatch.shared.on = false
+                        pane.view.controlModifier = false
+                        _ = pane.view.resignFirstResponder()
+                    } else {
+                        pane.focus()
+                    }
                 }
                 Separator()
+                if keyboardUp {
+                    // Sticky: the next key typed goes with ctrl.
+                    Key(text: "ctrl", label: "Control", on: CtrlLatch.shared.on) {
+                        CtrlLatch.shared.on.toggle()
+                        pane.view.controlModifier = CtrlLatch.shared.on
+                    }
+                }
                 Key(text: "esc", label: "Escape") { pane.view.send(EscapeSequences.cmdEsc) }
                 Key(text: "⇧tab", label: "Shift Tab") { pane.view.send([0x1b, 0x5b, 0x5a]) }
                 Key(text: "tab", label: "Tab") { pane.view.send([0x09]) }
@@ -78,15 +100,21 @@ struct KeyBar: View {
             } else if model.compact {
                 ScrollView(.horizontal, showsIndicators: false) { keys }
                     .scrollClipDisabled(false)
-                    // Keys hidden to the right look tucked under return and the mic: a
-                    // shadow at the edge, only while there's more to scroll to.
                     .onScrollGeometryChange(for: Bool.self) { g in
                         g.contentOffset.x + g.containerSize.width < g.contentSize.width - 1
                     } action: { _, more in moreKeys = more }
-                    // Run on under return (which sits above, see below), with room at the
-                    // end so the last key still scrolls fully into view.
-                    .contentMargins(.trailing, 28, for: .scrollContent)
-                    .padding(.trailing, -28)
+                    // The keys stop at return's edge: one running on under it caught the
+                    // touch on return and showed its own press. Keys still hidden to the
+                    // right fade out there instead.
+                    .mask {
+                        HStack(spacing: 0) {
+                            Rectangle()
+                            LinearGradient(colors: [.black, .black.opacity(moreKeys ? 0 : 1)],
+                                           startPoint: .leading, endPoint: .trailing)
+                                .frame(width: 28)
+                        }
+                        .animation(.easeOut(duration: 0.15), value: moreKeys)
+                    }
             } else {
                 keys
                 Spacer(minLength: 8)
@@ -101,16 +129,8 @@ struct KeyBar: View {
                         .frame(height: 36)
                 }
                 .buttonStyle(.plain)
+                .contentShape(Rectangle())
                 .glassEffect(.regular.tint(Theme.selection).interactive(), in: .capsule)
-                // iPhone: return lies on top of the scrolling keys and shades them.
-                .background {
-                    if model.compact {
-                        Capsule().fill(Theme.bar)
-                            .shadow(color: .black.opacity(moreKeys ? 0.55 : 0), radius: 7, x: -5)
-                            .animation(.easeOut(duration: 0.15), value: moreKeys)
-                    }
-                }
-                .zIndex(1)
                 .accessibilityLabel("Return")
                 .transition(.scale.combined(with: .opacity))
             }
@@ -120,12 +140,16 @@ struct KeyBar: View {
         .animation(.snappy(duration: 0.2), value: busy)
         // Clear of the home indicator: in portrait, taps right above it reached the
         // system (repeated ones woke Siri), so the keys sit higher there.
-        .padding(.horizontal, model.compact ? 8 : 12).padding(.top, 8).padding(.bottom, model.portrait ? 30 : 12)
+        // On the keyboard there's no home indicator below: just a small margin.
+        .padding(.horizontal, model.compact ? 8 : 12).padding(.top, 8)
+        .padding(.bottom, keyboardUp ? 8 : model.portrait ? 30 : 12)
         .background(Theme.bar)
         .overlay(alignment: .top) { Divider().overlay(Theme.line) }
     }
 
 
+
+    private var keyboardUp: Bool { KeyboardWatcher.shared.visible }
 
     private var statusLine: (text: String, notice: Bool)? {
         switch model.dictation.state {
@@ -247,14 +271,16 @@ private struct Key: View {
     var symbol: String?
     var text: String?
     let label: String
+    /// A latched modifier: shown lit.
+    var on = false
     let action: () -> Void
 
     init(symbol: String, label: String, action: @escaping () -> Void) {
         self.symbol = symbol; self.label = label; self.action = action
     }
 
-    init(text: String, label: String, action: @escaping () -> Void) {
-        self.text = text; self.label = label; self.action = action
+    init(text: String, label: String, on: Bool = false, action: @escaping () -> Void) {
+        self.text = text; self.label = label; self.on = on; self.action = action
     }
 
     var body: some View {
@@ -267,7 +293,10 @@ private struct Key: View {
             .padding(.horizontal, 2)
         }
         .buttonStyle(.plain)
-        .glassEffect(.regular.interactive(), in: .capsule)
+        .contentShape(Rectangle())
+        .foregroundStyle(on ? Theme.onSelection : Color.primary)
+        .glassEffect(on ? .regular.tint(Theme.selection).interactive() : .regular.interactive(), in: .capsule)
         .accessibilityLabel(label)
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }

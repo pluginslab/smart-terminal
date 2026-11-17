@@ -32,6 +32,7 @@ struct DictationButton: View {
                 .frame(width: large ? 64 : 36, height: large ? 44 : 32)
             }
             .buttonStyle(.plain)
+            .contentShape(Rectangle())
             .glassEffect(d.state == .recording ? .regular.tint(.red.opacity(0.35)).interactive() : .regular.interactive(), in: .capsule)
             // Command mode (a plain shell): a badge on the button's corner, the mic stays plain.
             .overlay(alignment: .topTrailing) {

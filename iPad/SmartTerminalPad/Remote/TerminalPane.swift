@@ -15,6 +15,11 @@ final class TerminalPane: NSObject, TerminalViewDelegate {
     /// The name tmux knows it by on its host (the app's name less the host's prefix).
     let tmuxName: String
     let view: TerminalView
+
+    /// Raise the keyboard (the only way it comes up; see PadTerminalView).
+    func focus() {
+        if let v = view as? PadTerminalView { v.focus() } else { _ = view.becomeFirstResponder() }
+    }
     private(set) var state: State = .idle { didSet { onState?(state) } }
     var onState: ((State) -> Void)?
     var onTitle: ((String) -> Void)?
@@ -129,7 +134,11 @@ final class TerminalPane: NSObject, TerminalViewDelegate {
 
     nonisolated func send(source: TerminalView, data: ArraySlice<UInt8>) {
         let buffer = ByteBuffer(bytes: data)
-        Task { @MainActor in try? await self.writer?.write(buffer) }
+        Task { @MainActor in
+            // SwiftTerm applies a latched ctrl to the next key and drops it: so does the key bar.
+            if CtrlLatch.shared.on, !source.controlModifier { CtrlLatch.shared.on = false }
+            try? await self.writer?.write(buffer)
+        }
     }
 
     nonisolated func sizeChanged(source: TerminalView, newCols: Int, newRows: Int) {
@@ -191,6 +200,10 @@ final class PadTerminalView: TerminalView, UIGestureRecognizerDelegate {
         let pinch = UIPinchGestureRecognizer(target: self, action: #selector(pinched(_:)))
         pinch.delegate = self
         addGestureRecognizer(pinch)
+        // No SwiftTerm key row on the keyboard: the app's key bar stays up there instead.
+        inputAccessoryView = nil
+        inputAssistantItem.leadingBarButtonGroups = []
+        inputAssistantItem.trailingBarButtonGroups = []
     }
 
     // MARK: - Pinch to zoom
@@ -225,15 +238,22 @@ final class PadTerminalView: TerminalView, UIGestureRecognizerDelegate {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    /// A tap on the terminal doesn't focus it (SwiftTerm focuses on tap), so neither
-    /// the keyboard nor its key row comes up; the key bar's keyboard button does.
-    /// Long-press still focuses, for the copy/paste menu. With a hardware keyboard,
-    /// picking a session focuses it (DetailColumn), so typing needs no tap.
+    /// Only asked-for focus raises the keyboard: the key bar's keyboard button, a
+    /// session picked with a hardware keyboard (DetailColumn) and a long-press (for
+    /// the copy/paste menu). A tap doesn't (SwiftTerm focuses on tap), and neither does
+    /// UIKit putting focus back after an alert or a sheet or on returning to the front.
+    func focus() {
+        focusAllowed = true
+        _ = becomeFirstResponder()
+        focusAllowed = false
+    }
+    private var focusAllowed = false
+
     override func becomeFirstResponder() -> Bool {
-        if !isFirstResponder,
-           gestureRecognizers?.contains(where: { $0 is UITapGestureRecognizer && $0.state == .ended }) == true {
-            return false
-        }
+        let longPress = gestureRecognizers?.contains {
+            $0 is UILongPressGestureRecognizer && $0.state == .began
+        } == true
+        guard isFirstResponder || focusAllowed || longPress else { return false }
         return super.becomeFirstResponder()
     }
 

@@ -199,11 +199,17 @@ class PadModel(private val context: Context) {
 
     /** Kills the tmux session on the host (and whatever runs in it). Row menu only. */
     fun close(session: String) {
+        // The one in front closes: the row above takes its place (below for the first).
+        if (selected == session) {
+            val list = sessions(category).map { it.name }
+            val i = list.indexOf(session)
+            val rest = list - session
+            selected = if (i < 0 || rest.isEmpty()) null else rest[(i - 1).coerceIn(0, rest.size - 1)]
+        }
         panes.remove(session)?.close()
         membership = membership - session
         customTitles = customTitles - session
         save()
-        if (selected == session) selected = null
         host.kill(session)
     }
 

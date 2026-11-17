@@ -99,6 +99,7 @@ private struct CategoryList: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .contentShape(Rectangle())
                     .padding(.horizontal, 8).padding(.bottom, 10)
                 }
                 CategoryRow(title: "All Sessions", icon: .symbol("rectangle.stack"), sessions: all,
@@ -232,6 +233,7 @@ private struct CategoryRow: View {
             .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         }
         .buttonStyle(.plain)
+        .contentShape(Rectangle())
         .hoverEffect(.highlight)
     }
 }
@@ -258,6 +260,7 @@ private struct SessionList: View {
                         .frame(width: 36, height: 32)
                 }
                 .buttonStyle(.plain)
+                .contentShape(Rectangle())
                 .glassEffect(.regular.interactive(), in: .capsule)
                 .keyboardShortcut("s", modifiers: [.control, .command])
                 .accessibilityLabel(groupsShown ? "Hide Groups" : "Show Groups")
@@ -277,6 +280,7 @@ private struct SessionList: View {
                             .font(.system(size: 14, weight: .medium)).frame(width: 36, height: 32)
                     }
                     .buttonStyle(.plain)
+                    .contentShape(Rectangle())
                     .glassEffect(.regular.interactive(), in: .capsule)
                     .keyboardShortcut("f", modifiers: [.shift, .command])
                     .accessibilityLabel(model.listsHidden ? "Keep Lists Beside the Terminal" : "Hide Lists")
@@ -302,6 +306,7 @@ private struct SessionList: View {
                     }
                     .menuStyle(.button)
                     .buttonStyle(.plain)
+                    .contentShape(Rectangle())
                     .glassEffect(.regular.interactive(), in: .capsule)
                     .accessibilityLabel("New Session")
                     // ⌘T: supermaschine, as before; ⌥⌘T: iSH+.
@@ -316,6 +321,7 @@ private struct SessionList: View {
                         Image(systemName: "plus").font(.system(size: 15, weight: .medium)).frame(width: 36, height: 32)
                     }
                     .buttonStyle(.plain)
+                    .contentShape(Rectangle())
                     .glassEffect(.regular.interactive(), in: .capsule)
                     .keyboardShortcut("t", modifiers: .command)
                 }
